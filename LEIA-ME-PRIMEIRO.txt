@@ -1,0 +1,81 @@
+═══════════════════════════════════════════════════════════════
+   SISTEMA DE GESTÃO DE METAS - GUIA DE INSTALAÇÃO RÁPIDA
+═══════════════════════════════════════════════════════════════
+
+📋 ANTES DE COMEÇAR:
+   Este sistema precisa do Node.js instalado no computador.
+   
+   Se você ainda NÃO tem Node.js:
+   1. Acesse: https://nodejs.org/
+   2. Baixe a versão LTS (Long Term Support)
+   3. Instale seguindo as instruções
+   4. REINICIE o computador
+   5. Depois volte aqui e continue
+
+═══════════════════════════════════════════════════════════════
+
+🚀 INSTALAÇÃO RÁPIDA (AUTOMÁTICA):
+
+   MÉTODO 1 - Script Automático:
+   ------------------------------
+   1. Dê dois cliques no arquivo: SCRIPT-INSTALACAO-AUTOMATICA.bat
+   2. Aguarde a instalação terminar
+   3. Siga as instruções na tela
+
+   MÉTODO 2 - Manual:
+   ------------------
+   1. Abra PowerShell ou Prompt de Comando nesta pasta
+   2. Execute: npm install
+   3. Execute: cd frontend
+   4. Execute: npm install
+   5. Execute: cd ..
+   6. Execute: npm run dev
+
+═══════════════════════════════════════════════════════════════
+
+⚙️ CONFIGURAÇÃO DO BANCO DE DADOS:
+
+   O arquivo .env precisa estar configurado.
+   
+   Opção 1 - MongoDB Atlas (Recomendado):
+   ---------------------------------------
+   1. Crie uma conta em: https://www.mongodb.com/cloud/atlas/register
+   2. Crie um cluster gratuito
+   3. Configure acesso (usuário e Network Access)
+   4. Copie a string de conexão
+   5. Abra o arquivo .env e cole a string em MONGODB_URI
+   
+   Opção 2 - MongoDB Local:
+   -------------------------
+   1. Instale MongoDB: https://www.mongodb.com/try/download/community
+   2. Deixe o arquivo .env como está (mongodb://localhost:27017/gestao-metas)
+
+═══════════════════════════════════════════════════════════════
+
+🌐 COMO USAR:
+
+   1. Execute: npm run dev
+   2. Aguarde alguns segundos
+   3. Abra o navegador em: http://localhost:3000
+   4. Cadastre-se ou faça login
+
+═══════════════════════════════════════════════════════════════
+
+📖 DOCUMENTAÇÃO COMPLETA:
+
+   Para instruções detalhadas, consulte:
+   - INSTALACAO-OUTROS-COMPUTADORES.md
+
+═══════════════════════════════════════════════════════════════
+
+❓ PROBLEMAS?
+
+   - Verifique se Node.js está instalado: node --version
+   - Verifique se MongoDB está configurado
+   - Consulte INSTALACAO-OUTROS-COMPUTADORES.md para mais ajuda
+
+═══════════════════════════════════════════════════════════════
+
+
+
+
