@@ -96,7 +96,7 @@ router.post('/:id/vendas-diarias', async (req, res) => {
     }
 
     // Normalizar data (remover horas, manter apenas data)
-    // Criar data a partir da string YYYY-MM-DD no timezone local
+    // Usar UTC para evitar problemas de timezone
     // Garantir que a data está no formato correto
     let dataVenda;
     if (typeof data === 'string' && data.includes('-')) {
@@ -105,14 +105,22 @@ router.post('/:id/vendas-diarias', async (req, res) => {
         const ano = parseInt(partes[0], 10);
         const mes = parseInt(partes[1], 10);
         const dia = parseInt(partes[2], 10);
-        dataVenda = new Date(ano, mes - 1, dia, 0, 0, 0, 0);
+        // Usar UTC para criar a data - garante que dia/mês/ano sejam preservados
+        dataVenda = new Date(Date.UTC(ano, mes - 1, dia, 12, 0, 0, 0)); // Usar meio-dia UTC para evitar problemas de timezone
       } else {
         dataVenda = new Date(data);
-        dataVenda.setHours(0, 0, 0, 0);
+        // Se já é uma data, normalizar para meio-dia UTC do mesmo dia
+        const ano = dataVenda.getUTCFullYear();
+        const mes = dataVenda.getUTCMonth();
+        const dia = dataVenda.getUTCDate();
+        dataVenda = new Date(Date.UTC(ano, mes, dia, 12, 0, 0, 0));
       }
     } else {
       dataVenda = new Date(data);
-      dataVenda.setHours(0, 0, 0, 0);
+      const ano = dataVenda.getUTCFullYear();
+      const mes = dataVenda.getUTCMonth();
+      const dia = dataVenda.getUTCDate();
+      dataVenda = new Date(Date.UTC(ano, mes, dia, 12, 0, 0, 0));
     }
     
     // Validar se a data é válida
@@ -133,13 +141,13 @@ router.post('/:id/vendas-diarias', async (req, res) => {
     });
 
     // Calcular total de vendas diretas da loja no mês
-    const mesVenda = dataVenda.getMonth() + 1;
-    const anoVenda = dataVenda.getFullYear();
+    const mesVenda = dataVenda.getUTCMonth() + 1;
+    const anoVenda = dataVenda.getUTCFullYear();
     
     const vendasDiretasLoja = meta.vendasDiarias.filter(v => {
       const vDate = new Date(v.data);
-      const vDateNormalizada = new Date(vDate.getFullYear(), vDate.getMonth(), vDate.getDate());
-      return vDateNormalizada.getMonth() + 1 === mesVenda && vDateNormalizada.getFullYear() === anoVenda;
+      // Usar UTC para comparar corretamente
+      return vDate.getUTCMonth() + 1 === mesVenda && vDate.getUTCFullYear() === anoVenda;
     });
     
     const totalVendasDiretasLoja = vendasDiretasLoja.reduce((sum, v) => sum + v.valor, 0);
@@ -152,9 +160,8 @@ router.post('/:id/vendas-diarias', async (req, res) => {
       if (funcionario.vendasDiarias && funcionario.vendasDiarias.length > 0) {
         funcionario.vendasDiarias.forEach(venda => {
           const vDate = new Date(venda.data);
-          const vDateNormalizada = new Date(vDate.getFullYear(), vDate.getMonth(), vDate.getDate());
-          
-          if (vDateNormalizada.getMonth() + 1 === mesVenda && vDateNormalizada.getFullYear() === anoVenda) {
+          // Usar UTC para comparar corretamente
+          if (vDate.getUTCMonth() + 1 === mesVenda && vDate.getUTCFullYear() === anoVenda) {
             totalVendasFuncionarios += venda.valor || 0;
           }
         });
@@ -222,14 +229,17 @@ router.get('/:id/vendas-diarias', async (req, res) => {
             console.error(`Venda ${index} tem data inválida:`, venda.data);
             return;
           }
-          const vDateNormalizada = new Date(vDate.getFullYear(), vDate.getMonth(), vDate.getDate());
+          // Usar UTC para extrair componentes corretamente
+          const ano = vDate.getUTCFullYear();
+          const mes = vDate.getUTCMonth() + 1;
+          const dia = vDate.getUTCDate();
           
           // Verificar se é do mês/ano da meta
-          if (vDateNormalizada.getMonth() + 1 === mesMeta && vDateNormalizada.getFullYear() === anoMeta) {
-            const dataKey = vDateNormalizada.toISOString().split('T')[0];
+          if (mes === mesMeta && ano === anoMeta) {
+            const dataKey = `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
             if (!vendasPorData[dataKey]) {
               vendasPorData[dataKey] = {
-                data: vDateNormalizada,
+                data: new Date(Date.UTC(ano, mes - 1, dia, 12, 0, 0, 0)),
                 vendasLoja: [],
                 vendasFuncionarios: [],
                 total: 0
@@ -263,14 +273,17 @@ router.get('/:id/vendas-diarias', async (req, res) => {
               console.error(`Venda ${vendaIndex} do funcionário ${funcionario.nome} tem data inválida:`, venda.data);
               return;
             }
-            const vDateNormalizada = new Date(vDate.getFullYear(), vDate.getMonth(), vDate.getDate());
+            // Usar UTC para extrair componentes corretamente
+            const ano = vDate.getUTCFullYear();
+            const mes = vDate.getUTCMonth() + 1;
+            const dia = vDate.getUTCDate();
             
             // Verificar se é do mês/ano da meta
-            if (vDateNormalizada.getMonth() + 1 === mesMeta && vDateNormalizada.getFullYear() === anoMeta) {
-              const dataKey = vDateNormalizada.toISOString().split('T')[0];
+            if (mes === mesMeta && ano === anoMeta) {
+              const dataKey = `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
               if (!vendasPorData[dataKey]) {
                 vendasPorData[dataKey] = {
-                  data: vDateNormalizada,
+                  data: new Date(Date.UTC(ano, mes - 1, dia, 12, 0, 0, 0)),
                   vendasLoja: [],
                   vendasFuncionarios: [],
                   total: 0
@@ -318,8 +331,8 @@ router.get('/:id/vendas-diarias', async (req, res) => {
               if (!v || !v.data) return false;
               const vDate = new Date(v.data);
               if (isNaN(vDate.getTime())) return false;
-              const vDateNormalizada = new Date(vDate.getFullYear(), vDate.getMonth(), vDate.getDate());
-              return vDateNormalizada.getMonth() + 1 === mesMeta && vDateNormalizada.getFullYear() === anoMeta;
+              // Usar UTC para comparar corretamente
+              return vDate.getUTCMonth() + 1 === mesMeta && vDate.getUTCFullYear() === anoMeta;
             } catch (e) {
               return false;
             }
@@ -339,8 +352,8 @@ router.get('/:id/vendas-diarias', async (req, res) => {
             if (!v || !v.data) return false;
             const vDate = new Date(v.data);
             if (isNaN(vDate.getTime())) return false;
-            const vDateNormalizada = new Date(vDate.getFullYear(), vDate.getMonth(), vDate.getDate());
-            return vDateNormalizada.getMonth() + 1 === mesMeta && vDateNormalizada.getFullYear() === anoMeta;
+            // Usar UTC para comparar corretamente
+            return vDate.getUTCMonth() + 1 === mesMeta && vDate.getUTCFullYear() === anoMeta;
           } catch (e) {
             return false;
           }

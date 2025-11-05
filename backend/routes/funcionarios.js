@@ -127,7 +127,7 @@ router.post('/:id/vendas-diarias', async (req, res) => {
     }
 
     // Normalizar data (remover horas, manter apenas data)
-    // Criar data a partir da string YYYY-MM-DD no timezone local
+    // Usar UTC para evitar problemas de timezone
     // Garantir que a data está no formato correto
     let dataVenda;
     if (typeof data === 'string' && data.includes('-')) {
@@ -136,14 +136,22 @@ router.post('/:id/vendas-diarias', async (req, res) => {
         const ano = parseInt(partes[0], 10);
         const mes = parseInt(partes[1], 10);
         const dia = parseInt(partes[2], 10);
-        dataVenda = new Date(ano, mes - 1, dia, 0, 0, 0, 0);
+        // Usar UTC para criar a data - garante que dia/mês/ano sejam preservados
+        dataVenda = new Date(Date.UTC(ano, mes - 1, dia, 12, 0, 0, 0)); // Usar meio-dia UTC para evitar problemas de timezone
       } else {
         dataVenda = new Date(data);
-        dataVenda.setHours(0, 0, 0, 0);
+        // Se já é uma data, normalizar para meio-dia UTC do mesmo dia
+        const ano = dataVenda.getUTCFullYear();
+        const mes = dataVenda.getUTCMonth();
+        const dia = dataVenda.getUTCDate();
+        dataVenda = new Date(Date.UTC(ano, mes, dia, 12, 0, 0, 0));
       }
     } else {
       dataVenda = new Date(data);
-      dataVenda.setHours(0, 0, 0, 0);
+      const ano = dataVenda.getUTCFullYear();
+      const mes = dataVenda.getUTCMonth();
+      const dia = dataVenda.getUTCDate();
+      dataVenda = new Date(Date.UTC(ano, mes, dia, 12, 0, 0, 0));
     }
     
     // Validar se a data é válida
@@ -167,16 +175,14 @@ router.post('/:id/vendas-diarias', async (req, res) => {
     });
 
     // Calcular total do mês atual e atualizar vendas mensais
-    const mesVenda = dataVenda.getMonth() + 1;
-    const anoVenda = dataVenda.getFullYear();
+    const mesVenda = dataVenda.getUTCMonth() + 1;
+    const anoVenda = dataVenda.getUTCFullYear();
     
     const vendasDoMes = (funcionario.vendasDiarias || []).filter(v => {
       const vDate = new Date(v.data);
-      // Normalizar para o início do dia no timezone local
-      const vDateNormalizada = new Date(vDate.getFullYear(), vDate.getMonth(), vDate.getDate());
-      const dataVendaNormalizada = new Date(dataVenda.getFullYear(), dataVenda.getMonth(), dataVenda.getDate());
-      return vDateNormalizada.getMonth() === dataVendaNormalizada.getMonth() && 
-             vDateNormalizada.getFullYear() === dataVendaNormalizada.getFullYear();
+      // Usar UTC para comparar corretamente
+      return vDate.getUTCMonth() === dataVenda.getUTCMonth() && 
+             vDate.getUTCFullYear() === dataVenda.getUTCFullYear();
     });
     
     const totalMes = vendasDoMes.reduce((sum, v) => sum + v.valor, 0);
@@ -286,9 +292,8 @@ router.get('/:id/vendas-diarias', async (req, res) => {
       const anoNum = parseInt(ano);
       vendasDiarias = vendasDiarias.filter(v => {
         const vDate = new Date(v.data);
-        // Normalizar para o início do dia no timezone local
-        const vDateNormalizada = new Date(vDate.getFullYear(), vDate.getMonth(), vDate.getDate());
-        return vDateNormalizada.getMonth() + 1 === mesNum && vDateNormalizada.getFullYear() === anoNum;
+        // Usar UTC para comparar corretamente
+        return vDate.getUTCMonth() + 1 === mesNum && vDate.getUTCFullYear() === anoNum;
       });
     }
 
