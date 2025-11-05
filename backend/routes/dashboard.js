@@ -53,15 +53,26 @@ router.get('/', async (req, res) => {
     funcionarios.forEach(func => {
       if (func.vendasDiarias && func.vendasDiarias.length > 0) {
         func.vendasDiarias.forEach(venda => {
+          // Normalizar data para evitar problemas de timezone UTC
           const vendaDate = new Date(venda.data);
-          if (vendaDate.getMonth() + 1 === mesAtual && vendaDate.getFullYear() === anoAtual) {
-            const dia = vendaDate.getDate();
-            const dataKey = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+          // Criar data local a partir dos componentes (evita conversão UTC)
+          const vendaDateLocal = new Date(
+            vendaDate.getFullYear(),
+            vendaDate.getMonth(),
+            vendaDate.getDate()
+          );
+          
+          const mesVenda = vendaDateLocal.getMonth() + 1;
+          const anoVenda = vendaDateLocal.getFullYear();
+          const diaVenda = vendaDateLocal.getDate();
+          
+          if (mesVenda === mesAtual && anoVenda === anoAtual) {
+            const dataKey = `${anoVenda}-${String(mesVenda).padStart(2, '0')}-${String(diaVenda).padStart(2, '0')}`;
             
             if (!vendasDiariasMes[dataKey]) {
               vendasDiariasMes[dataKey] = {
                 data: dataKey,
-                dia,
+                dia: diaVenda,
                 total: 0,
                 quantidade: 0
               };
@@ -76,15 +87,26 @@ router.get('/', async (req, res) => {
     // Vendas da loja (se meta tiver vendas diárias)
     if (meta && meta.vendasDiarias && meta.vendasDiarias.length > 0) {
       meta.vendasDiarias.forEach(venda => {
+        // Normalizar data para evitar problemas de timezone UTC
         const vendaDate = new Date(venda.data);
-        if (vendaDate.getMonth() + 1 === mesAtual && vendaDate.getFullYear() === anoAtual) {
-          const dia = vendaDate.getDate();
-          const dataKey = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+        // Criar data local a partir dos componentes (evita conversão UTC)
+        const vendaDateLocal = new Date(
+          vendaDate.getFullYear(),
+          vendaDate.getMonth(),
+          vendaDate.getDate()
+        );
+        
+        const mesVenda = vendaDateLocal.getMonth() + 1;
+        const anoVenda = vendaDateLocal.getFullYear();
+        const diaVenda = vendaDateLocal.getDate();
+        
+        if (mesVenda === mesAtual && anoVenda === anoAtual) {
+          const dataKey = `${anoVenda}-${String(mesVenda).padStart(2, '0')}-${String(diaVenda).padStart(2, '0')}`;
           
           if (!vendasDiariasMes[dataKey]) {
             vendasDiariasMes[dataKey] = {
               data: dataKey,
-              dia,
+              dia: diaVenda,
               total: 0,
               quantidade: 0
             };
