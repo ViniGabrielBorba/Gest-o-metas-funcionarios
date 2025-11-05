@@ -255,6 +255,25 @@ const Metas = ({ setIsAuthenticated }) => {
   // Verificar se alguma meta foi batida para mostrar animação
   const temMetaBatida = metas.some(m => (m.totalVendido || 0) >= m.valor && m.valor > 0);
 
+  // Preparar dados para gráfico de meses anteriores (ordenado por ano e mês)
+  const metasOrdenadas = [...metas]
+    .sort((a, b) => {
+      if (a.ano !== b.ano) return b.ano - a.ano; // Ano mais recente primeiro
+      return b.mes - a.mes; // Mês mais recente primeiro
+    })
+    .slice(0, 12); // Últimos 12 meses
+
+  const chartData = metasOrdenadas
+    .reverse() // Reverter para mostrar do mais antigo ao mais recente
+    .map(m => ({
+      mesAno: `${formatarNomeMes(m.mes).substring(0, 3)}/${m.ano.toString().substring(2)}`,
+      mes: formatarNomeMes(m.mes),
+      ano: m.ano,
+      meta: m.valor,
+      vendido: m.totalVendido || 0,
+      batida: (m.totalVendido || 0) >= m.valor
+    }));
+
   if (loading) {
     return (
       <div className="min-h-screen">
@@ -283,6 +302,56 @@ const Metas = ({ setIsAuthenticated }) => {
           </button>
         </div>
 
+        {/* Gráfico de Metas dos Últimos Meses */}
+        {chartData.length > 0 && (
+          <div className="card mb-8">
+            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <FaChartBar /> Evolução das Metas - Últimos Meses
+            </h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="mesAno" 
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                />
+                <YAxis />
+                <Tooltip 
+                  formatter={(value, name) => {
+                    const valor = typeof value === 'number' ? value : 0;
+                    return `R$ ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                  }}
+                  labelFormatter={(label, payload) => {
+                    if (payload && payload[0]) {
+                      const data = payload[0].payload;
+                      return `${data.mes} de ${data.ano}`;
+                    }
+                    return label;
+                  }}
+                />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="meta" 
+                  stroke="#ef4444" 
+                  strokeWidth={3}
+                  name="Meta (R$)"
+                  dot={{ fill: '#ef4444', r: 5 }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="vendido" 
+                  stroke="#10b981" 
+                  strokeWidth={3}
+                  name="Total Vendido (R$)"
+                  dot={{ fill: '#10b981', r: 5 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
 
         {/* Animação de Parabéns quando meta é batida */}
         {showParabens && (
