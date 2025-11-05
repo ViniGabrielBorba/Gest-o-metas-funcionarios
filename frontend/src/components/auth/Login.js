@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../utils/api';
 import { setAuthToken } from '../../utils/auth';
-import { FaStore, FaSignInAlt } from 'react-icons/fa';
+import { FaChartLine, FaSignInAlt } from 'react-icons/fa';
 
 const Login = ({ setIsAuthenticated }) => {
   const [formData, setFormData] = useState({
@@ -54,12 +54,12 @@ const Login = ({ setIsAuthenticated }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-500">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500">
       <div className="max-w-md w-full animate-fade-in">
         <div className="card">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 rounded-full mb-4">
-              <FaStore className="text-white text-2xl" />
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-red-600 to-orange-600 rounded-full mb-4">
+              <FaChartLine className="text-white text-2xl" />
             </div>
             <h1 className="text-3xl font-bold text-gray-800 mb-2">FlowGest</h1>
             <p className="text-gray-600">Entre com suas credenciais</p>
@@ -115,7 +115,7 @@ const Login = ({ setIsAuthenticated }) => {
           <div className="mt-6 text-center">
             <p className="text-gray-600">
               Não tem uma conta?{' '}
-              <Link to="/cadastro" className="text-purple-600 font-semibold hover:underline">
+              <Link to="/cadastro" className="text-red-600 font-semibold hover:underline">
                 Cadastre-se
               </Link>
             </p>

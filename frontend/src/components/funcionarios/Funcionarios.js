@@ -582,7 +582,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
                   <h3 className="text-xl font-bold text-gray-800">{funcionario.nome}</h3>
                   <p className="text-gray-600">{funcionario.funcao}</p>
                 </div>
-                <span className="badge bg-purple-100 text-purple-800">
+                <span className="badge bg-red-100 text-red-800">
                   {funcionario.sexo}
                 </span>
               </div>

@@ -127,10 +127,10 @@ const Dashboard = ({ setIsAuthenticated }) => {
 
         {/* Cards de Resumo */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="card bg-gradient-to-br from-purple-600 to-pink-600 text-white">
+          <div className="card bg-gradient-to-br from-red-500 to-red-600 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100 text-sm mb-1">Total de Funcionários</p>
+                <p className="text-red-100 text-sm mb-1">Total de Funcionários</p>
                 <p className="text-3xl font-bold">{resumo.totalFuncionarios}</p>
               </div>
               <FaUsers className="text-4xl opacity-80" />
@@ -265,7 +265,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
 
         {/* Aniversariantes */}
         {aniversariantes.length > 0 && (
-          <div className="card mb-8 bg-gradient-to-r from-pink-100 to-purple-100 border-2 border-pink-300">
+          <div className="card mb-8 bg-gradient-to-r from-pink-100 to-red-100 border-2 border-pink-300">
             <div className="flex items-center gap-3 mb-4">
               <FaBirthdayCake className="text-3xl text-pink-600" />
               <h2 className="text-2xl font-bold text-gray-800">Aniversariantes do Mês</h2>
