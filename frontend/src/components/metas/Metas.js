@@ -335,10 +335,10 @@ const Metas = ({ setIsAuthenticated }) => {
                 <Line 
                   type="monotone" 
                   dataKey="meta" 
-                  stroke="#ef4444" 
+                  stroke="#9333ea" 
                   strokeWidth={3}
                   name="Meta (R$)"
-                  dot={{ fill: '#ef4444', r: 5 }}
+                  dot={{ fill: '#9333ea', r: 5 }}
                 />
                 <Line 
                   type="monotone" 
@@ -503,7 +503,7 @@ const Metas = ({ setIsAuthenticated }) => {
                     <h3 className="text-xl font-bold text-gray-800">
                       {formatarMesAno(meta.mes, meta.ano)}
                     </h3>
-                    <p className="text-2xl font-bold text-red-600 mt-2">
+                    <p className="text-2xl font-bold text-purple-600 mt-2">
                       R$ {meta.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </p>
                   </div>

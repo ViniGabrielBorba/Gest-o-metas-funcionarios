@@ -38,14 +38,14 @@ const Navbar = ({ setIsAuthenticated }) => {
   };
 
   return (
-    <nav className="bg-gradient-to-r from-red-600 to-orange-600 text-white shadow-lg">
+    <nav className="bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 text-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <Link to="/dashboard" className="flex items-center space-x-2">
               <FaStore className="text-2xl" />
               <span className="font-bold text-xl">
-                {gerente?.nomeLoja || 'Gestão de Metas'}
+                {gerente?.nomeLoja || 'FlowGest'}
               </span>
             </Link>
           </div>
@@ -54,19 +54,19 @@ const Navbar = ({ setIsAuthenticated }) => {
           <div className="hidden md:flex items-center space-x-4">
             <Link
               to="/dashboard"
-              className="px-3 py-2 rounded-md text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2"
+              className="px-3 py-2 rounded-md text-sm font-medium hover:bg-purple-700 transition-colors flex items-center gap-2"
             >
               <FaHome /> Dashboard
             </Link>
             <Link
               to="/funcionarios"
-              className="px-3 py-2 rounded-md text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2"
+              className="px-3 py-2 rounded-md text-sm font-medium hover:bg-purple-700 transition-colors flex items-center gap-2"
             >
               <FaUsers /> Funcionários
             </Link>
             <Link
               to="/metas"
-              className="px-3 py-2 rounded-md text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2"
+              className="px-3 py-2 rounded-md text-sm font-medium hover:bg-purple-700 transition-colors flex items-center gap-2"
             >
               <FaBullseye /> Metas
             </Link>
@@ -74,7 +74,7 @@ const Navbar = ({ setIsAuthenticated }) => {
               <span className="text-sm">Olá, {gerente?.nome || 'Gerente'}</span>
               <button
                 onClick={handleLogout}
-                className="bg-red-700 hover:bg-red-800 px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2"
+                className="bg-purple-700 hover:bg-purple-800 px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2"
               >
                 <FaSignOutAlt /> Sair
               </button>
@@ -84,7 +84,7 @@ const Navbar = ({ setIsAuthenticated }) => {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-md hover:bg-red-700"
+            className="md:hidden p-2 rounded-md hover:bg-purple-700"
           >
             {mobileMenuOpen ? <FaTimes /> : <FaBars />}
           </button>
@@ -93,34 +93,34 @@ const Navbar = ({ setIsAuthenticated }) => {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-red-700">
+        <div className="md:hidden bg-purple-700">
           <div className="px-2 pt-2 pb-3 space-y-1">
             <Link
               to="/dashboard"
-              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-red-600 flex items-center gap-2"
+              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-purple-600 flex items-center gap-2"
               onClick={() => setMobileMenuOpen(false)}
             >
               <FaHome /> Dashboard
             </Link>
             <Link
               to="/funcionarios"
-              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-red-600 flex items-center gap-2"
+              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-purple-600 flex items-center gap-2"
               onClick={() => setMobileMenuOpen(false)}
             >
               <FaUsers /> Funcionários
             </Link>
             <Link
               to="/metas"
-              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-red-600 flex items-center gap-2"
+              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-purple-600 flex items-center gap-2"
               onClick={() => setMobileMenuOpen(false)}
             >
               <FaBullseye /> Metas
             </Link>
-            <div className="px-3 py-2 border-t border-red-500 mt-2">
+            <div className="px-3 py-2 border-t border-purple-500 mt-2">
               <p className="text-sm mb-2">Olá, {gerente?.nome || 'Gerente'}</p>
               <button
                 onClick={handleLogout}
-                className="w-full bg-red-800 hover:bg-red-900 px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-purple-800 hover:bg-purple-900 px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2"
               >
                 <FaSignOutAlt /> Sair
               </button>

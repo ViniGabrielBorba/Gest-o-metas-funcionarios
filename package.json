@@ -1,7 +1,7 @@
 {
   "name": "sistema-gestao-metas",
   "version": "1.0.0",
-  "description": "Sistema de Gestão de Metas para Gerentes de Loja",
+  "description": "FlowGest - Sistema de Gestão de Metas para Gerentes de Loja",
   "main": "server.js",
   "scripts": {
     "start": "node backend/server.js",
