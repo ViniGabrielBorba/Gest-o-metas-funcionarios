@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '../layout/Navbar';
 import api from '../../utils/api';
-import { FaPlus, FaEdit, FaTrash, FaBullseye, FaChartBar, FaDollarSign, FaCalendar } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaBullseye, FaChartBar, FaDollarSign, FaCalendar, FaPrint } from 'react-icons/fa';
 import {
   LineChart,
   Line,
@@ -24,6 +24,8 @@ const Metas = ({ setIsAuthenticated }) => {
   const [vendasDiarias, setVendasDiarias] = useState([]);
   const [resumoVendas, setResumoVendas] = useState(null);
   const [loadingHistorico, setLoadingHistorico] = useState(false);
+  const [topFuncionarios, setTopFuncionarios] = useState([]);
+  const [chartDataMensal, setChartDataMensal] = useState(null);
   const [showParabens, setShowParabens] = useState(false);
   const [formData, setFormData] = useState({
     mes: new Date().getMonth() + 1,
@@ -156,8 +158,14 @@ const Metas = ({ setIsAuthenticated }) => {
     
     try {
       console.log('Buscando histórico para meta:', meta._id);
+      
+      // Buscar histórico de vendas da meta
       const response = await api.get(`/metas/${meta._id}/vendas-diarias`);
       console.log('Resposta recebida:', response.data);
+      
+      // Buscar dados do dashboard para funcionários destacados
+      const dashboardResponse = await api.get(`/dashboard?mes=${meta.mes}&ano=${meta.ano}`);
+      console.log('Dashboard recebido:', dashboardResponse.data);
       
       // Verificar se a resposta tem o formato esperado
       if (response.data && response.data.vendasAgrupadas) {
@@ -172,6 +180,25 @@ const Metas = ({ setIsAuthenticated }) => {
         setVendasDiarias([]);
         setResumoVendas(null);
       }
+      
+      // Preparar dados para gráfico mensal
+      if (response.data && response.data.vendasAgrupadas) {
+        const vendasPorDia = response.data.vendasAgrupadas.map(dia => ({
+          dia: new Date(dia.data).getUTCDate(),
+          total: dia.total
+        })).sort((a, b) => a.dia - b.dia);
+        
+        setChartDataMensal(vendasPorDia);
+      } else {
+        setChartDataMensal(null);
+      }
+      
+      // Salvar top funcionários do mês
+      if (dashboardResponse.data && dashboardResponse.data.topVendedoresMes) {
+        setTopFuncionarios(dashboardResponse.data.topVendedoresMes);
+      } else {
+        setTopFuncionarios([]);
+      }
     } catch (error) {
       console.error('Erro completo ao carregar histórico:', error);
       console.error('Resposta do erro:', error.response);
@@ -179,6 +206,8 @@ const Metas = ({ setIsAuthenticated }) => {
       // Mesmo com erro, mostrar o modal mas com dados vazios
       setVendasDiarias([]);
       setResumoVendas(null);
+      setChartDataMensal(null);
+      setTopFuncionarios([]);
       
       // Não mostrar alerta se for erro 500 ou 404 - apenas logar no console
       // O modal já está aberto e mostrará "Nenhuma venda registrada"
@@ -189,6 +218,24 @@ const Metas = ({ setIsAuthenticated }) => {
     } finally {
       setLoadingHistorico(false);
     }
+  };
+  
+  const handleImprimir = () => {
+    window.print();
+  };
+  
+  // Função auxiliar para formatar mês/ano
+  const formatarMesAno = (mes, ano) => {
+    const meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 
+                   'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    return `${meses[mes - 1]} de ${ano}`;
+  };
+  
+  // Função auxiliar para formatar nome do mês
+  const formatarNomeMes = (mes) => {
+    const meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 
+                   'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    return meses[mes - 1];
   };
 
   const getTotalVendido = (meta) => {
@@ -205,18 +252,8 @@ const Metas = ({ setIsAuthenticated }) => {
     return { totalVendido, percentual, faltando, excedente, batida };
   };
 
-  // Preparar dados para gráfico
-  const currentYear = new Date().getFullYear();
-  const metasAno = metas.filter(m => m.ano === currentYear).sort((a, b) => a.mes - b.mes);
-  const chartData = metasAno.map(m => ({
-    mes: new Date(2000, m.mes - 1).toLocaleDateString('pt-BR', { month: 'short' }),
-    meta: m.valor,
-    vendido: m.totalVendido || 0,
-    batida: (m.totalVendido || 0) >= m.valor
-  }));
-
   // Verificar se alguma meta foi batida para mostrar animação
-  const temMetaBatida = metasAno.some(m => (m.totalVendido || 0) >= m.valor);
+  const temMetaBatida = metas.some(m => (m.totalVendido || 0) >= m.valor && m.valor > 0);
 
   if (loading) {
     return (
@@ -246,45 +283,6 @@ const Metas = ({ setIsAuthenticated }) => {
           </button>
         </div>
 
-        {/* Gráfico de Metas do Ano */}
-        {chartData.length > 0 && (
-          <div className="card mb-8">
-            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <FaChartBar /> Metas do Ano {currentYear}
-            </h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="mes" />
-                <YAxis />
-                <Tooltip 
-                  formatter={(value, name) => {
-                    const valor = typeof value === 'number' ? value : 0;
-                    return `R$ ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-                  }}
-                  labelFormatter={(label) => `Mês: ${label}`}
-                />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="meta" 
-                  stroke="#ef4444" 
-                  strokeWidth={3}
-                  name="Meta (R$)"
-                  dot={{ fill: '#ef4444', r: 5 }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="vendido" 
-                  stroke="#10b981" 
-                  strokeWidth={3}
-                  name="Total Vendido (R$)"
-                  dot={{ fill: '#10b981', r: 5 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
 
         {/* Animação de Parabéns quando meta é batida */}
         {showParabens && (
@@ -376,6 +374,51 @@ const Metas = ({ setIsAuthenticated }) => {
               transform: rotate(0deg);
             }
           }
+          
+          /* Estilos para impressão */
+          @media print {
+            body * {
+              visibility: hidden;
+            }
+            #relatorio-mensal, #relatorio-mensal * {
+              visibility: visible;
+            }
+            #relatorio-mensal {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+              max-width: 100%;
+              margin: 0;
+              padding: 20px;
+              box-shadow: none;
+              border: none;
+            }
+            .print\\:hidden {
+              display: none !important;
+            }
+            .print\\:block {
+              display: block !important;
+            }
+            .print\\:mb-6 {
+              margin-bottom: 1.5rem !important;
+            }
+            .print\\:p-4 {
+              padding: 1rem !important;
+            }
+            .print\\:border-2 {
+              border-width: 2px !important;
+            }
+            .print\\:border-gray-300 {
+              border-color: #d1d5db !important;
+            }
+            .print\\:font-bold {
+              font-weight: bold !important;
+            }
+            .print\\:h-64 {
+              height: 16rem !important;
+            }
+          }
         `}</style>
 
         {/* Lista de Metas */}
@@ -389,7 +432,7 @@ const Metas = ({ setIsAuthenticated }) => {
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="text-xl font-bold text-gray-800">
-                      {new Date(2000, meta.mes - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                      {formatarMesAno(meta.mes, meta.ano)}
                     </h3>
                     <p className="text-2xl font-bold text-red-600 mt-2">
                       R$ {meta.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -506,7 +549,7 @@ const Metas = ({ setIsAuthenticated }) => {
                     >
                       {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                         <option key={m} value={m}>
-                          {new Date(2000, m - 1).toLocaleDateString('pt-BR', { month: 'long' })}
+                          {formatarNomeMes(m)}
                         </option>
                       ))}
                     </select>
@@ -573,7 +616,7 @@ const Metas = ({ setIsAuthenticated }) => {
                   Registrar Venda Diária da Loja
                 </h2>
                 <p className="text-sm text-gray-600 mb-4">
-                  {new Date(2000, selectedMeta.mes - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                  {formatarMesAno(selectedMeta.mes, selectedMeta.ano)}
                 </p>
                 <form onSubmit={handleSubmitVenda} className="space-y-4">
                   <div>
@@ -645,27 +688,41 @@ const Metas = ({ setIsAuthenticated }) => {
         {/* Modal de Histórico de Vendas Diárias da Loja */}
         {showHistoricoModal && selectedMeta && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto print:max-h-none print:shadow-none print:rounded-none" id="relatorio-mensal">
+              <div className="p-6 print:p-4">
+                <div className="flex justify-between items-center mb-4 print:hidden">
                   <div>
                     <h2 className="text-2xl font-bold text-gray-800">
-                      Histórico de Vendas da Loja
+                      Relatório Mensal - {formatarMesAno(selectedMeta.mes, selectedMeta.ano)}
                     </h2>
                     <p className="text-sm text-gray-600 mt-1">
-                      {(() => {
-                        const meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 
-                                      'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-                        return `${meses[selectedMeta.mes - 1]} de ${selectedMeta.ano}`;
-                      })()}
+                      {formatarMesAno(selectedMeta.mes, selectedMeta.ano)}
                     </p>
                   </div>
-                  <button
-                    onClick={() => setShowHistoricoModal(false)}
-                    className="text-gray-500 hover:text-gray-700 text-2xl"
-                  >
-                    ×
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleImprimir}
+                      className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                    >
+                      <FaPrint /> Imprimir
+                    </button>
+                    <button
+                      onClick={() => setShowHistoricoModal(false)}
+                      className="text-gray-500 hover:text-gray-700 text-2xl"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Cabeçalho para impressão */}
+                <div className="hidden print:block mb-4 border-b-2 pb-4">
+                  <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                    Relatório Mensal - {formatarMesAno(selectedMeta.mes, selectedMeta.ano)}
+                  </h1>
+                  <p className="text-gray-600">
+                    Gerado em {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </p>
                 </div>
                 
                 <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
@@ -720,10 +777,76 @@ const Metas = ({ setIsAuthenticated }) => {
                   </div>
                 ) : (
                   <div className="space-y-4">
+                    {/* Gráfico Mensal de Vendas Diárias */}
+                    {chartDataMensal && chartDataMensal.length > 0 && (
+                      <div className="card mb-4 print:mb-6">
+                        <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                          <FaChartBar /> Gráfico de Vendas Diárias - {formatarMesAno(selectedMeta.mes, selectedMeta.ano)}
+                        </h3>
+                        <ResponsiveContainer width="100%" height={250} className="print:h-64">
+                          <LineChart data={chartDataMensal}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis 
+                              dataKey="dia" 
+                              label={{ value: 'Dia do Mês', position: 'insideBottom', offset: -5 }}
+                            />
+                            <YAxis 
+                              label={{ value: 'Valor (R$)', angle: -90, position: 'insideLeft' }}
+                            />
+                            <Tooltip 
+                              formatter={(value) => {
+                                const valor = typeof value === 'number' ? value : 0;
+                                return `R$ ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                              }}
+                              labelFormatter={(label) => `Dia ${label}`}
+                            />
+                            <Legend />
+                            <Line 
+                              type="monotone" 
+                              dataKey="total" 
+                              stroke="#10b981" 
+                              strokeWidth={3}
+                              name="Total Vendido (R$)"
+                              dot={{ fill: '#10b981', r: 4 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                    
+                    {/* Funcionários Destacados do Mês */}
+                    {topFuncionarios && topFuncionarios.length > 0 && (
+                      <div className="card mb-4 print:mb-6">
+                        <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                          🏆 Funcionários Destaques do Mês
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {topFuncionarios.map((func, index) => (
+                            <div key={index} className="bg-gradient-to-r from-yellow-50 to-orange-50 p-4 rounded-lg border-l-4 border-yellow-400">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-2xl font-bold text-yellow-600">#{index + 1}</span>
+                                    <span className="font-bold text-gray-800">{func.nome}</span>
+                                  </div>
+                                  <p className="text-sm text-gray-600 mt-1">Total de vendas</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-xl font-bold text-green-600">
+                                    R$ {func.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
                     {/* Resumo das vendas */}
                     {resumoVendas && (
-                      <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg">
-                        <h3 className="font-semibold text-gray-800 mb-2">Resumo do Mês:</h3>
+                      <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg print:border-2 print:border-gray-300">
+                        <h3 className="font-semibold text-gray-800 mb-2 text-lg">Resumo do Mês:</h3>
                         <div className="grid grid-cols-3 gap-4 text-sm">
                           <div>
                             <span className="text-gray-600">Vendas Funcionários:</span>
@@ -747,7 +870,7 @@ const Metas = ({ setIsAuthenticated }) => {
                       </div>
                     )}
 
-                    <h3 className="font-semibold text-gray-700 mb-2">Vendas por Dia:</h3>
+                    <h3 className="font-semibold text-gray-700 mb-2 text-lg print:font-bold">Vendas por Dia:</h3>
                     <div className="space-y-4">
                       {vendasDiarias.map((dia, index) => (
                         <div key={index} className="border rounded-lg p-4 bg-gray-50">
