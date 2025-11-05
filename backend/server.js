@@ -30,9 +30,11 @@ if (process.env.MONGODB_URI) {
   console.error('   Settings → Variables → Add MONGODB_URI');
 }
 
+// Conectar ao MongoDB (com retry automático)
 mongoose.connect(MONGODB_URI, {
-  serverSelectionTimeoutMS: 10000,
+  serverSelectionTimeoutMS: 30000, // Aumentado para 30 segundos
   socketTimeoutMS: 45000,
+  connectTimeoutMS: 30000,
 })
 .then(() => {
   console.log('✅ MongoDB conectado com sucesso!');
@@ -43,7 +45,7 @@ mongoose.connect(MONGODB_URI, {
   console.error('💡 Possíveis soluções:');
   if (!process.env.MONGODB_URI) {
     console.error('   ⚠️  VARIÁVEL MONGODB_URI NÃO CONFIGURADA!');
-    console.error('   1. No Railway: Settings → Variables → Add Variable');
+    console.error('   1. No Render: Settings → Environment Variables → Add Variable');
     console.error('   2. Name: MONGODB_URI');
     console.error('   3. Value: mongodb+srv://usuario:senha@cluster0.xxxxx.mongodb.net/gestao-metas');
   } else {
@@ -52,7 +54,11 @@ mongoose.connect(MONGODB_URI, {
     console.error('   3. Verifique usuário e senha do MongoDB Atlas');
   }
   console.error('\nDetalhes do erro:', err.message);
-  process.exit(1);
+  console.error('⚠️  Servidor continuará rodando, mas funcionalidades do banco não estarão disponíveis.');
+  console.error('💡 Tente novamente em alguns segundos - MongoDB pode estar respondendo lentamente.');
+  
+  // Não fazer exit(1) - permite que o servidor inicie mesmo sem MongoDB
+  // O servidor pode tentar reconectar depois
 });
 
 // Middleware de log para debug (apenas em desenvolvimento)
