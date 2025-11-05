@@ -5,9 +5,29 @@ require('dotenv').config();
 
 const app = express();
 
-// Middleware
+// Middleware CORS - normalizar URL removendo barra final
+const allowedOrigins = process.env.FRONTEND_URL 
+  ? [process.env.FRONTEND_URL.replace(/\/$/, '')] // Remove barra final se existir
+  : '*';
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
+  origin: (origin, callback) => {
+    // Se não há origem (ex: requisições de mobile, Postman), permitir
+    if (!origin) return callback(null, true);
+    
+    // Se está configurado como '*', permitir tudo
+    if (allowedOrigins === '*') return callback(null, true);
+    
+    // Normalizar origem removendo barra final
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    
+    // Verificar se a origem normalizada está na lista
+    if (allowedOrigins.includes(normalizedOrigin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
