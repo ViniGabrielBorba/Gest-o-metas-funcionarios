@@ -134,6 +134,9 @@ const Feedback = ({ setIsAuthenticated }) => {
       : 0;
 
     const chartData = getChartData();
+    
+    // Usar a observação que já está no estado
+    const observacaoGerenteTexto = observacaoGerente || '';
 
     const janelaImpressao = window.open('', '_blank');
     janelaImpressao.document.write(`
