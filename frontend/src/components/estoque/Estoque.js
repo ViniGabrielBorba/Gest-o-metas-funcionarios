@@ -99,14 +99,21 @@ const Estoque = ({ setIsAuthenticated }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      let avaliacaoSalva;
       if (editingAvaliacao) {
-        await api.put(`/estoque/${editingAvaliacao._id}`, formData);
+        const response = await api.put(`/estoque/${editingAvaliacao._id}`, formData);
+        avaliacaoSalva = response.data;
       } else {
-        await api.post('/estoque', formData);
+        const response = await api.post('/estoque', formData);
+        avaliacaoSalva = response.data;
       }
       handleCloseModal();
       fetchAvaliacoes();
-      alert('Avaliação salva com sucesso!');
+      
+      // Perguntar se quer imprimir
+      if (window.confirm('Avaliação salva com sucesso! Deseja imprimir agora?')) {
+        handleImprimir(avaliacaoSalva);
+      }
     } catch (error) {
       alert(error.response?.data?.message || 'Erro ao salvar avaliação');
     }
@@ -375,17 +382,26 @@ const Estoque = ({ setIsAuthenticated }) => {
 
         {/* Modal de Formulário */}
         {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-            <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full my-8">
-              <div className="p-6">
-                <h2 className="text-2xl font-bold text-gray-800 mb-6">
-                  {editingAvaliacao ? 'Editar Avaliação' : 'Nova Avaliação - Pauta da Reunião'}
-                </h2>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full my-4 max-h-[95vh] overflow-y-auto">
+              <div className="p-4 sm:p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
+                    {editingAvaliacao ? 'Editar Avaliação' : 'Nova Avaliação'}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="text-gray-500 hover:text-gray-700 text-2xl"
+                  >
+                    ×
+                  </button>
+                </div>
                 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
                   {/* Seção 1 */}
-                  <div className="border-b pb-4">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">1. Definição da Forma de Avaliação</h3>
+                  <div className="border-b pb-3 sm:pb-4">
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3">1. Definição da Forma de Avaliação</h3>
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Frequência da avaliação:</label>
@@ -445,8 +461,8 @@ const Estoque = ({ setIsAuthenticated }) => {
                   </div>
 
                   {/* Seção 2 */}
-                  <div className="border-b pb-4">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">2. Responsáveis pela Avaliação</h3>
+                  <div className="border-b pb-3 sm:pb-4">
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3">2. Responsáveis pela Avaliação</h3>
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Responsáveis:</label>
@@ -491,41 +507,31 @@ const Estoque = ({ setIsAuthenticated }) => {
                   </div>
 
                   {/* Seção 3 */}
-                  <div className="border-b pb-4">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">3. Tópicos Importantes para Avaliação</h3>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr>
-                            <th className="px-4 py-2 text-left bg-gray-100">Tópico</th>
-                            <th className="px-4 py-2 text-left bg-gray-100">Observações / Pontuação</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {formData.topicos.map((topico, index) => (
-                            <tr key={index} className="border-b">
-                              <td className="px-4 py-3 align-top" style={{ width: '40%' }}>
-                                {index + 1}. {topico.topico}
-                              </td>
-                              <td className="px-4 py-3">
-                                <textarea
-                                  value={topico.observacoesPontuacao}
-                                  onChange={(e) => updateTopico(index, e.target.value)}
-                                  className="input-field w-full"
-                                  rows="2"
-                                  placeholder="Digite observações ou pontuação..."
-                                />
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                  <div className="border-b pb-3 sm:pb-4">
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3">3. Tópicos Importantes para Avaliação</h3>
+                    <div className="overflow-x-auto -mx-2 sm:mx-0">
+                      <div className="space-y-3">
+                        {formData.topicos.map((topico, index) => (
+                          <div key={index} className="border rounded-lg p-3 bg-gray-50">
+                            <p className="text-sm font-semibold text-gray-700 mb-2">
+                              {index + 1}. {topico.topico}
+                            </p>
+                            <textarea
+                              value={topico.observacoesPontuacao}
+                              onChange={(e) => updateTopico(index, e.target.value)}
+                              className="input-field w-full text-sm"
+                              rows="2"
+                              placeholder="Digite observações ou pontuação..."
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
                   {/* Seção 4 */}
-                  <div className="border-b pb-4">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">4. Sugestões de Novos Tópicos</h3>
+                  <div className="border-b pb-3 sm:pb-4">
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3">4. Sugestões de Novos Tópicos</h3>
                     <p className="text-sm text-gray-600 mb-3 italic">Espaço para incluir novos pontos a serem avaliados</p>
                     <div className="space-y-2">
                       {formData.sugestoesNovosTopicos.map((sugestao, index) => (
@@ -544,8 +550,8 @@ const Estoque = ({ setIsAuthenticated }) => {
                   </div>
 
                   {/* Seção 5 */}
-                  <div className="border-b pb-4">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">5. Pontuação e Valores</h3>
+                  <div className="border-b pb-3 sm:pb-4">
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3">5. Pontuação e Valores</h3>
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de valor:</label>
@@ -593,8 +599,8 @@ const Estoque = ({ setIsAuthenticated }) => {
 
                   {/* Assinatura e Data */}
                   <div>
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">Assinatura e Data</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3">Assinatura e Data</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Assinatura dos Responsáveis:</label>
                         <input
@@ -618,17 +624,17 @@ const Estoque = ({ setIsAuthenticated }) => {
                     </div>
                   </div>
 
-                  <div className="flex gap-3 pt-4">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-4 sticky bottom-0 bg-white pb-2">
                     <button
                       type="button"
                       onClick={handleCloseModal}
-                      className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg"
+                      className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg text-sm sm:text-base"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 btn-primary flex items-center justify-center gap-2"
+                      className="flex-1 btn-primary flex items-center justify-center gap-2 text-sm sm:text-base"
                     >
                       <FaSave /> {editingAvaliacao ? 'Atualizar' : 'Salvar'} Avaliação
                     </button>
