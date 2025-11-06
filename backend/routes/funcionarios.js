@@ -403,6 +403,85 @@ router.put('/:id/vendas-diarias/:vendaId', async (req, res) => {
   }
 });
 
+// Salvar/atualizar observação do gerente sobre funcionário
+router.put('/:id/observacoes-gerente', async (req, res) => {
+  try {
+    const { mes, ano, observacao } = req.body;
+
+    if (!mes || !ano) {
+      return res.status(400).json({ message: 'Mês e ano são obrigatórios' });
+    }
+
+    const funcionario = await Funcionario.findOne({
+      _id: req.params.id,
+      gerenteId: req.user.id
+    });
+
+    if (!funcionario) {
+      return res.status(404).json({ message: 'Funcionário não encontrado' });
+    }
+
+    // Inicializar observacoesGerente se não existir
+    if (!funcionario.observacoesGerente) {
+      funcionario.observacoesGerente = [];
+    }
+
+    // Procurar se já existe observação para este mês/ano
+    const observacaoIndex = funcionario.observacoesGerente.findIndex(
+      obs => obs.mes === parseInt(mes) && obs.ano === parseInt(ano)
+    );
+
+    if (observacaoIndex >= 0) {
+      // Atualizar observação existente
+      funcionario.observacoesGerente[observacaoIndex].observacao = observacao || '';
+      funcionario.observacoesGerente[observacaoIndex].dataAtualizacao = new Date();
+    } else {
+      // Adicionar nova observação
+      funcionario.observacoesGerente.push({
+        mes: parseInt(mes),
+        ano: parseInt(ano),
+        observacao: observacao || '',
+        dataAtualizacao: new Date()
+      });
+    }
+
+    await funcionario.save();
+    res.json(funcionario);
+  } catch (error) {
+    console.error('Erro ao salvar observação do gerente:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Obter observação do gerente para um mês/ano específico
+router.get('/:id/observacoes-gerente', async (req, res) => {
+  try {
+    const { mes, ano } = req.query;
+
+    const funcionario = await Funcionario.findOne({
+      _id: req.params.id,
+      gerenteId: req.user.id
+    });
+
+    if (!funcionario) {
+      return res.status(404).json({ message: 'Funcionário não encontrado' });
+    }
+
+    if (mes && ano) {
+      // Retornar observação específica do mês/ano
+      const observacao = funcionario.observacoesGerente?.find(
+        obs => obs.mes === parseInt(mes) && obs.ano === parseInt(ano)
+      );
+      res.json(observacao || { observacao: '' });
+    } else {
+      // Retornar todas as observações
+      res.json(funcionario.observacoesGerente || []);
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Deletar funcionário
 router.delete('/:id', async (req, res) => {
   try {

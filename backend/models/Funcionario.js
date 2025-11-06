@@ -68,6 +68,26 @@ const funcionarioSchema = new mongoose.Schema({
       type: String,
       trim: true
     }
+  }],
+  observacoesGerente: [{
+    mes: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 12
+    },
+    ano: {
+      type: Number,
+      required: true
+    },
+    observacao: {
+      type: String,
+      trim: true
+    },
+    dataAtualizacao: {
+      type: Date,
+      default: Date.now
+    }
   }]
 }, {
   timestamps: true

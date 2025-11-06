@@ -20,6 +20,8 @@ const Feedback = ({ setIsAuthenticated }) => {
   const [loading, setLoading] = useState(false);
   const [mes, setMes] = useState(new Date().getMonth() + 1);
   const [ano, setAno] = useState(new Date().getFullYear());
+  const [observacaoGerente, setObservacaoGerente] = useState('');
+  const [salvandoObservacao, setSalvandoObservacao] = useState(false);
 
   useEffect(() => {
     fetchFuncionarios();
@@ -28,6 +30,7 @@ const Feedback = ({ setIsAuthenticated }) => {
   useEffect(() => {
     if (selectedFuncionario) {
       fetchVendasFuncionario();
+      fetchObservacaoGerente();
     }
   }, [selectedFuncionario, mes, ano]);
 
@@ -54,6 +57,42 @@ const Feedback = ({ setIsAuthenticated }) => {
       setVendasDiarias([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchObservacaoGerente = async () => {
+    if (!selectedFuncionario) return;
+    
+    try {
+      const response = await api.get(
+        `/funcionarios/${selectedFuncionario._id}/observacoes-gerente?mes=${mes}&ano=${ano}`
+      );
+      setObservacaoGerente(response.data?.observacao || '');
+    } catch (error) {
+      console.error('Erro ao buscar observação do gerente:', error);
+      setObservacaoGerente('');
+    }
+  };
+
+  const handleSalvarObservacao = async () => {
+    if (!selectedFuncionario) return;
+    
+    setSalvandoObservacao(true);
+    try {
+      await api.put(
+        `/funcionarios/${selectedFuncionario._id}/observacoes-gerente`,
+        {
+          mes,
+          ano,
+          observacao: observacaoGerente
+        }
+      );
+      alert('Observação salva com sucesso!');
+    } catch (error) {
+      console.error('Erro ao salvar observação:', error);
+      alert('Erro ao salvar observação. Tente novamente.');
+    } finally {
+      setSalvandoObservacao(false);
     }
   };
 
@@ -241,6 +280,18 @@ const Feedback = ({ setIsAuthenticated }) => {
             </table>
           </div>
 
+          ${observacaoGerenteTexto ? `
+          <div class="info-section">
+            <h2 style="color: #169486; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">Observações do Gerente</h2>
+            <div class="observacao-item" style="background: #f0fdfa; border-left: 4px solid #169486;">
+              <p style="white-space: pre-wrap; margin: 0;">${observacaoGerenteTexto}</p>
+              <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                <strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}
+              </p>
+            </div>
+          </div>
+          ` : ''}
+
           ${chartData.length > 0 ? `
           <div class="grafico-container">
             <h3>Gráfico de Vendas Diárias</h3>
@@ -255,7 +306,7 @@ const Feedback = ({ setIsAuthenticated }) => {
 
           ${vendasDiarias.filter(v => v.observacao && v.observacao.trim() !== '').length > 0 ? `
           <div class="observacoes">
-            <h2 style="color: #169486; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">Observações</h2>
+            <h2 style="color: #169486; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">Observações das Vendas</h2>
             ${vendasDiarias.filter(v => v.observacao && v.observacao.trim() !== '').map(v => `
               <div class="observacao-item">
                 <strong>${new Date(v.data).toLocaleDateString('pt-BR')}:</strong> ${v.observacao}
@@ -426,6 +477,36 @@ const Feedback = ({ setIsAuthenticated }) => {
                         }}
                       />
                     </div>
+                  </div>
+                </div>
+
+                {/* Campo de Observações do Gerente */}
+                <div className="card">
+                  <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <FaUsers /> Observações do Gerente
+                  </h3>
+                  <div className="space-y-3">
+                    <textarea
+                      value={observacaoGerente}
+                      onChange={(e) => setObservacaoGerente(e.target.value)}
+                      className="input-field"
+                      rows="5"
+                      placeholder="Digite suas observações sobre o desempenho do funcionário neste período..."
+                    />
+                    <div className="flex justify-end">
+                      <button
+                        onClick={handleSalvarObservacao}
+                        disabled={salvandoObservacao}
+                        className="btn-primary flex items-center gap-2"
+                      >
+                        {salvandoObservacao ? 'Salvando...' : 'Salvar Observação'}
+                      </button>
+                    </div>
+                    {observacaoGerente && (
+                      <p className="text-sm text-gray-500">
+                        💡 Sua observação será salva para o período de {meses[mes - 1]} de {ano}
+                      </p>
+                    )}
                   </div>
                 </div>
 
