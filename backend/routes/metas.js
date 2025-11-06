@@ -179,6 +179,106 @@ router.post('/:id/vendas-diarias', async (req, res) => {
   }
 });
 
+// Editar venda diária da loja
+router.put('/:id/vendas-diarias/:vendaId', async (req, res) => {
+  try {
+    const { valor, observacao, data } = req.body;
+
+    const meta = await Meta.findOne({
+      _id: req.params.id,
+      gerenteId: req.user.id
+    });
+
+    if (!meta) {
+      return res.status(404).json({ message: 'Meta não encontrada' });
+    }
+
+    if (!meta.vendasDiarias || meta.vendasDiarias.length === 0) {
+      return res.status(404).json({ message: 'Venda não encontrada' });
+    }
+
+    // Encontrar a venda pelo ID
+    const vendaIndex = meta.vendasDiarias.findIndex(
+      v => v._id.toString() === req.params.vendaId
+    );
+
+    if (vendaIndex === -1) {
+      return res.status(404).json({ message: 'Venda não encontrada' });
+    }
+
+    // Atualizar a venda
+    if (valor !== undefined) {
+      meta.vendasDiarias[vendaIndex].valor = parseFloat(valor);
+    }
+    if (observacao !== undefined) {
+      meta.vendasDiarias[vendaIndex].observacao = observacao;
+    }
+    if (data) {
+      // Normalizar data usando UTC
+      let dataVenda;
+      if (typeof data === 'string' && data.includes('-')) {
+        const partes = data.split('-');
+        if (partes.length === 3) {
+          const ano = parseInt(partes[0], 10);
+          const mes = parseInt(partes[1], 10);
+          const dia = parseInt(partes[2], 10);
+          dataVenda = new Date(Date.UTC(ano, mes - 1, dia, 12, 0, 0, 0));
+        } else {
+          dataVenda = new Date(data);
+          const ano = dataVenda.getUTCFullYear();
+          const mes = dataVenda.getUTCMonth();
+          const dia = dataVenda.getUTCDate();
+          dataVenda = new Date(Date.UTC(ano, mes, dia, 12, 0, 0, 0));
+        }
+      } else {
+        dataVenda = new Date(data);
+        const ano = dataVenda.getUTCFullYear();
+        const mes = dataVenda.getUTCMonth();
+        const dia = dataVenda.getUTCDate();
+        dataVenda = new Date(Date.UTC(ano, mes, dia, 12, 0, 0, 0));
+      }
+      meta.vendasDiarias[vendaIndex].data = dataVenda;
+    }
+
+    // Recalcular total de vendas diretas da loja no mês
+    const vendaAtualizada = meta.vendasDiarias[vendaIndex];
+    const mesVenda = new Date(vendaAtualizada.data).getUTCMonth() + 1;
+    const anoVenda = new Date(vendaAtualizada.data).getUTCFullYear();
+    
+    const vendasDiretasLoja = meta.vendasDiarias.filter(v => {
+      const vDate = new Date(v.data);
+      return vDate.getUTCMonth() + 1 === mesVenda && 
+             vDate.getUTCFullYear() === anoVenda;
+    });
+    
+    const totalVendasDiretasLoja = vendasDiretasLoja.reduce((sum, v) => sum + v.valor, 0);
+
+    // Calcular total de vendas dos funcionários no mesmo mês
+    const funcionarios = await Funcionario.find({ gerenteId: req.user.id });
+    let totalVendasFuncionarios = 0;
+    
+    funcionarios.forEach(funcionario => {
+      if (funcionario.vendasDiarias && funcionario.vendasDiarias.length > 0) {
+        funcionario.vendasDiarias.forEach(venda => {
+          const vDate = new Date(venda.data);
+          if (vDate.getUTCMonth() + 1 === mesVenda && vDate.getUTCFullYear() === anoVenda) {
+            totalVendasFuncionarios += venda.valor || 0;
+          }
+        });
+      }
+    });
+
+    // Total vendido = vendas diretas da loja + vendas dos funcionários
+    meta.totalVendido = totalVendasDiretasLoja + totalVendasFuncionarios;
+
+    await meta.save();
+    res.json(meta);
+  } catch (error) {
+    console.error('Erro ao editar venda diária da loja:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Obter vendas diárias de uma meta (incluindo vendas dos funcionários)
 router.get('/:id/vendas-diarias', async (req, res) => {
   try {
@@ -248,6 +348,7 @@ router.get('/:id/vendas-diarias', async (req, res) => {
             const valorVenda = parseFloat(venda.valor) || 0;
             vendasPorData[dataKey].vendasLoja.push({
               tipo: 'loja',
+              vendaId: venda._id ? venda._id.toString() : '',
               valor: valorVenda,
               observacao: (venda.observacao || '').toString()
             });
@@ -294,6 +395,7 @@ router.get('/:id/vendas-diarias', async (req, res) => {
                 tipo: 'funcionario',
                 funcionarioNome: funcionario.nome || 'Funcionário sem nome',
                 funcionarioId: funcionario._id ? funcionario._id.toString() : '',
+                vendaId: venda._id ? venda._id.toString() : '',
                 valor: valorVendaFunc,
                 observacao: (venda.observacao || '').toString()
               });

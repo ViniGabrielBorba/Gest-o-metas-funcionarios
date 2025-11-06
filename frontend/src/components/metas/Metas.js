@@ -37,6 +37,13 @@ const Metas = ({ setIsAuthenticated }) => {
     valor: '',
     observacao: ''
   });
+  const [showEditVendaModal, setShowEditVendaModal] = useState(false);
+  const [vendaEditando, setVendaEditando] = useState(null);
+  const [vendaEditData, setVendaEditData] = useState({
+    data: '',
+    valor: '',
+    observacao: ''
+  });
 
   useEffect(() => {
     fetchMetas();
@@ -148,6 +155,76 @@ const Metas = ({ setIsAuthenticated }) => {
       alert('Venda da loja registrada com sucesso!');
     } catch (error) {
       alert(error.response?.data?.message || 'Erro ao salvar venda');
+    }
+  };
+
+  const handleEditarVendaFuncionario = (venda, dataDia) => {
+    setVendaEditando({
+      ...venda,
+      tipo: 'funcionario',
+      dataDia: dataDia
+    });
+    const dataFormatada = new Date(dataDia).toISOString().split('T')[0];
+    setVendaEditData({
+      data: dataFormatada,
+      valor: venda.valor.toString(),
+      observacao: venda.observacao || ''
+    });
+    setShowEditVendaModal(true);
+  };
+
+  const handleEditarVendaLoja = (venda, dataDia) => {
+    setVendaEditando({
+      ...venda,
+      tipo: 'loja',
+      dataDia: dataDia
+    });
+    const dataFormatada = new Date(dataDia).toISOString().split('T')[0];
+    setVendaEditData({
+      data: dataFormatada,
+      valor: venda.valor.toString(),
+      observacao: venda.observacao || ''
+    });
+    setShowEditVendaModal(true);
+  };
+
+  const handleSubmitEditarVenda = async (e) => {
+    e.preventDefault();
+    try {
+      if (!vendaEditData.valor || parseFloat(vendaEditData.valor) <= 0) {
+        alert('Por favor, informe um valor válido para a venda.');
+        return;
+      }
+
+      if (vendaEditando.tipo === 'funcionario') {
+        // Editar venda de funcionário
+        await api.put(
+          `/funcionarios/${vendaEditando.funcionarioId}/vendas-diarias/${vendaEditando.vendaId}`,
+          vendaEditData
+        );
+      } else {
+        // Editar venda da loja
+        await api.put(
+          `/metas/${selectedMeta._id}/vendas-diarias/${vendaEditando.vendaId}`,
+          vendaEditData
+        );
+      }
+      
+      setShowEditVendaModal(false);
+      setVendaEditando(null);
+      
+      // Recarregar histórico
+      if (selectedMeta) {
+        await handleVerHistorico(selectedMeta);
+      }
+      
+      // Recarregar metas
+      fetchMetas();
+      
+      alert('Venda atualizada com sucesso!');
+    } catch (error) {
+      console.error('Erro ao editar venda:', error);
+      alert(error.response?.data?.message || 'Erro ao editar venda');
     }
   };
 
@@ -965,15 +1042,24 @@ const Metas = ({ setIsAuthenticated }) => {
                                 {dia.vendasFuncionarios.map((venda, vIndex) => (
                                   <div key={vIndex} className="bg-white p-2 rounded border-l-4 border-blue-400">
                                     <div className="flex justify-between items-center">
-                                      <div>
+                                      <div className="flex-1">
                                         <span className="font-semibold text-gray-700">{venda.funcionarioNome}</span>
                                         {venda.observacao && (
                                           <span className="text-xs text-gray-500 ml-2">- {venda.observacao}</span>
                                         )}
                                       </div>
-                                      <span className="font-bold text-blue-600">
-                                        R$ {venda.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                      </span>
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-bold text-blue-600">
+                                          R$ {venda.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        </span>
+                                        <button
+                                          onClick={() => handleEditarVendaFuncionario(venda, dia.data)}
+                                          className="text-blue-600 hover:text-blue-800 font-semibold text-sm"
+                                          title="Editar venda"
+                                        >
+                                          <FaEdit />
+                                        </button>
+                                      </div>
                                     </div>
                                   </div>
                                 ))}
@@ -989,15 +1075,24 @@ const Metas = ({ setIsAuthenticated }) => {
                                 {dia.vendasLoja.map((venda, vIndex) => (
                                   <div key={vIndex} className="bg-white p-2 rounded border-l-4 border-purple-400">
                                     <div className="flex justify-between items-center">
-                                      <div>
+                                      <div className="flex-1">
                                         <span className="font-semibold text-gray-700">Venda Direta</span>
                                         {venda.observacao && (
                                           <span className="text-xs text-gray-500 ml-2">- {venda.observacao}</span>
                                         )}
                                       </div>
-                                      <span className="font-bold text-purple-600">
-                                        R$ {venda.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                      </span>
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-bold text-purple-600">
+                                          R$ {venda.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        </span>
+                                        <button
+                                          onClick={() => handleEditarVendaLoja(venda, dia.data)}
+                                          className="text-purple-600 hover:text-purple-800 font-semibold text-sm"
+                                          title="Editar venda"
+                                        >
+                                          <FaEdit />
+                                        </button>
+                                      </div>
                                     </div>
                                   </div>
                                 ))}
