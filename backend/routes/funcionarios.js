@@ -306,6 +306,103 @@ router.get('/:id/vendas-diarias', async (req, res) => {
   }
 });
 
+// Editar venda diária de um funcionário
+router.put('/:id/vendas-diarias/:vendaId', async (req, res) => {
+  try {
+    const { valor, observacao, data } = req.body;
+
+    const funcionario = await Funcionario.findOne({
+      _id: req.params.id,
+      gerenteId: req.user.id
+    });
+
+    if (!funcionario) {
+      return res.status(404).json({ message: 'Funcionário não encontrado' });
+    }
+
+    if (!funcionario.vendasDiarias || funcionario.vendasDiarias.length === 0) {
+      return res.status(404).json({ message: 'Venda não encontrada' });
+    }
+
+    // Encontrar a venda pelo ID
+    const vendaIndex = funcionario.vendasDiarias.findIndex(
+      v => v._id.toString() === req.params.vendaId
+    );
+
+    if (vendaIndex === -1) {
+      return res.status(404).json({ message: 'Venda não encontrada' });
+    }
+
+    // Atualizar a venda
+    if (valor !== undefined) {
+      funcionario.vendasDiarias[vendaIndex].valor = parseFloat(valor);
+    }
+    if (observacao !== undefined) {
+      funcionario.vendasDiarias[vendaIndex].observacao = observacao;
+    }
+    if (data) {
+      // Normalizar data usando UTC
+      let dataVenda;
+      if (typeof data === 'string' && data.includes('-')) {
+        const partes = data.split('-');
+        if (partes.length === 3) {
+          const ano = parseInt(partes[0], 10);
+          const mes = parseInt(partes[1], 10);
+          const dia = parseInt(partes[2], 10);
+          dataVenda = new Date(Date.UTC(ano, mes - 1, dia, 12, 0, 0, 0));
+        } else {
+          dataVenda = new Date(data);
+          const ano = dataVenda.getUTCFullYear();
+          const mes = dataVenda.getUTCMonth();
+          const dia = dataVenda.getUTCDate();
+          dataVenda = new Date(Date.UTC(ano, mes, dia, 12, 0, 0, 0));
+        }
+      } else {
+        dataVenda = new Date(data);
+        const ano = dataVenda.getUTCFullYear();
+        const mes = dataVenda.getUTCMonth();
+        const dia = dataVenda.getUTCDate();
+        dataVenda = new Date(Date.UTC(ano, mes, dia, 12, 0, 0, 0));
+      }
+      funcionario.vendasDiarias[vendaIndex].data = dataVenda;
+    }
+
+    // Recalcular total do mês
+    const vendaAtualizada = funcionario.vendasDiarias[vendaIndex];
+    const mesVenda = new Date(vendaAtualizada.data).getUTCMonth() + 1;
+    const anoVenda = new Date(vendaAtualizada.data).getUTCFullYear();
+    
+    const vendasDoMes = (funcionario.vendasDiarias || []).filter(v => {
+      const vDate = new Date(v.data);
+      return vDate.getUTCMonth() === mesVenda - 1 && 
+             vDate.getUTCFullYear() === anoVenda;
+    });
+    
+    const totalMes = vendasDoMes.reduce((sum, v) => sum + v.valor, 0);
+
+    // Atualizar registro mensal
+    const vendaMensalIndex = funcionario.vendas.findIndex(
+      v => v.mes === mesVenda && v.ano === anoVenda
+    );
+
+    if (vendaMensalIndex >= 0) {
+      funcionario.vendas[vendaMensalIndex].valor = totalMes;
+    } else {
+      funcionario.vendas.push({ mes: mesVenda, ano: anoVenda, valor: totalMes });
+    }
+
+    await funcionario.save();
+
+    // Atualizar meta da loja
+    await atualizarMetaLoja(req.user.id, mesVenda, anoVenda);
+
+    res.json(funcionario);
+  } catch (error) {
+    console.error('Erro ao editar venda diária:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Deletar funcionário
 router.delete('/:id', async (req, res) => {
   try {

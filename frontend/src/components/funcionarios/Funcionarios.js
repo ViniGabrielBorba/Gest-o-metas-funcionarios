@@ -33,6 +33,13 @@ const Funcionarios = ({ setIsAuthenticated }) => {
   });
   const [showHistoricoModal, setShowHistoricoModal] = useState(false);
   const [vendasDiarias, setVendasDiarias] = useState([]);
+  const [showEditVendaModal, setShowEditVendaModal] = useState(false);
+  const [vendaEditando, setVendaEditando] = useState(null);
+  const [vendaEditData, setVendaEditData] = useState({
+    data: '',
+    valor: '',
+    observacao: ''
+  });
 
   useEffect(() => {
     fetchFuncionarios();
@@ -151,6 +158,49 @@ const Funcionarios = ({ setIsAuthenticated }) => {
       setShowHistoricoModal(true);
     } catch (error) {
       alert('Erro ao carregar histórico de vendas');
+    }
+  };
+
+  const handleEditarVenda = (venda) => {
+    setVendaEditando(venda);
+    const dataFormatada = new Date(venda.data).toISOString().split('T')[0];
+    setVendaEditData({
+      data: dataFormatada,
+      valor: venda.valor.toString(),
+      observacao: venda.observacao || ''
+    });
+    setShowEditVendaModal(true);
+  };
+
+  const handleSubmitEditarVenda = async (e) => {
+    e.preventDefault();
+    try {
+      if (!vendaEditData.valor || parseFloat(vendaEditData.valor) <= 0) {
+        alert('Por favor, informe um valor válido para a venda.');
+        return;
+      }
+
+      await api.put(
+        `/funcionarios/${selectedFuncionario._id}/vendas-diarias/${vendaEditando._id}`,
+        vendaEditData
+      );
+      
+      setShowEditVendaModal(false);
+      setVendaEditando(null);
+      
+      // Recarregar histórico
+      const mesAtual = new Date().getMonth() + 1;
+      const anoAtual = new Date().getFullYear();
+      const response = await api.get(`/funcionarios/${selectedFuncionario._id}/vendas-diarias?mes=${mesAtual}&ano=${anoAtual}`);
+      setVendasDiarias(response.data);
+      
+      // Recarregar lista de funcionários
+      fetchFuncionarios();
+      
+      alert('Venda atualizada com sucesso!');
+    } catch (error) {
+      console.error('Erro ao editar venda:', error);
+      alert(error.response?.data?.message || 'Erro ao editar venda');
     }
   };
 
@@ -958,6 +1008,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
                             <th className="px-4 py-2 text-left">Data</th>
                             <th className="px-4 py-2 text-right">Valor</th>
                             <th className="px-4 py-2 text-left">Observação</th>
+                            <th className="px-4 py-2 text-center">Ações</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -971,6 +1022,15 @@ const Funcionarios = ({ setIsAuthenticated }) => {
                               </td>
                               <td className="px-4 py-2 text-gray-600">
                                 {venda.observacao || '-'}
+                              </td>
+                              <td className="px-4 py-2 text-center">
+                                <button
+                                  onClick={() => handleEditarVenda(venda)}
+                                  className="text-blue-600 hover:text-blue-800 font-semibold text-sm"
+                                  title="Editar venda"
+                                >
+                                  <FaEdit />
+                                </button>
                               </td>
                             </tr>
                           ))}
@@ -988,6 +1048,81 @@ const Funcionarios = ({ setIsAuthenticated }) => {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Editar Venda */}
+        {showEditVendaModal && selectedFuncionario && vendaEditando && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+              <div className="p-6">
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                  Editar Venda - {selectedFuncionario.nome}
+                </h2>
+                <form onSubmit={handleSubmitEditarVenda} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Data da Venda
+                    </label>
+                    <input
+                      type="date"
+                      value={vendaEditData.data}
+                      onChange={(e) => setVendaEditData({ ...vendaEditData, data: e.target.value })}
+                      className="input-field"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Valor da Venda (R$)
+                    </label>
+                    <input
+                      type="number"
+                      value={vendaEditData.valor}
+                      onChange={(e) => setVendaEditData({ ...vendaEditData, valor: e.target.value })}
+                      className="input-field"
+                      min="0"
+                      step="0.01"
+                      required
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Observação (opcional)
+                    </label>
+                    <textarea
+                      value={vendaEditData.observacao}
+                      onChange={(e) => setVendaEditData({ ...vendaEditData, observacao: e.target.value })}
+                      className="input-field"
+                      rows="3"
+                      placeholder="Ex: Cliente X, produto Y..."
+                    />
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowEditVendaModal(false);
+                        setVendaEditando(null);
+                      }}
+                      className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 btn-primary"
+                    >
+                      Salvar Alterações
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           </div>

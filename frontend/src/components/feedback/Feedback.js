@@ -1,0 +1,524 @@
+import React, { useState, useEffect } from 'react';
+import Navbar from '../layout/Navbar';
+import api from '../../utils/api';
+import { FaPrint, FaChartLine, FaUsers, FaDollarSign } from 'react-icons/fa';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
+
+const Feedback = ({ setIsAuthenticated }) => {
+  const [funcionarios, setFuncionarios] = useState([]);
+  const [selectedFuncionario, setSelectedFuncionario] = useState(null);
+  const [vendasDiarias, setVendasDiarias] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [mes, setMes] = useState(new Date().getMonth() + 1);
+  const [ano, setAno] = useState(new Date().getFullYear());
+
+  useEffect(() => {
+    fetchFuncionarios();
+  }, []);
+
+  useEffect(() => {
+    if (selectedFuncionario) {
+      fetchVendasFuncionario();
+    }
+  }, [selectedFuncionario, mes, ano]);
+
+  const fetchFuncionarios = async () => {
+    try {
+      const response = await api.get('/funcionarios');
+      setFuncionarios(response.data);
+    } catch (error) {
+      console.error('Erro ao buscar funcionários:', error);
+    }
+  };
+
+  const fetchVendasFuncionario = async () => {
+    if (!selectedFuncionario) return;
+    
+    setLoading(true);
+    try {
+      const response = await api.get(
+        `/funcionarios/${selectedFuncionario._id}/vendas-diarias?mes=${mes}&ano=${ano}`
+      );
+      setVendasDiarias(response.data || []);
+    } catch (error) {
+      console.error('Erro ao buscar vendas:', error);
+      setVendasDiarias([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSelectFuncionario = (funcionarioId) => {
+    const funcionario = funcionarios.find(f => f._id === funcionarioId);
+    setSelectedFuncionario(funcionario);
+  };
+
+  const getVendaMes = () => {
+    if (!selectedFuncionario) return 0;
+    const venda = selectedFuncionario.vendas?.find(
+      v => v.mes === mes && v.ano === ano
+    );
+    return venda ? venda.valor : 0;
+  };
+
+  const getChartData = () => {
+    return vendasDiarias
+      .map(v => ({
+        dia: new Date(v.data).getUTCDate(),
+        valor: v.valor,
+        dataCompleta: new Date(v.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+      }))
+      .sort((a, b) => a.dia - b.dia);
+  };
+
+  const handleImprimir = () => {
+    if (!selectedFuncionario || vendasDiarias.length === 0) {
+      alert('Selecione um funcionário e um período com vendas para imprimir');
+      return;
+    }
+
+    const meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 
+                   'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    const mesNome = meses[mes - 1];
+    const totalVendas = vendasDiarias.reduce((sum, v) => sum + v.valor, 0);
+    const percentualMeta = selectedFuncionario.metaIndividual > 0 
+      ? ((totalVendas / selectedFuncionario.metaIndividual) * 100).toFixed(1)
+      : 0;
+
+    const chartData = getChartData();
+
+    const janelaImpressao = window.open('', '_blank');
+    janelaImpressao.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Feedback - ${selectedFuncionario.nome}</title>
+          <style>
+            @media print {
+              @page { margin: 2cm; }
+              body { margin: 0; }
+            }
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+              color: #333;
+            }
+            .header {
+              border-bottom: 3px solid #169486;
+              padding-bottom: 20px;
+              margin-bottom: 30px;
+            }
+            .header h1 {
+              margin: 0;
+              color: #169486;
+              font-size: 28px;
+            }
+            .info-section {
+              margin-bottom: 30px;
+            }
+            .info-grid {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 15px;
+              margin-bottom: 20px;
+            }
+            .info-item {
+              padding: 15px;
+              background: #f0fdfa;
+              border-radius: 5px;
+              border-left: 4px solid #169486;
+            }
+            .info-item strong {
+              color: #169486;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 30px;
+            }
+            table th, table td {
+              padding: 12px;
+              text-align: left;
+              border-bottom: 1px solid #e5e7eb;
+            }
+            table th {
+              background: #f0fdfa;
+              font-weight: bold;
+              color: #169486;
+            }
+            .total {
+              font-weight: bold;
+              font-size: 18px;
+              color: #169486;
+            }
+            .grafico-container {
+              margin-top: 40px;
+              page-break-inside: avoid;
+            }
+            .grafico-container h3 {
+              color: #169486;
+              margin-bottom: 20px;
+            }
+            .observacoes {
+              margin-top: 30px;
+            }
+            .observacao-item {
+              padding: 10px;
+              margin-bottom: 10px;
+              background: #f0fdfa;
+              border-left: 4px solid #169486;
+              border-radius: 4px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>📊 Feedback de Desempenho</h1>
+            <p><strong>Funcionário:</strong> ${selectedFuncionario.nome}</p>
+            <p><strong>Período:</strong> ${mesNome} de ${ano}</p>
+            <p><strong>Data do Relatório:</strong> ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+          </div>
+
+          <div class="info-section">
+            <h2 style="color: #169486; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">Informações do Funcionário</h2>
+            <div class="info-grid">
+              <div class="info-item">
+                <strong>Nome:</strong> ${selectedFuncionario.nome}
+              </div>
+              <div class="info-item">
+                <strong>Função:</strong> ${selectedFuncionario.funcao}
+              </div>
+              <div class="info-item">
+                <strong>Meta Individual:</strong> R$ ${selectedFuncionario.metaIndividual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
+              <div class="info-item">
+                <strong>Total Vendido:</strong> R$ ${totalVendas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
+              <div class="info-item">
+                <strong>Percentual da Meta:</strong> ${percentualMeta}%
+              </div>
+              <div class="info-item">
+                <strong>Status:</strong> ${totalVendas >= selectedFuncionario.metaIndividual ? '✅ Meta Batida!' : '⚠️ Em andamento'}
+              </div>
+            </div>
+          </div>
+
+          <div class="info-section">
+            <h2 style="color: #169486; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">Vendas Diárias</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Valor</th>
+                  <th>Observação</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${vendasDiarias.map(v => `
+                  <tr>
+                    <td>${new Date(v.data).toLocaleDateString('pt-BR')}</td>
+                    <td>R$ ${v.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                    <td>${v.observacao || '-'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td><strong>Total:</strong></td>
+                  <td class="total">R$ ${totalVendas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          ${chartData.length > 0 ? `
+          <div class="grafico-container">
+            <h3>Gráfico de Vendas Diárias</h3>
+            <p style="color: #666; font-size: 14px;">Evolução das vendas ao longo do mês</p>
+            <div style="height: 300px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-top: 20px;">
+              <p style="text-align: center; color: #666; padding-top: 120px;">
+                Gráfico disponível na versão digital do relatório
+              </p>
+            </div>
+          </div>
+          ` : ''}
+
+          ${vendasDiarias.filter(v => v.observacao && v.observacao.trim() !== '').length > 0 ? `
+          <div class="observacoes">
+            <h2 style="color: #169486; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">Observações</h2>
+            ${vendasDiarias.filter(v => v.observacao && v.observacao.trim() !== '').map(v => `
+              <div class="observacao-item">
+                <strong>${new Date(v.data).toLocaleDateString('pt-BR')}:</strong> ${v.observacao}
+              </div>
+            `).join('')}
+          </div>
+          ` : ''}
+        </body>
+      </html>
+    `);
+    janelaImpressao.document.close();
+    setTimeout(() => {
+      janelaImpressao.print();
+    }, 250);
+  };
+
+  const meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 
+                 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+  return (
+    <div className="min-h-screen">
+      <Navbar setIsAuthenticated={setIsAuthenticated} />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Feedback de Funcionários</h1>
+          <p className="text-gray-600">Selecione um funcionário para visualizar seu desempenho e gerar relatório</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Seleção de Funcionário */}
+          <div className="lg:col-span-1">
+            <div className="card">
+              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <FaUsers /> Selecionar Funcionário
+              </h2>
+              <div className="space-y-2">
+                <select
+                  value={selectedFuncionario?._id || ''}
+                  onChange={(e) => handleSelectFuncionario(e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">Selecione um funcionário...</option>
+                  {funcionarios.map(func => (
+                    <option key={func._id} value={func._id}>
+                      {func.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedFuncionario && (
+                <div className="mt-6 p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg">
+                  <h3 className="font-bold text-gray-800 mb-2">{selectedFuncionario.nome}</h3>
+                  <p className="text-sm text-gray-600 mb-1"><strong>Função:</strong> {selectedFuncionario.funcao}</p>
+                  <p className="text-sm text-gray-600 mb-1"><strong>Meta:</strong> R$ {selectedFuncionario.metaIndividual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Filtros de Mês/Ano */}
+            {selectedFuncionario && (
+              <div className="card mt-4">
+                <h3 className="text-lg font-bold text-gray-800 mb-4">Filtros</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Mês</label>
+                    <select
+                      value={mes}
+                      onChange={(e) => setMes(parseInt(e.target.value))}
+                      className="input-field"
+                    >
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                        <option key={m} value={m}>{meses[m - 1]}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ano</label>
+                    <select
+                      value={ano}
+                      onChange={(e) => setAno(parseInt(e.target.value))}
+                      className="input-field"
+                    >
+                      {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Área de Feedback */}
+          <div className="lg:col-span-2">
+            {!selectedFuncionario ? (
+              <div className="card text-center py-12">
+                <FaUsers className="text-6xl text-gray-300 mx-auto mb-4" />
+                <p className="text-xl text-gray-600">Selecione um funcionário para ver o feedback</p>
+              </div>
+            ) : loading ? (
+              <div className="card text-center py-12">
+                <p className="text-xl text-gray-600">Carregando dados...</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Resumo */}
+                <div className="card">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                      <FaChartLine /> Resumo do Período
+                    </h2>
+                    {vendasDiarias.length > 0 && (
+                      <button
+                        onClick={handleImprimir}
+                        className="btn-primary flex items-center gap-2"
+                      >
+                        <FaPrint /> Imprimir
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 bg-gradient-to-br from-teal-500 to-cyan-500 text-white rounded-lg">
+                      <p className="text-sm opacity-90 mb-1">Meta Individual</p>
+                      <p className="text-2xl font-bold">
+                        R$ {selectedFuncionario.metaIndividual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    <div className={`p-4 rounded-lg text-white ${
+                      getVendaMes() >= selectedFuncionario.metaIndividual
+                        ? 'bg-gradient-to-br from-green-500 to-emerald-500'
+                        : 'bg-gradient-to-br from-orange-500 to-amber-500'
+                    }`}>
+                      <p className="text-sm opacity-90 mb-1">Total Vendido</p>
+                      <p className="text-2xl font-bold">
+                        R$ {getVendaMes().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    <div className="p-4 bg-gradient-to-br from-blue-500 to-indigo-500 text-white rounded-lg">
+                      <p className="text-sm opacity-90 mb-1">Percentual</p>
+                      <p className="text-2xl font-bold">
+                        {selectedFuncionario.metaIndividual > 0
+                          ? ((getVendaMes() / selectedFuncionario.metaIndividual) * 100).toFixed(1)
+                          : 0}%
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-gray-600">Progresso da Meta</span>
+                      <span className={`font-semibold ${
+                        getVendaMes() >= selectedFuncionario.metaIndividual ? 'text-green-600' : 'text-orange-600'
+                      }`}>
+                        {getVendaMes() >= selectedFuncionario.metaIndividual ? '✅ Meta Batida!' : '⚠️ Em andamento'}
+                      </span>
+                    </div>
+                    <div className="bg-gray-200 rounded-full h-4">
+                      <div
+                        className={`h-4 rounded-full ${
+                          getVendaMes() >= selectedFuncionario.metaIndividual ? 'bg-green-500' : 'bg-orange-500'
+                        }`}
+                        style={{
+                          width: `${Math.min(100, selectedFuncionario.metaIndividual > 0 
+                            ? (getVendaMes() / selectedFuncionario.metaIndividual) * 100 
+                            : 0)}%`
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Gráfico */}
+                {vendasDiarias.length > 0 && getChartData().length > 0 && (
+                  <div className="card">
+                    <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                      <FaChartLine /> Gráfico de Vendas Diárias
+                    </h3>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={getChartData()}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="dia" 
+                          label={{ value: 'Dia do Mês', position: 'insideBottom', offset: -5 }}
+                        />
+                        <YAxis 
+                          label={{ value: 'Valor (R$)', angle: -90, position: 'insideLeft' }}
+                        />
+                        <Tooltip 
+                          formatter={(value) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                          labelFormatter={(label) => `Dia ${label}`}
+                        />
+                        <Legend />
+                        <Line 
+                          type="monotone" 
+                          dataKey="valor" 
+                          stroke="#169486" 
+                          strokeWidth={3}
+                          name="Vendas (R$)"
+                          dot={{ fill: '#169486', r: 4 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+
+                {/* Tabela de Vendas */}
+                {vendasDiarias.length > 0 ? (
+                  <div className="card">
+                    <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                      <FaDollarSign /> Vendas Diárias
+                    </h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="px-4 py-2 text-left">Data</th>
+                            <th className="px-4 py-2 text-right">Valor</th>
+                            <th className="px-4 py-2 text-left">Observação</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {vendasDiarias.map((venda, index) => (
+                            <tr key={index} className="border-b hover:bg-gray-50">
+                              <td className="px-4 py-2">
+                                {new Date(venda.data).toLocaleDateString('pt-BR')}
+                              </td>
+                              <td className="px-4 py-2 text-right font-semibold" style={{ color: '#169486' }}>
+                                R$ {venda.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </td>
+                              <td className="px-4 py-2 text-gray-600">
+                                {venda.observacao || '-'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-gray-50 font-bold">
+                          <tr>
+                            <td className="px-4 py-2">Total:</td>
+                            <td className="px-4 py-2 text-right" style={{ color: '#169486' }}>
+                              R$ {vendasDiarias.reduce((sum, v) => sum + v.valor, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </td>
+                            <td className="px-4 py-2"></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="card text-center py-12">
+                    <FaDollarSign className="text-6xl text-gray-300 mx-auto mb-4" />
+                    <p className="text-xl text-gray-600">Nenhuma venda registrada neste período</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Feedback;
+

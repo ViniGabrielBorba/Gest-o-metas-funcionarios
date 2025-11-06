@@ -42,11 +42,11 @@ const Cadastro = ({ setIsAuthenticated }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: 'linear-gradient(to bottom right, #169486, #14b8a6, #06b6d4)' }}>
       <div className="max-w-md w-full animate-fade-in">
         <div className="card">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-red-600 to-orange-600 rounded-full mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4" style={{ backgroundColor: '#169486' }}>
               <FaChartLine className="text-white text-2xl" />
             </div>
             <h1 className="text-3xl font-bold text-gray-800 mb-2">FlowGest</h1>
@@ -156,7 +156,7 @@ const Cadastro = ({ setIsAuthenticated }) => {
           <div className="mt-6 text-center">
             <p className="text-gray-600">
               Já tem uma conta?{' '}
-              <Link to="/login" className="text-red-600 font-semibold hover:underline">
+              <Link to="/login" className="font-semibold hover:underline" style={{ color: '#169486' }}>
                 Faça login
               </Link>
             </p>

@@ -5,6 +5,7 @@ import Cadastro from './components/auth/Cadastro';
 import Dashboard from './components/dashboard/Dashboard';
 import Funcionarios from './components/funcionarios/Funcionarios';
 import Metas from './components/metas/Metas';
+import Feedback from './components/feedback/Feedback';
 import { getAuthToken } from './utils/auth';
 
 function App() {
@@ -36,6 +37,10 @@ function App() {
         <Route 
           path="/metas" 
           element={isAuthenticated ? <Metas setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} 
+        />
+        <Route 
+          path="/feedback" 
+          element={isAuthenticated ? <Feedback setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} 
         />
         <Route path="/" element={<Navigate to="/dashboard" />} />
       </Routes>

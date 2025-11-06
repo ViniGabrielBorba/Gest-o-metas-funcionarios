@@ -4,17 +4,21 @@
 
 @layer base {
   body {
-    @apply bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 min-h-screen;
+    @apply bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 min-h-screen;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-gradient-to-r from-red-600 to-orange-600 text-white font-semibold py-2 px-6 rounded-lg shadow-lg hover:from-red-700 hover:to-orange-700 transform hover:scale-105 transition-all duration-200;
+    @apply text-white font-semibold py-2 px-6 rounded-lg shadow-lg transform hover:scale-105 transition-all duration-200;
+    background-color: #169486;
+  }
+  .btn-primary:hover {
+    background-color: #127a6e;
   }
 
   .btn-secondary {
-    @apply bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-semibold py-2 px-6 rounded-lg shadow-lg hover:from-yellow-600 hover:to-orange-600 transform hover:scale-105 transition-all duration-200;
+    @apply bg-gradient-to-r from-teal-400 to-cyan-500 text-white font-semibold py-2 px-6 rounded-lg shadow-lg hover:from-teal-500 hover:to-cyan-600 transform hover:scale-105 transition-all duration-200;
   }
 
   .card {
@@ -22,7 +26,12 @@
   }
 
   .input-field {
-    @apply w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all;
+    @apply w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 outline-none transition-all;
+    focus-border-color: #169486;
+  }
+  .input-field:focus {
+    border-color: #169486;
+    --tw-ring-color: rgba(22, 148, 134, 0.2);
   }
 
   .badge {

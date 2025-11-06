@@ -6,7 +6,8 @@ import {
   FaChartLine, 
   FaHome, 
   FaUsers, 
-  FaBullseye, 
+  FaBullseye,
+  FaComments,
   FaSignOutAlt,
   FaBars,
   FaTimes
@@ -38,7 +39,7 @@ const Navbar = ({ setIsAuthenticated }) => {
   };
 
   return (
-    <nav className="bg-gradient-to-r from-red-600 to-orange-600 text-white shadow-lg">
+    <nav className="text-white shadow-lg" style={{ backgroundColor: '#169486' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
@@ -54,27 +55,40 @@ const Navbar = ({ setIsAuthenticated }) => {
           <div className="hidden md:flex items-center space-x-4">
             <Link
               to="/dashboard"
-              className="px-3 py-2 rounded-md text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2"
+              className="px-3 py-2 rounded-md text-sm font-medium hover:bg-opacity-80 transition-colors flex items-center gap-2"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
             >
               <FaHome /> Dashboard
             </Link>
             <Link
               to="/funcionarios"
-              className="px-3 py-2 rounded-md text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2"
+              className="px-3 py-2 rounded-md text-sm font-medium hover:bg-opacity-80 transition-colors flex items-center gap-2"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
             >
               <FaUsers /> Funcionários
             </Link>
             <Link
               to="/metas"
-              className="px-3 py-2 rounded-md text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2"
+              className="px-3 py-2 rounded-md text-sm font-medium hover:bg-opacity-80 transition-colors flex items-center gap-2"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
             >
               <FaBullseye /> Metas
+            </Link>
+            <Link
+              to="/feedback"
+              className="px-3 py-2 rounded-md text-sm font-medium hover:bg-opacity-80 transition-colors flex items-center gap-2"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
+            >
+              <FaComments /> Feedback
             </Link>
             <div className="ml-4 flex items-center space-x-3">
               <span className="text-sm">Olá, {gerente?.nome || 'Gerente'}</span>
               <button
                 onClick={handleLogout}
-                className="bg-red-700 hover:bg-red-800 px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2"
+                className="px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2"
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
               >
                 <FaSignOutAlt /> Sair
               </button>
@@ -84,7 +98,8 @@ const Navbar = ({ setIsAuthenticated }) => {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-md hover:bg-red-700"
+            className="md:hidden p-2 rounded-md hover:bg-opacity-80"
+            style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
           >
             {mobileMenuOpen ? <FaTimes /> : <FaBars />}
           </button>
@@ -93,34 +108,48 @@ const Navbar = ({ setIsAuthenticated }) => {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-red-700">
+        <div className="md:hidden" style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
           <div className="px-2 pt-2 pb-3 space-y-1">
             <Link
               to="/dashboard"
-              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-red-600 flex items-center gap-2"
+              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-opacity-80 flex items-center gap-2"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
               onClick={() => setMobileMenuOpen(false)}
             >
               <FaHome /> Dashboard
             </Link>
             <Link
               to="/funcionarios"
-              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-red-600 flex items-center gap-2"
+              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-opacity-80 flex items-center gap-2"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
               onClick={() => setMobileMenuOpen(false)}
             >
               <FaUsers /> Funcionários
             </Link>
             <Link
               to="/metas"
-              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-red-600 flex items-center gap-2"
+              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-opacity-80 flex items-center gap-2"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
               onClick={() => setMobileMenuOpen(false)}
             >
               <FaBullseye /> Metas
             </Link>
-            <div className="px-3 py-2 border-t border-red-500 mt-2">
+            <Link
+              to="/feedback"
+              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-opacity-80 flex items-center gap-2"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <FaComments /> Feedback
+            </Link>
+            <div className="px-3 py-2 border-t border-white border-opacity-20 mt-2">
               <p className="text-sm mb-2">Olá, {gerente?.nome || 'Gerente'}</p>
               <button
                 onClick={handleLogout}
-                className="w-full bg-red-800 hover:bg-red-900 px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                className="w-full px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
               >
                 <FaSignOutAlt /> Sair
               </button>
