@@ -528,8 +528,9 @@ router.get('/metricas', authDono, async (req, res) => {
         const totalGeral = meta ? (meta.totalVendido || 0) : 0;
         
         // Contar vendas diárias para calcular ticket médio
-        // Contar apenas o número de transações (vendas diárias), não o valor total
+        // Ticket médio = valor médio por transação (venda diária registrada)
         let quantidadeVendas = 0;
+        let totalVerificacao = 0; // Para validar que a soma bate com totalGeral
         
         // Vendas diretas da loja
         if (meta && meta.vendasDiarias) {
@@ -537,6 +538,7 @@ router.get('/metricas', authDono, async (req, res) => {
             const vDate = new Date(v.data);
             if (vDate.getUTCMonth() + 1 === mesAtual && vDate.getUTCFullYear() === anoAtual) {
               quantidadeVendas++;
+              totalVerificacao += parseFloat(v.valor) || 0;
             }
           });
         }
@@ -548,21 +550,29 @@ router.get('/metricas', authDono, async (req, res) => {
               const vDate = new Date(v.data);
               if (vDate.getUTCMonth() + 1 === mesAtual && vDate.getUTCFullYear() === anoAtual) {
                 quantidadeVendas++;
+                totalVerificacao += parseFloat(v.valor) || 0;
               }
             });
           }
         });
         
+        // Validar se a soma das vendas diárias bate com o totalGeral (com pequena tolerância para arredondamentos)
+        // Se houver diferença significativa, usar a soma verificada
+        const diferenca = Math.abs(totalGeral - totalVerificacao);
+        const totalParaCalcular = diferenca > 0.01 ? totalVerificacao : totalGeral;
+        
         // Ticket médio = total de vendas / quantidade de transações
-        const ticketMedio = quantidadeVendas > 0 ? totalGeral / quantidadeVendas : 0;
+        // Se não houver vendas, retornar 0
+        const ticketMedio = quantidadeVendas > 0 ? totalParaCalcular / quantidadeVendas : 0;
         const vendasPorFuncionario = funcionarios.length > 0 ? totalGeral / funcionarios.length : 0;
         const taxaConversao = meta && meta.valor > 0 ? (totalGeral / meta.valor) * 100 : 0;
         
         return {
           loja: gerente.nomeLoja,
-          ticketMedio,
-          vendasPorFuncionario,
-          taxaConversao,
+          ticketMedio: Math.round(ticketMedio * 100) / 100, // Arredondar para 2 casas decimais
+          quantidadeTransacoes: quantidadeVendas, // Informação para debug
+          vendasPorFuncionario: Math.round(vendasPorFuncionario * 100) / 100,
+          taxaConversao: Math.round(taxaConversao * 100) / 100,
           totalFuncionarios: funcionarios.length,
           totalVendas: totalGeral,
           meta: meta ? meta.valor : 0
