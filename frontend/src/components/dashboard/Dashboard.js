@@ -31,6 +31,7 @@ import {
   AreaChart
 } from 'recharts';
 import { notifyMetaBatida, notifyTarefasPendentes } from '../../utils/notifications';
+import { useToast } from '../../contexts/ToastContext';
 
 const Dashboard = ({ setIsAuthenticated }) => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -43,11 +44,14 @@ const Dashboard = ({ setIsAuthenticated }) => {
   const [dadosComparacao, setDadosComparacao] = useState(null);
   const [buscaFuncionario, setBuscaFuncionario] = useState('');
   const [eventosAgenda, setEventosAgenda] = useState([]);
+  const [alertas, setAlertas] = useState([]);
   const { darkMode } = useDarkMode();
+  const toast = useToast();
 
   useEffect(() => {
     fetchDashboardData();
     fetchEventosAgenda();
+    fetchAlertas();
   }, [selectedMonth, selectedYear]);
 
   useEffect(() => {
@@ -104,6 +108,17 @@ const Dashboard = ({ setIsAuthenticated }) => {
       setEventosAgenda(response.data.eventos || []);
     } catch (error) {
       console.error('Erro ao buscar eventos da agenda:', error);
+    }
+  };
+
+  const fetchAlertas = async () => {
+    try {
+      const response = await api.get('/dashboard/alertas', {
+        params: { mes: selectedMonth, ano: selectedYear }
+      });
+      setAlertas(response.data.alertas || []);
+    } catch (error) {
+      console.error('Erro ao buscar alertas:', error);
     }
   };
 
@@ -516,6 +531,88 @@ const Dashboard = ({ setIsAuthenticated }) => {
                   }}
                 />
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Alertas e Notificações */}
+        {alertas.length > 0 && (
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-300'} rounded-xl shadow-lg p-6 mb-8 transition-colors`}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <FaBell className="text-3xl text-yellow-600" />
+                <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
+                  Alertas e Notificações ({alertas.length})
+                </h2>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {alertas.map((alerta, idx) => (
+                <div
+                  key={idx}
+                  className={`${
+                    alerta.tipo === 'sucesso' 
+                      ? darkMode ? 'bg-green-900 border-green-700' : 'bg-green-50 border-green-300'
+                      : alerta.tipo === 'alerta'
+                      ? darkMode ? 'bg-red-900 border-red-700' : 'bg-red-50 border-red-300'
+                      : alerta.tipo === 'warning'
+                      ? darkMode ? 'bg-orange-900 border-orange-700' : 'bg-orange-50 border-orange-300'
+                      : darkMode ? 'bg-blue-900 border-blue-700' : 'bg-blue-50 border-blue-300'
+                  } border-l-4 p-4 rounded-lg shadow-sm transition-colors`}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">{alerta.icone}</span>
+                    <div className="flex-1">
+                      <h3 className={`font-bold mb-1 ${
+                        darkMode ? 'text-white' : 'text-gray-800'
+                      } transition-colors`}>
+                        {alerta.titulo}
+                      </h3>
+                      <p className={`text-sm ${
+                        darkMode ? 'text-gray-300' : 'text-gray-700'
+                      } transition-colors`}>
+                        {alerta.mensagem}
+                      </p>
+                      {alerta.funcionarios && alerta.funcionarios.length > 0 && (
+                        <div className="mt-2">
+                          <p className={`text-xs font-semibold mb-1 ${
+                            darkMode ? 'text-gray-400' : 'text-gray-600'
+                          } transition-colors`}>
+                            Funcionários:
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {alerta.funcionarios.map((nome, i) => (
+                              <span
+                                key={i}
+                                className={`px-2 py-1 rounded text-xs ${
+                                  darkMode ? 'bg-gray-700 text-gray-300' : 'bg-white text-gray-700'
+                                } transition-colors`}
+                              >
+                                {nome}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {alerta.valor && alerta.meta && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className={`text-xs ${
+                            darkMode ? 'text-gray-400' : 'text-gray-600'
+                          } transition-colors`}>
+                            Vendido: R$ {alerta.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                          <span className="text-gray-400">•</span>
+                          <span className={`text-xs ${
+                            darkMode ? 'text-gray-400' : 'text-gray-600'
+                          } transition-colors`}>
+                            Meta: R$ {alerta.meta.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

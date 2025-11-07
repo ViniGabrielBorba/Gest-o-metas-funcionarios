@@ -153,5 +153,97 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Alertas e notificações para o gerente
+router.get('/alertas', async (req, res) => {
+  try {
+    const { mes, ano } = req.query;
+    const mesAtual = mes ? parseInt(mes) : new Date().getMonth() + 1;
+    const anoAtual = ano ? parseInt(ano) : new Date().getFullYear();
+
+    const funcionarios = await Funcionario.find({ gerenteId: req.user.id });
+    const meta = await Meta.findOne({
+      gerenteId: req.user.id,
+      mes: mesAtual,
+      ano: anoAtual
+    });
+
+    const alertas = [];
+
+    // Calcular vendas do mês
+    const vendasFunc = funcionarios.reduce((sum, f) => {
+      const v = f.vendas.find(v => v.mes === mesAtual && v.ano === anoAtual);
+      return sum + (v ? v.valor : 0);
+    }, 0);
+    
+    const totalVendidoLoja = meta ? (meta.totalVendido || 0) : 0;
+    const totalGeral = vendasFunc + totalVendidoLoja;
+
+    // Meta batida
+    if (meta && meta.valor > 0 && totalGeral >= meta.valor) {
+      const percentual = ((totalGeral / meta.valor) * 100).toFixed(1);
+      const excedente = totalGeral - meta.valor;
+      alertas.push({
+        tipo: 'sucesso',
+        icone: '🎯',
+        titulo: 'Meta Batida!',
+        mensagem: `Parabéns! A meta foi atingida com ${percentual}%. Excedente: R$ ${excedente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        valor: totalGeral,
+        meta: meta.valor
+      });
+    }
+
+    // Meta abaixo (menos de 70%)
+    if (meta && meta.valor > 0 && (totalGeral / meta.valor) < 0.7) {
+      const percentual = ((totalGeral / meta.valor) * 100).toFixed(1);
+      const faltando = meta.valor - totalGeral;
+      alertas.push({
+        tipo: 'alerta',
+        icone: '⚠️',
+        titulo: 'Meta Abaixo do Esperado',
+        mensagem: `A meta está em ${percentual}%. Faltam R$ ${faltando.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} para atingir a meta.`,
+        valor: totalGeral,
+        meta: meta.valor
+      });
+    }
+
+    // Funcionários sem vendas no mês
+    const funcionariosSemVendas = funcionarios.filter(f => {
+      const v = f.vendas.find(v => v.mes === mesAtual && v.ano === anoAtual);
+      return !v || v.valor === 0;
+    });
+
+    if (funcionariosSemVendas.length > 0) {
+      alertas.push({
+        tipo: 'info',
+        icone: '📋',
+        titulo: 'Funcionários sem Vendas',
+        mensagem: `${funcionariosSemVendas.length} funcionário(s) ainda não registraram vendas neste mês.`,
+        funcionarios: funcionariosSemVendas.map(f => f.nome)
+      });
+    }
+
+    // Funcionários abaixo da meta individual
+    const funcionariosAbaixoMeta = funcionarios.filter(f => {
+      const v = f.vendas.find(v => v.mes === mesAtual && v.ano === anoAtual);
+      const valorVendido = v ? v.valor : 0;
+      return f.metaIndividual > 0 && valorVendido < f.metaIndividual;
+    });
+
+    if (funcionariosAbaixoMeta.length > 0) {
+      alertas.push({
+        tipo: 'warning',
+        icone: '📊',
+        titulo: 'Funcionários Abaixo da Meta',
+        mensagem: `${funcionariosAbaixoMeta.length} funcionário(s) estão abaixo da meta individual.`,
+        funcionarios: funcionariosAbaixoMeta.map(f => f.nome)
+      });
+    }
+
+    res.json({ alertas });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router;
 
