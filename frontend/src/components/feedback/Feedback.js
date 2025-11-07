@@ -96,9 +96,8 @@ const Feedback = ({ setIsAuthenticated }) => {
           observacao: observacaoGerente
         }
       );
-      toast.success('Observação salva com sucesso!');
       
-      // Após salvar, oferecer opção de imprimir
+      // Após salvar, oferecer opção de imprimir (apenas uma notificação)
       setTimeout(() => {
         if (vendasDiarias.length > 0) {
           const confirmarImpressao = window.confirm(
@@ -108,7 +107,7 @@ const Feedback = ({ setIsAuthenticated }) => {
             handleImprimir();
           }
         } else {
-          toast.info('Observação salva! Quando houver vendas registradas, você poderá imprimir o relatório completo.');
+          toast.success('Observação salva com sucesso! Quando houver vendas registradas, você poderá imprimir o relatório completo.');
         }
       }, 500);
     } catch (error) {
