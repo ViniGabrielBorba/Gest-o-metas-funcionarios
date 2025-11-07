@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Navbar from '../layout/Navbar';
 import api from '../../utils/api';
 import { useToast } from '../../contexts/ToastContext';
+import { useDarkMode } from '../../contexts/DarkModeContext';
 import {
   FaPlus,
   FaEdit,
@@ -17,6 +18,7 @@ import { notify } from '../../utils/notifications';
 
 const Agenda = ({ setIsAuthenticated }) => {
   const toast = useToast();
+  const { darkMode } = useDarkMode();
   const [eventos, setEventos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -293,25 +295,25 @@ const Agenda = ({ setIsAuthenticated }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen">
+      <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : ''}`}>
         <Navbar setIsAuthenticated={setIsAuthenticated} />
         <div className="flex items-center justify-center h-96">
-          <div className="text-xl text-gray-600">Carregando...</div>
+          <div className={`text-xl ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Carregando...</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : ''}`}>
       <Navbar setIsAuthenticated={setIsAuthenticated} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-2">
+            <h1 className={`text-3xl font-bold mb-2 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
               <FaCalendar /> Agenda
             </h1>
-            <p className="text-gray-600">Gerencie seus compromissos e tarefas</p>
+            <p className={darkMode ? 'text-gray-300' : 'text-gray-600'}>Gerencie seus compromissos e tarefas</p>
           </div>
           <button
             onClick={() => handleOpenModal()}
@@ -322,7 +324,7 @@ const Agenda = ({ setIsAuthenticated }) => {
         </div>
 
         {/* Filtros e Busca */}
-        <div className="card mb-6">
+        <div className={`card mb-6 ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="relative">
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -421,7 +423,7 @@ const Agenda = ({ setIsAuthenticated }) => {
         )}
 
         {/* Calendário */}
-        <div className="card mb-6">
+        <div className={`card mb-6 ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-gray-800">
               {meses[currentMonth]} {currentYear}
@@ -512,8 +514,8 @@ const Agenda = ({ setIsAuthenticated }) => {
 
         {/* Lista de Eventos */}
         {viewMode === 'lista' && (
-          <div className="card">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Todos os Eventos</h2>
+          <div className={`card ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
+            <h2 className={`text-xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Todos os Eventos</h2>
             <div className="space-y-2">
               {eventosFiltrados.length === 0 ? (
                 <p className="text-center text-gray-500 py-8">Nenhum evento encontrado</p>

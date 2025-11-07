@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../layout/Navbar';
 import api from '../../utils/api';
+import { useDarkMode } from '../../contexts/DarkModeContext';
 import {
   FaUsers,
   FaBullseye,
@@ -42,7 +43,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
   const [dadosComparacao, setDadosComparacao] = useState(null);
   const [buscaFuncionario, setBuscaFuncionario] = useState('');
   const [eventosAgenda, setEventosAgenda] = useState([]);
-  const [darkMode, setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
+  const { darkMode } = useDarkMode();
 
   useEffect(() => {
     fetchDashboardData();
@@ -54,15 +55,6 @@ const Dashboard = ({ setIsAuthenticated }) => {
       fetchDadosComparacao();
     }
   }, [compararPeriodo, mesComparacao, anoComparacao]);
-
-  useEffect(() => {
-    // Escutar mudanças de darkMode do Navbar
-    const handleDarkModeChange = (event) => {
-      setDarkMode(event.detail);
-    };
-    window.addEventListener('darkModeChange', handleDarkModeChange);
-    return () => window.removeEventListener('darkModeChange', handleDarkModeChange);
-  }, []);
 
   const fetchDashboardData = async () => {
     try {

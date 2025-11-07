@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Navbar from '../layout/Navbar';
 import api from '../../utils/api';
 import { useToast } from '../../contexts/ToastContext';
+import { useDarkMode } from '../../contexts/DarkModeContext';
 import { FaPrint, FaChartLine, FaUsers, FaDollarSign, FaSearch, FaFilter } from 'react-icons/fa';
 import {
   LineChart,
@@ -16,6 +17,7 @@ import {
 
 const Feedback = ({ setIsAuthenticated }) => {
   const toast = useToast();
+  const { darkMode } = useDarkMode();
   const [funcionarios, setFuncionarios] = useState([]);
   const [selectedFuncionario, setSelectedFuncionario] = useState(null);
   const [vendasDiarias, setVendasDiarias] = useState([]);
@@ -337,24 +339,24 @@ const Feedback = ({ setIsAuthenticated }) => {
                  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
   return (
-    <div className="min-h-screen">
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : ''}`}>
       <Navbar setIsAuthenticated={setIsAuthenticated} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Feedback de Funcionários</h1>
-          <p className="text-gray-600">Selecione um funcionário para visualizar seu desempenho e gerar relatório</p>
+          <h1 className={`text-3xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Feedback de Funcionários</h1>
+          <p className={darkMode ? 'text-gray-300' : 'text-gray-600'}>Selecione um funcionário para visualizar seu desempenho e gerar relatório</p>
         </div>
 
         {/* Busca de Funcionários */}
-        <div className="card mb-6">
+        <div className={`card mb-6 ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
           <div className="relative">
-            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} />
             <input
               type="text"
               placeholder="Buscar funcionário por nome..."
               value={buscaFuncionario}
               onChange={(e) => setBuscaFuncionario(e.target.value)}
-              className="input-field pl-10 w-full"
+              className={`input-field pl-10 w-full ${darkMode ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400' : ''}`}
             />
           </div>
         </div>
@@ -362,8 +364,8 @@ const Feedback = ({ setIsAuthenticated }) => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Seleção de Funcionário */}
           <div className="lg:col-span-1">
-            <div className="card">
-              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <div className={`card ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
+              <h2 className={`text-xl font-bold mb-4 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
                 <FaUsers /> Selecionar Funcionário
               </h2>
               <div className="space-y-2">
@@ -387,17 +389,17 @@ const Feedback = ({ setIsAuthenticated }) => {
 
               {selectedFuncionario && (
                 <div className="mt-6 p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg">
-                  <h3 className="font-bold text-gray-800 mb-2">{selectedFuncionario.nome}</h3>
-                  <p className="text-sm text-gray-600 mb-1"><strong>Função:</strong> {selectedFuncionario.funcao}</p>
-                  <p className="text-sm text-gray-600 mb-1"><strong>Meta:</strong> R$ {selectedFuncionario.metaIndividual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                  <h3 className={`font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>{selectedFuncionario.nome}</h3>
+                  <p className={`text-sm mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}><strong>Função:</strong> {selectedFuncionario.funcao}</p>
+                  <p className={`text-sm mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}><strong>Meta:</strong> R$ {selectedFuncionario.metaIndividual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                 </div>
               )}
             </div>
 
             {/* Filtros de Mês/Ano */}
             {selectedFuncionario && (
-              <div className="card mt-4">
-                <h3 className="text-lg font-bold text-gray-800 mb-4">Filtros</h3>
+              <div className={`card mt-4 ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
+                <h3 className={`text-lg font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Filtros</h3>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Mês</label>
@@ -470,18 +472,18 @@ const Feedback = ({ setIsAuthenticated }) => {
           {/* Área de Feedback */}
           <div className="lg:col-span-2">
             {!selectedFuncionario ? (
-              <div className="card text-center py-12">
+              <div className={`card text-center py-12 ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
                 <FaUsers className="text-6xl text-gray-300 mx-auto mb-4" />
                 <p className="text-xl text-gray-600">Selecione um funcionário para ver o feedback</p>
               </div>
             ) : loading ? (
-              <div className="card text-center py-12">
+              <div className={`card text-center py-12 ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
                 <p className="text-xl text-gray-600">Carregando dados...</p>
               </div>
             ) : (
               <div className="space-y-6">
                 {/* Resumo */}
-                <div className="card">
+                <div className={`card ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                       <FaChartLine /> Resumo do Período
@@ -548,7 +550,7 @@ const Feedback = ({ setIsAuthenticated }) => {
                 </div>
 
                 {/* Campo de Observações do Gerente */}
-                <div className="card">
+                <div className={`card ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
                   <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                     <FaUsers /> Observações do Gerente
                   </h3>
@@ -579,7 +581,7 @@ const Feedback = ({ setIsAuthenticated }) => {
 
                 {/* Gráfico */}
                 {vendasDiarias.length > 0 && getChartData().length > 0 && (
-                  <div className="card">
+                  <div className={`card ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
                     <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                       <FaChartLine /> Gráfico de Vendas Diárias
                     </h3>
@@ -613,7 +615,7 @@ const Feedback = ({ setIsAuthenticated }) => {
 
                 {/* Tabela de Vendas */}
                 {vendasDiarias.length > 0 ? (
-                  <div className="card">
+                  <div className={`card ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
                     <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                       <FaDollarSign /> Vendas Diárias
                     </h3>
@@ -654,7 +656,7 @@ const Feedback = ({ setIsAuthenticated }) => {
                     </div>
                   </div>
                 ) : (
-                  <div className="card text-center py-12">
+                  <div className={`card text-center py-12 ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
                     <FaDollarSign className="text-6xl text-gray-300 mx-auto mb-4" />
                     <p className="text-xl text-gray-600">Nenhuma venda registrada neste período</p>
                   </div>

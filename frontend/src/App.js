@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './contexts/ToastContext';
+import { DarkModeProvider } from './contexts/DarkModeContext';
 import Login from './components/auth/Login';
 import Cadastro from './components/auth/Cadastro';
 import LoginDono from './components/auth/LoginDono';
@@ -35,8 +36,9 @@ function App() {
   const isGerente = userType === 'gerente';
 
   return (
-    <ToastProvider>
-      <Router>
+    <DarkModeProvider>
+      <ToastProvider>
+        <Router>
         <Routes>
           {/* Rotas do Gerente */}
           <Route 
@@ -88,8 +90,9 @@ function App() {
           
           <Route path="/" element={<Navigate to={isDono ? "/dashboard-dono" : "/dashboard"} />} />
         </Routes>
-      </Router>
-    </ToastProvider>
+        </Router>
+      </ToastProvider>
+    </DarkModeProvider>
   );
 }
 

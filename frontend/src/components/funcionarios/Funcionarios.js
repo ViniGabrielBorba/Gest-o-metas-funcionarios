@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Navbar from '../layout/Navbar';
 import api from '../../utils/api';
 import { useToast } from '../../contexts/ToastContext';
+import { useDarkMode } from '../../contexts/DarkModeContext';
 import {
   FaPlus,
   FaEdit,
@@ -16,6 +17,7 @@ import {
 
 const Funcionarios = ({ setIsAuthenticated }) => {
   const toast = useToast();
+  const { darkMode } = useDarkMode();
   const [funcionarios, setFuncionarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -607,23 +609,23 @@ const Funcionarios = ({ setIsAuthenticated }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen">
+      <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : ''}`}>
         <Navbar setIsAuthenticated={setIsAuthenticated} />
         <div className="flex items-center justify-center h-96">
-          <div className="text-xl text-gray-600">Carregando...</div>
+          <div className={`text-xl ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Carregando...</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : ''}`}>
       <Navbar setIsAuthenticated={setIsAuthenticated} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Funcionários</h1>
-            <p className="text-gray-600">Gerencie sua equipe</p>
+            <h1 className={`text-3xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Funcionários</h1>
+            <p className={darkMode ? 'text-gray-300' : 'text-gray-600'}>Gerencie sua equipe</p>
           </div>
           <button
             onClick={() => handleOpenModal()}
@@ -634,23 +636,23 @@ const Funcionarios = ({ setIsAuthenticated }) => {
         </div>
 
         {/* Filtros e Busca */}
-        <div className="card mb-6">
+        <div className={`card mb-6 ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
-              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} />
               <input
                 type="text"
                 placeholder="Buscar por nome..."
                 value={buscaNome}
                 onChange={(e) => setBuscaNome(e.target.value)}
-                className="input-field pl-10"
+                className={`input-field pl-10 ${darkMode ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400' : ''}`}
               />
             </div>
             <div>
               <select
                 value={filtroFuncao}
                 onChange={(e) => setFiltroFuncao(e.target.value)}
-                className="input-field"
+                className={`input-field ${darkMode ? 'bg-gray-700 text-white border-gray-600' : ''}`}
               >
                 <option value="">Todas as funções</option>
                 {[...new Set(funcionarios.map(f => f.funcao))].map(funcao => (
@@ -662,7 +664,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
               <select
                 value={filtroMesVenda}
                 onChange={(e) => setFiltroMesVenda(e.target.value)}
-                className="input-field"
+                className={`input-field ${darkMode ? 'bg-gray-700 text-white border-gray-600' : ''}`}
               >
                 <option value="">Todos os meses</option>
                 <option value="com-vendas">Com vendas no mês</option>
@@ -694,11 +696,11 @@ const Funcionarios = ({ setIsAuthenticated }) => {
               return true;
             })
             .map(funcionario => (
-            <div key={funcionario._id} className="card">
+            <div key={funcionario._id} className={`card ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-800">{funcionario.nome}</h3>
-                  <p className="text-gray-600">{funcionario.funcao}</p>
+                  <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>{funcionario.nome}</h3>
+                  <p className={darkMode ? 'text-gray-300' : 'text-gray-600'}>{funcionario.funcao}</p>
                 </div>
                 <span className="badge bg-red-100 text-red-800">
                   {funcionario.sexo}
@@ -706,7 +708,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
               </div>
 
               <div className="space-y-2 mb-4">
-                <div className="flex items-center gap-2 text-gray-600">
+                <div className={`flex items-center gap-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                   <FaCalendar />
                   <span>{funcionario.idade} anos</span>
                   <span className="mx-2">•</span>
@@ -717,13 +719,13 @@ const Funcionarios = ({ setIsAuthenticated }) => {
                     })}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-gray-600">
+                <div className={`flex items-center gap-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                   <FaDollarSign />
                   <span>Meta: R$ {funcionario.metaIndividual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-gray-700">Vendas do mês:</span>
+                    <span className={`text-sm font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Vendas do mês:</span>
                     <span className={`font-bold text-lg ${
                       getVendaMes(funcionario) >= funcionario.metaIndividual
                         ? 'text-green-600'
@@ -788,7 +790,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
         {funcionarios.length === 0 && (
           <div className="text-center py-12">
             <FaUsers className="text-6xl text-gray-300 mx-auto mb-4" />
-            <p className="text-xl text-gray-600">Nenhum funcionário cadastrado</p>
+            <p className={`text-xl ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Nenhum funcionário cadastrado</p>
             <button
               onClick={() => handleOpenModal()}
               className="btn-primary mt-4"
