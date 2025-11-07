@@ -115,11 +115,12 @@ router.get('/', async (req, res) => {
       { nome: 'Nenhum', valor: 0 }
     );
 
-    // Calcular total vendido da loja no mês
-    const totalVendidoLoja = meta && meta.totalVendido ? meta.totalVendido : 0;
-    const faltandoParaMeta = meta ? Math.max(0, meta.valor - totalVendidoLoja) : 0;
-    const excedenteMeta = meta ? Math.max(0, totalVendidoLoja - meta.valor) : 0;
-    const metaBatida = meta && totalVendidoLoja >= meta.valor;
+    // Calcular total vendido (já inclui vendas dos funcionários + vendas diretas da loja)
+    // O meta.totalVendido já é calculado somando vendas diretas + vendas dos funcionários
+    const totalVendidoGeral = meta && meta.totalVendido ? meta.totalVendido : 0;
+    const faltandoParaMeta = meta ? Math.max(0, meta.valor - totalVendidoGeral) : 0;
+    const excedenteMeta = meta ? Math.max(0, totalVendidoGeral - meta.valor) : 0;
+    const metaBatida = meta && totalVendidoGeral >= meta.valor;
 
     // Aniversariantes do mês
     const aniversariantes = funcionarios.filter(func => {
@@ -136,11 +137,12 @@ router.get('/', async (req, res) => {
         totalFuncionarios: funcionarios.length,
         metaMes: meta ? meta.valor : 0,
         totalVendasMes,
-        totalVendidoLoja,
+        totalVendidoLoja: totalVendidoGeral, // Mantido para compatibilidade, mas agora usa totalGeral
+        totalVendidoGeral, // Novo campo com nome mais claro
         faltandoParaMeta,
         excedenteMeta,
         metaBatida,
-        percentualAtingido: meta ? (totalVendidoLoja / meta.valor * 100) : 0,
+        percentualAtingido: meta ? (totalVendidoGeral / meta.valor * 100) : 0,
         melhorVendedorMes: melhorMes
       },
       vendasMes,
@@ -169,14 +171,9 @@ router.get('/alertas', async (req, res) => {
 
     const alertas = [];
 
-    // Calcular vendas do mês
-    const vendasFunc = funcionarios.reduce((sum, f) => {
-      const v = f.vendas.find(v => v.mes === mesAtual && v.ano === anoAtual);
-      return sum + (v ? v.valor : 0);
-    }, 0);
-    
-    const totalVendidoLoja = meta ? (meta.totalVendido || 0) : 0;
-    const totalGeral = vendasFunc + totalVendidoLoja;
+    // O meta.totalVendido já inclui vendas diretas da loja + vendas dos funcionários
+    // Não precisamos somar novamente, pois isso causaria duplicação
+    const totalGeral = meta ? (meta.totalVendido || 0) : 0;
 
     // Meta batida
     if (meta && meta.valor > 0 && totalGeral >= meta.valor) {

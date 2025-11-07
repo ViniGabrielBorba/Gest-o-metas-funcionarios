@@ -223,10 +223,12 @@ async function atualizarMetaLoja(gerenteId, mes, ano) {
       if (funcionario.vendasDiarias && funcionario.vendasDiarias.length > 0) {
         funcionario.vendasDiarias.forEach(venda => {
           const vDate = new Date(venda.data);
-          const vDateNormalizada = new Date(vDate.getFullYear(), vDate.getMonth(), vDate.getDate());
+          // Usar UTC para evitar problemas de timezone
+          const mesVenda = vDate.getUTCMonth() + 1;
+          const anoVenda = vDate.getUTCFullYear();
           
           // Verificar se a venda é do mês/ano especificado
-          if (vDateNormalizada.getMonth() + 1 === mes && vDateNormalizada.getFullYear() === ano) {
+          if (mesVenda === mes && anoVenda === ano) {
             totalVendasFuncionarios += venda.valor || 0;
           }
         });
@@ -246,10 +248,12 @@ async function atualizarMetaLoja(gerenteId, mes, ano) {
       if (meta.vendasDiarias && meta.vendasDiarias.length > 0) {
         meta.vendasDiarias.forEach(venda => {
           const vDate = new Date(venda.data);
-          const vDateNormalizada = new Date(vDate.getFullYear(), vDate.getMonth(), vDate.getDate());
+          // Usar UTC para evitar problemas de timezone
+          const mesVenda = vDate.getUTCMonth() + 1;
+          const anoVenda = vDate.getUTCFullYear();
           
           // Verificar se a venda é do mês/ano especificado
-          if (vDateNormalizada.getMonth() + 1 === mes && vDateNormalizada.getFullYear() === ano) {
+          if (mesVenda === mes && anoVenda === ano) {
             totalVendasLojaDiretas += venda.valor || 0;
           }
         });
