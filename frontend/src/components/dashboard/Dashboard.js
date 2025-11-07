@@ -45,6 +45,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
   const [buscaFuncionario, setBuscaFuncionario] = useState('');
   const [eventosAgenda, setEventosAgenda] = useState([]);
   const [alertas, setAlertas] = useState([]);
+  const [alertasJaNotificados, setAlertasJaNotificados] = useState(false);
   const { darkMode } = useDarkMode();
   const toast = useToast();
 
@@ -52,7 +53,27 @@ const Dashboard = ({ setIsAuthenticated }) => {
     fetchDashboardData();
     fetchEventosAgenda();
     fetchAlertas();
+    // Resetar flag quando mudar o mês/ano para mostrar notificações novamente
+    setAlertasJaNotificados(false);
   }, [selectedMonth, selectedYear]);
+
+  // Mostrar notificações apenas uma vez quando o Dashboard carrega
+  useEffect(() => {
+    if (alertas.length > 0 && !alertasJaNotificados) {
+      alertas.forEach(alerta => {
+        if (alerta.tipo === 'sucesso') {
+          toast.success(alerta.mensagem, alerta.titulo);
+        } else if (alerta.tipo === 'alerta') {
+          toast.warning(alerta.mensagem, alerta.titulo);
+        } else if (alerta.tipo === 'warning') {
+          toast.warning(alerta.mensagem, alerta.titulo);
+        } else if (alerta.tipo === 'info') {
+          toast.info(alerta.mensagem, alerta.titulo);
+        }
+      });
+      setAlertasJaNotificados(true);
+    }
+  }, [alertas, alertasJaNotificados, toast]);
 
   useEffect(() => {
     if (compararPeriodo) {
@@ -116,7 +137,8 @@ const Dashboard = ({ setIsAuthenticated }) => {
       const response = await api.get('/dashboard/alertas', {
         params: { mes: selectedMonth, ano: selectedYear }
       });
-      setAlertas(response.data.alertas || []);
+      const alertasRecebidos = response.data.alertas || [];
+      setAlertas(alertasRecebidos);
     } catch (error) {
       console.error('Erro ao buscar alertas:', error);
     }
