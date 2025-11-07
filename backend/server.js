@@ -91,6 +91,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Rotas
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/dono', require('./routes/dono'));
 app.use('/api/funcionarios', require('./routes/funcionarios'));
 app.use('/api/metas', require('./routes/metas'));
 app.use('/api/dashboard', require('./routes/dashboard'));

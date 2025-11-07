@@ -4,8 +4,8 @@ const Gerente = require('../models/Gerente');
 const router = express.Router();
 
 // Gerar token JWT
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || 'secret_key_gestao_metas', {
+const generateToken = (id, tipo = 'gerente') => {
+  return jwt.sign({ id, tipo }, process.env.JWT_SECRET || 'secret_key_gestao_metas', {
     expiresIn: '30d'
   });
 };
@@ -31,7 +31,7 @@ router.post('/cadastro', async (req, res) => {
       telefone
     });
 
-    const token = generateToken(gerente._id);
+    const token = generateToken(gerente._id, 'gerente');
 
     res.status(201).json({
       token,
@@ -69,7 +69,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Email ou senha incorretos' });
     }
 
-    const token = generateToken(gerente._id);
+    const token = generateToken(gerente._id, 'gerente');
 
     res.json({
       token,
