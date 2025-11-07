@@ -95,6 +95,7 @@ app.use('/api/funcionarios', require('./routes/funcionarios'));
 app.use('/api/metas', require('./routes/metas'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/estoque', require('./routes/estoque'));
+app.use('/api/agenda', require('./routes/agenda'));
 
 // Middleware de tratamento de erros global (DEVE vir DEPOIS das rotas)
 app.use((err, req, res, next) => {

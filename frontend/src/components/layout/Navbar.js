@@ -9,6 +9,7 @@ import {
   FaBullseye,
   FaComments,
   FaBox,
+  FaCalendar,
   FaSignOutAlt,
   FaBars,
   FaTimes
@@ -89,6 +90,13 @@ const Navbar = ({ setIsAuthenticated }) => {
             >
               <FaBox /> Estoque
             </Link>
+            <Link
+              to="/agenda"
+              className="px-3 py-2 rounded-md text-sm font-medium hover:bg-opacity-80 transition-colors flex items-center gap-2"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
+            >
+              <FaCalendar /> Agenda
+            </Link>
             <div className="ml-4 flex items-center space-x-3">
               <span className="text-sm">Olá, {gerente?.nome || 'Gerente'}</span>
               <button
@@ -157,6 +165,14 @@ const Navbar = ({ setIsAuthenticated }) => {
               onClick={() => setMobileMenuOpen(false)}
             >
               <FaBox /> Estoque
+            </Link>
+            <Link
+              to="/agenda"
+              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-opacity-80 flex items-center gap-2"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <FaCalendar /> Agenda
             </Link>
             <div className="px-3 py-2 border-t border-white border-opacity-20 mt-2">
               <p className="text-sm mb-2">Olá, {gerente?.nome || 'Gerente'}</p>

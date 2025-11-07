@@ -7,6 +7,7 @@ import Funcionarios from './components/funcionarios/Funcionarios';
 import Metas from './components/metas/Metas';
 import Feedback from './components/feedback/Feedback';
 import Estoque from './components/estoque/Estoque';
+import Agenda from './components/agenda/Agenda';
 import { getAuthToken } from './utils/auth';
 import { requestNotificationPermission } from './utils/notifications';
 
@@ -52,6 +53,10 @@ function App() {
         <Route 
           path="/estoque" 
           element={isAuthenticated ? <Estoque setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} 
+        />
+        <Route 
+          path="/agenda" 
+          element={isAuthenticated ? <Agenda setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} 
         />
         <Route path="/" element={<Navigate to="/dashboard" />} />
       </Routes>
