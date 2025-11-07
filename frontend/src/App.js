@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ToastProvider } from './contexts/ToastContext';
 import Login from './components/auth/Login';
 import Cadastro from './components/auth/Cadastro';
 import Dashboard from './components/dashboard/Dashboard';
@@ -24,8 +25,9 @@ function App() {
   }, [isAuthenticated]);
 
   return (
-    <Router>
-      <Routes>
+    <ToastProvider>
+      <Router>
+        <Routes>
         <Route 
           path="/login" 
           element={!isAuthenticated ? <Login setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/dashboard" />} 
@@ -59,8 +61,9 @@ function App() {
           element={isAuthenticated ? <Agenda setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} 
         />
         <Route path="/" element={<Navigate to="/dashboard" />} />
-      </Routes>
-    </Router>
+        </Routes>
+      </Router>
+    </ToastProvider>
   );
 }
 

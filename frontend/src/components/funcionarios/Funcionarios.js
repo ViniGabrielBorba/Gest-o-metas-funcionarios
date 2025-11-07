@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '../layout/Navbar';
 import api from '../../utils/api';
+import { useToast } from '../../contexts/ToastContext';
 import {
   FaPlus,
   FaEdit,
@@ -14,6 +15,7 @@ import {
 } from 'react-icons/fa';
 
 const Funcionarios = ({ setIsAuthenticated }) => {
+  const toast = useToast();
   const [funcionarios, setFuncionarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -101,8 +103,9 @@ const Funcionarios = ({ setIsAuthenticated }) => {
       }
       handleCloseModal();
       fetchFuncionarios();
+      toast.success(editingFuncionario ? 'Funcionário atualizado com sucesso!' : 'Funcionário cadastrado com sucesso!');
     } catch (error) {
-      alert(error.response?.data?.message || 'Erro ao salvar funcionário');
+      toast.error(error.response?.data?.message || 'Erro ao salvar funcionário');
     }
   };
 
@@ -111,8 +114,9 @@ const Funcionarios = ({ setIsAuthenticated }) => {
       try {
         await api.delete(`/funcionarios/${id}`);
         fetchFuncionarios();
+        toast.success('Funcionário excluído com sucesso!');
       } catch (error) {
-        alert(error.response?.data?.message || 'Erro ao excluir funcionário');
+        toast.error(error.response?.data?.message || 'Erro ao excluir funcionário');
       }
     }
   };
@@ -132,24 +136,24 @@ const Funcionarios = ({ setIsAuthenticated }) => {
     try {
       // Validar se o valor foi preenchido
       if (!vendaData.valor || parseFloat(vendaData.valor) <= 0) {
-        alert('Por favor, informe um valor válido para a venda.');
+        toast.warning('Por favor, informe um valor válido para a venda.');
         return;
       }
 
       // Validar se a data foi preenchida
       if (!vendaData.data) {
-        alert('Por favor, selecione uma data para a venda.');
+        toast.warning('Por favor, selecione uma data para a venda.');
         return;
       }
 
       const response = await api.post(`/funcionarios/${selectedFuncionario._id}/vendas-diarias`, vendaData);
       setShowVendaModal(false);
       fetchFuncionarios();
-      alert('Venda registrada com sucesso! O total mensal foi atualizado automaticamente.');
+      toast.success('Venda registrada com sucesso! O total mensal foi atualizado automaticamente.');
     } catch (error) {
       console.error('Erro ao salvar venda:', error);
       const mensagemErro = error.response?.data?.message || error.message || 'Erro ao salvar venda. Verifique os dados e tente novamente.';
-      alert(mensagemErro);
+      toast.error(mensagemErro);
     }
   };
 
@@ -162,7 +166,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
       setVendasDiarias(response.data);
       setShowHistoricoModal(true);
     } catch (error) {
-      alert('Erro ao carregar histórico de vendas');
+      toast.error('Erro ao carregar histórico de vendas');
     }
   };
 
@@ -181,7 +185,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
     e.preventDefault();
     try {
       if (!vendaEditData.valor || parseFloat(vendaEditData.valor) <= 0) {
-        alert('Por favor, informe um valor válido para a venda.');
+        toast.warning('Por favor, informe um valor válido para a venda.');
         return;
       }
 
@@ -202,10 +206,10 @@ const Funcionarios = ({ setIsAuthenticated }) => {
       // Recarregar lista de funcionários
       fetchFuncionarios();
       
-      alert('Venda atualizada com sucesso!');
+      toast.success('Venda atualizada com sucesso!');
     } catch (error) {
       console.error('Erro ao editar venda:', error);
-      alert(error.response?.data?.message || 'Erro ao editar venda');
+      toast.error(error.response?.data?.message || 'Erro ao editar venda');
     }
   };
 
@@ -220,7 +224,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
 
   const handleImprimir = () => {
     if (!selectedFuncionario || vendasDiarias.length === 0) {
-      alert('Não há dados para imprimir');
+      toast.warning('Não há dados para imprimir');
       return;
     }
 

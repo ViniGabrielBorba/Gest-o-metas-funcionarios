@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '../layout/Navbar';
 import api from '../../utils/api';
+import { useToast } from '../../contexts/ToastContext';
 import { FaPlus, FaEdit, FaTrash, FaBullseye, FaChartBar, FaDollarSign, FaCalendar, FaPrint, FaFilter } from 'react-icons/fa';
 import { notifyMetaBatida } from '../../utils/notifications';
 import {
@@ -15,6 +16,7 @@ import {
 } from 'recharts';
 
 const Metas = ({ setIsAuthenticated }) => {
+  const toast = useToast();
   const [metas, setMetas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -129,9 +131,9 @@ const Metas = ({ setIsAuthenticated }) => {
       const mensagem = editingMeta 
         ? 'Meta atualizada com sucesso!' 
         : 'Nova meta criada com sucesso!';
-      alert(mensagem);
+      toast.success(mensagem);
     } catch (error) {
-      alert(error.response?.data?.message || 'Erro ao salvar meta');
+      toast.error(error.response?.data?.message || 'Erro ao salvar meta');
     }
   };
 
@@ -140,8 +142,9 @@ const Metas = ({ setIsAuthenticated }) => {
       try {
         await api.delete(`/metas/${id}`);
         fetchMetas();
+        toast.success('Meta excluída com sucesso!');
       } catch (error) {
-        alert(error.response?.data?.message || 'Erro ao excluir meta');
+        toast.error(error.response?.data?.message || 'Erro ao excluir meta');
       }
     }
   };
@@ -162,9 +165,9 @@ const Metas = ({ setIsAuthenticated }) => {
       await api.post(`/metas/${selectedMeta._id}/vendas-diarias`, vendaData);
       setShowVendaModal(false);
       fetchMetas();
-      alert('Venda da loja registrada com sucesso!');
+      toast.success('Venda da loja registrada com sucesso!');
     } catch (error) {
-      alert(error.response?.data?.message || 'Erro ao salvar venda');
+      toast.error(error.response?.data?.message || 'Erro ao salvar venda');
     }
   };
 
@@ -202,7 +205,7 @@ const Metas = ({ setIsAuthenticated }) => {
     e.preventDefault();
     try {
       if (!vendaEditData.valor || parseFloat(vendaEditData.valor) <= 0) {
-        alert('Por favor, informe um valor válido para a venda.');
+        toast.warning('Por favor, informe um valor válido para a venda.');
         return;
       }
 
@@ -231,10 +234,10 @@ const Metas = ({ setIsAuthenticated }) => {
       // Recarregar metas
       fetchMetas();
       
-      alert('Venda atualizada com sucesso!');
+      toast.success('Venda atualizada com sucesso!');
     } catch (error) {
       console.error('Erro ao editar venda:', error);
-      alert(error.response?.data?.message || 'Erro ao editar venda');
+      toast.error(error.response?.data?.message || 'Erro ao editar venda');
     }
   };
 

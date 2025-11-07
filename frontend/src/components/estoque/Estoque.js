@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '../layout/Navbar';
 import api from '../../utils/api';
+import { useToast } from '../../contexts/ToastContext';
 import { FaPlus, FaEdit, FaTrash, FaBox, FaPrint, FaSave, FaSearch, FaFilter } from 'react-icons/fa';
 
 const Estoque = ({ setIsAuthenticated }) => {
+  const toast = useToast();
   const [avaliacoes, setAvaliacoes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -116,12 +118,13 @@ const Estoque = ({ setIsAuthenticated }) => {
       handleCloseModal();
       fetchAvaliacoes();
       
+      toast.success('Avaliação salva com sucesso!');
       // Perguntar se quer imprimir
-      if (window.confirm('Avaliação salva com sucesso! Deseja imprimir agora?')) {
+      if (window.confirm('Deseja imprimir agora?')) {
         handleImprimir(avaliacaoSalva);
       }
     } catch (error) {
-      alert(error.response?.data?.message || 'Erro ao salvar avaliação');
+      toast.error(error.response?.data?.message || 'Erro ao salvar avaliação');
     }
   };
 
@@ -130,8 +133,9 @@ const Estoque = ({ setIsAuthenticated }) => {
       try {
         await api.delete(`/estoque/${id}`);
         fetchAvaliacoes();
+        toast.success('Avaliação excluída com sucesso!');
       } catch (error) {
-        alert(error.response?.data?.message || 'Erro ao excluir avaliação');
+        toast.error(error.response?.data?.message || 'Erro ao excluir avaliação');
       }
     }
   };

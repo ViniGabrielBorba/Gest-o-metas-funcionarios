@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '../layout/Navbar';
 import api from '../../utils/api';
+import { useToast } from '../../contexts/ToastContext';
 import { FaPrint, FaChartLine, FaUsers, FaDollarSign, FaSearch, FaFilter } from 'react-icons/fa';
 import {
   LineChart,
@@ -14,6 +15,7 @@ import {
 } from 'recharts';
 
 const Feedback = ({ setIsAuthenticated }) => {
+  const toast = useToast();
   const [funcionarios, setFuncionarios] = useState([]);
   const [selectedFuncionario, setSelectedFuncionario] = useState(null);
   const [vendasDiarias, setVendasDiarias] = useState([]);
@@ -92,10 +94,10 @@ const Feedback = ({ setIsAuthenticated }) => {
           observacao: observacaoGerente
         }
       );
-      alert('Observação salva com sucesso!');
+      toast.success('Observação salva com sucesso!');
     } catch (error) {
       console.error('Erro ao salvar observação:', error);
-      alert('Erro ao salvar observação. Tente novamente.');
+      toast.error('Erro ao salvar observação. Tente novamente.');
     } finally {
       setSalvandoObservacao(false);
     }
@@ -126,7 +128,7 @@ const Feedback = ({ setIsAuthenticated }) => {
 
   const handleImprimir = () => {
     if (!selectedFuncionario || vendasDiarias.length === 0) {
-      alert('Selecione um funcionário e um período com vendas para imprimir');
+      toast.warning('Selecione um funcionário e um período com vendas para imprimir');
       return;
     }
 

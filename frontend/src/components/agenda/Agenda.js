@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '../layout/Navbar';
 import api from '../../utils/api';
+import { useToast } from '../../contexts/ToastContext';
 import {
   FaPlus,
   FaEdit,
@@ -15,6 +16,7 @@ import {
 import { notify } from '../../utils/notifications';
 
 const Agenda = ({ setIsAuthenticated }) => {
+  const toast = useToast();
   const [eventos, setEventos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -134,9 +136,9 @@ const Agenda = ({ setIsAuthenticated }) => {
       }
       handleCloseModal();
       fetchEventos();
-      alert(editingEvento ? 'Evento atualizado com sucesso!' : 'Evento criado com sucesso!');
+      toast.success(editingEvento ? 'Evento atualizado com sucesso!' : 'Evento criado com sucesso!');
     } catch (error) {
-      alert(error.response?.data?.message || 'Erro ao salvar evento');
+      toast.error(error.response?.data?.message || 'Erro ao salvar evento');
     }
   };
 
@@ -145,8 +147,9 @@ const Agenda = ({ setIsAuthenticated }) => {
       try {
         await api.delete(`/agenda/eventos/${eventoId}`);
         fetchEventos();
+        toast.success('Evento excluído com sucesso!');
       } catch (error) {
-        alert(error.response?.data?.message || 'Erro ao excluir evento');
+        toast.error(error.response?.data?.message || 'Erro ao excluir evento');
       }
     }
   };
@@ -157,8 +160,9 @@ const Agenda = ({ setIsAuthenticated }) => {
         concluido: !evento.concluido
       });
       fetchEventos();
+      toast.success('Evento atualizado com sucesso!');
     } catch (error) {
-      alert(error.response?.data?.message || 'Erro ao atualizar evento');
+      toast.error(error.response?.data?.message || 'Erro ao atualizar evento');
     }
   };
 
