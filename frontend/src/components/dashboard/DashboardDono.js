@@ -78,11 +78,6 @@ const DashboardDono = ({ setIsAuthenticated }) => {
   }, [selectedMonth, selectedYear]);
 
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
     localStorage.setItem('darkMode', darkMode);
   }, [darkMode]);
 
@@ -253,9 +248,13 @@ const DashboardDono = ({ setIsAuthenticated }) => {
   }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
+    <div className={`min-h-screen transition-colors duration-300 ${
+      darkMode 
+        ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' 
+        : 'bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50'
+    }`}>
       {/* Header */}
-      <div className="bg-white shadow-md">
+      <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-md transition-colors duration-300`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
@@ -263,26 +262,45 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                 <FaChartLine className="text-white text-xl" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-800">FlowGest - Área do Dono</h1>
-                <p className="text-sm text-gray-600">Visão geral de todas as lojas</p>
+                <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
+                  FlowGest - Área do Dono
+                </h1>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} transition-colors`}>
+                  Visão geral de todas as lojas
+                </p>
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
-            >
-              <FaSignOutAlt /> Sair
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  darkMode 
+                    ? 'bg-gray-700 hover:bg-gray-600 text-yellow-300' 
+                    : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                }`}
+                title={darkMode ? 'Modo Claro' : 'Modo Escuro'}
+              >
+                {darkMode ? <FaSun className="text-xl" /> : <FaMoon className="text-xl" />}
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+              >
+                <FaSignOutAlt /> Sair
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Filtros e Busca */}
-        <div className="card mb-6">
+        <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} rounded-xl shadow-lg p-6 mb-6 transition-colors`}>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
             <div className="lg:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Buscar Loja</label>
+              <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1 transition-colors`}>
+                Buscar Loja
+              </label>
               <div className="relative">
                 <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
@@ -290,16 +308,18 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                   placeholder="Nome da loja ou gerente..."
                   value={buscaLoja}
                   onChange={(e) => setBuscaLoja(e.target.value)}
-                  className="input-field pl-10"
+                  className={`input-field pl-10 ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : ''}`}
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1 transition-colors`}>
+                Status
+              </label>
               <select
                 value={filtroStatus}
                 onChange={(e) => setFiltroStatus(e.target.value)}
-                className="input-field"
+                className={`input-field ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
               >
                 <option value="">Todos</option>
                 <option value="batida">Meta Batida</option>
@@ -308,11 +328,13 @@ const DashboardDono = ({ setIsAuthenticated }) => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Ordenar</label>
+              <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1 transition-colors`}>
+                Ordenar
+              </label>
               <select
                 value={ordenacao}
                 onChange={(e) => setOrdenacao(e.target.value)}
-                className="input-field"
+                className={`input-field ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
               >
                 <option value="desempenho">Desempenho</option>
                 <option value="vendas">Vendas</option>
@@ -326,22 +348,17 @@ const DashboardDono = ({ setIsAuthenticated }) => {
               >
                 <FaChartLine /> Evolução
               </button>
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className="btn-secondary p-2"
-                title={darkMode ? 'Modo Claro' : 'Modo Escuro'}
-              >
-                {darkMode ? <FaSun /> : <FaMoon />}
-              </button>
             </div>
           </div>
           <div className="flex flex-wrap gap-4 items-end">
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Mês</label>
+              <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1 transition-colors`}>
+                Mês
+              </label>
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                className="input-field"
+                className={`input-field ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
               >
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
                   <option key={m} value={m}>
@@ -351,11 +368,13 @@ const DashboardDono = ({ setIsAuthenticated }) => {
               </select>
             </div>
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Ano</label>
+              <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1 transition-colors`}>
+                Ano
+              </label>
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="input-field"
+                className={`input-field ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
               >
                 {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map(ano => (
                   <option key={ano} value={ano}>{ano}</option>
@@ -367,9 +386,9 @@ const DashboardDono = ({ setIsAuthenticated }) => {
 
         {/* Alertas */}
         {alertas.length > 0 && (
-          <div className="card mb-6 bg-yellow-50 border-yellow-200">
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-yellow-50 border-yellow-200'} rounded-xl shadow-lg p-6 mb-6 border transition-colors`}>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+              <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'} flex items-center gap-2 transition-colors`}>
                 <FaBell className="text-yellow-600" /> Alertas e Notificações ({alertas.length})
               </h3>
             </div>
@@ -402,7 +421,7 @@ const DashboardDono = ({ setIsAuthenticated }) => {
 
         {/* Cards de Resumo */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="card bg-gradient-to-br from-blue-500 to-cyan-600 text-white">
+          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6 bg-gradient-to-br from-blue-500 to-cyan-600 text-white transition-colors`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-blue-100 text-sm mb-1">Total de Lojas</p>
@@ -412,7 +431,7 @@ const DashboardDono = ({ setIsAuthenticated }) => {
             </div>
           </div>
 
-          <div className="card bg-gradient-to-br from-green-500 to-emerald-600 text-white">
+          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6 bg-gradient-to-br from-green-500 to-emerald-600 text-white transition-colors`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-green-100 text-sm mb-1">Total de Funcionários</p>
@@ -422,7 +441,7 @@ const DashboardDono = ({ setIsAuthenticated }) => {
             </div>
           </div>
 
-          <div className="card bg-gradient-to-br from-purple-500 to-pink-600 text-white">
+          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6 bg-gradient-to-br from-purple-500 to-pink-600 text-white transition-colors`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-purple-100 text-sm mb-1">Meta Total</p>
@@ -434,7 +453,7 @@ const DashboardDono = ({ setIsAuthenticated }) => {
             </div>
           </div>
 
-          <div className="card bg-gradient-to-br from-orange-500 to-red-600 text-white">
+          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6 bg-gradient-to-br from-orange-500 to-red-600 text-white transition-colors`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-orange-100 text-sm mb-1">Total Vendido</p>
@@ -453,8 +472,10 @@ const DashboardDono = ({ setIsAuthenticated }) => {
         {/* Gráficos */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Gráfico de Barras - Lojas */}
-          <div className="card">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Vendas por Loja</h3>
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} rounded-xl shadow-lg p-6 transition-colors`}>
+            <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4 transition-colors`}>
+              Vendas por Loja
+            </h3>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={dadosGraficoLojas}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -469,8 +490,10 @@ const DashboardDono = ({ setIsAuthenticated }) => {
           </div>
 
           {/* Gráfico de Pizza - Distribuição */}
-          <div className="card">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Distribuição de Vendas</h3>
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} rounded-xl shadow-lg p-6 transition-colors`}>
+            <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4 transition-colors`}>
+              Distribuição de Vendas
+            </h3>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
@@ -495,8 +518,8 @@ const DashboardDono = ({ setIsAuthenticated }) => {
 
         {/* Top Vendedores Geral */}
         {topVendedoresGeral && topVendedoresGeral.length > 0 && (
-          <div className="card mb-8">
-            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} rounded-xl shadow-lg p-6 mb-8 transition-colors`}>
+            <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4 flex items-center gap-2 transition-colors`}>
               <FaTrophy className="text-yellow-500" /> Top 10 Vendedores (Todas as Lojas)
             </h3>
             <div className="overflow-x-auto">
@@ -537,8 +560,10 @@ const DashboardDono = ({ setIsAuthenticated }) => {
 
         {/* Métricas Avançadas */}
         {metricas && metricas.metricas && (
-          <div className="card mb-8">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Métricas Avançadas</h3>
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} rounded-xl shadow-lg p-6 mb-8 transition-colors`}>
+            <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4 transition-colors`}>
+              Métricas Avançadas
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {metricas.metricas.map((metrica, idx) => (
                 <div key={idx} className="border rounded-lg p-4">
@@ -571,8 +596,10 @@ const DashboardDono = ({ setIsAuthenticated }) => {
 
         {/* Previsões */}
         {previsoes && previsoes.previsoes && (
-          <div className="card mb-8">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Previsão de Vendas</h3>
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} rounded-xl shadow-lg p-6 mb-8 transition-colors`}>
+            <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4 transition-colors`}>
+              Previsão de Vendas
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {previsoes.previsoes.map((previsao, idx) => (
                 <div key={idx} className="border rounded-lg p-4">
@@ -612,9 +639,11 @@ const DashboardDono = ({ setIsAuthenticated }) => {
         )}
 
         {/* Lista de Lojas */}
-        <div className="card">
+        <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} rounded-xl shadow-lg p-6 transition-colors`}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold text-gray-800">Detalhes das Lojas ({lojasFiltradas.length})</h3>
+            <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
+              Detalhes das Lojas ({lojasFiltradas.length})
+            </h3>
             <div className="flex gap-2">
               <button
                 onClick={() => window.print()}
@@ -626,9 +655,15 @@ const DashboardDono = ({ setIsAuthenticated }) => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {lojasFiltradas.map((loja) => (
-              <div key={loja.gerenteId} className="border rounded-lg p-4 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => fetchDetalhesLoja(loja.gerenteId)}>
+              <div 
+                key={loja.gerenteId} 
+                className={`${darkMode ? 'border-gray-700 bg-gray-700' : 'border-gray-200 bg-white'} border rounded-lg p-4 hover:shadow-lg transition-all cursor-pointer`}
+                onClick={() => fetchDetalhesLoja(loja.gerenteId)}
+              >
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-lg font-bold text-gray-800">{loja.nomeLoja}</h4>
+                  <h4 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
+                    {loja.nomeLoja}
+                  </h4>
                   <div className="flex items-center gap-2">
                     {loja.metaBatida ? (
                       <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold">
@@ -645,26 +680,28 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                     <FaEye className="text-gray-400 hover:text-gray-600" title="Ver detalhes" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mb-2">Gerente: {loja.nomeGerente}</p>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-2 transition-colors`}>
+                  Gerente: {loja.nomeGerente}
+                </p>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Funcionários:</span>
+                    <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Funcionários:</span>
                     <span className="font-semibold">{loja.totalFuncionarios}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Meta:</span>
+                    <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Meta:</span>
                     <span className="font-semibold">
                       R$ {loja.metaMes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Vendido:</span>
+                    <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Vendido:</span>
                     <span className="font-semibold">
                       R$ {loja.totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center pt-2 border-t">
-                    <span className="text-gray-600">Atingido:</span>
+                  <div className={`flex justify-between items-center pt-2 ${darkMode ? 'border-gray-600' : 'border-gray-200'} border-t`}>
+                    <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Atingido:</span>
                     <span className={`font-bold ${
                       loja.percentualAtingido >= 100 ? 'text-green-600' :
                       loja.percentualAtingido >= 70 ? 'text-yellow-600' :
@@ -676,11 +713,13 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                 </div>
                 {loja.topVendedores && loja.topVendedores.length > 0 && (
                   <div className="mt-4 pt-4 border-t">
-                    <p className="text-xs font-semibold text-gray-600 mb-2">Top Vendedores:</p>
+                    <p className={`text-xs font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-2 transition-colors`}>
+                      Top Vendedores:
+                    </p>
                     <div className="space-y-1">
                       {loja.topVendedores.slice(0, 3).map((v, idx) => (
                         <div key={idx} className="flex justify-between text-xs">
-                          <span className="text-gray-600">{v.nome}</span>
+                          <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>{v.nome}</span>
                           <span className="font-semibold">
                             R$ {v.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </span>
@@ -698,10 +737,12 @@ const DashboardDono = ({ setIsAuthenticated }) => {
       {/* Modal Detalhes Loja */}
       {showModalLoja && detalhesLoja && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto transition-colors`}>
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold text-gray-800">{detalhesLoja.gerente.nomeLoja}</h2>
+                <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
+                  {detalhesLoja.gerente.nomeLoja}
+                </h2>
                 <button
                   onClick={() => {
                     setShowModalLoja(false);
