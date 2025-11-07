@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '../layout/Navbar';
 import api from '../../utils/api';
-import { FaPlus, FaEdit, FaTrash, FaBullseye, FaChartBar, FaDollarSign, FaCalendar, FaPrint } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaBullseye, FaChartBar, FaDollarSign, FaCalendar, FaPrint, FaFilter } from 'react-icons/fa';
+import { notifyMetaBatida } from '../../utils/notifications';
 import {
   LineChart,
   Line,
@@ -68,10 +69,19 @@ const Metas = ({ setIsAuthenticated }) => {
       setMetas(response.data);
       
       // Verificar se alguma meta foi batida após atualizar
-      const temMetaBatida = response.data.some(m => (m.totalVendido || 0) >= m.valor && m.valor > 0);
-      if (temMetaBatida) {
+      const metasBatidas = response.data.filter(m => (m.totalVendido || 0) >= m.valor && m.valor > 0);
+      if (metasBatidas.length > 0) {
         setShowParabens(true);
         setTimeout(() => setShowParabens(false), 5000);
+        
+        // Enviar notificação para cada meta batida
+        metasBatidas.forEach(meta => {
+          const meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 
+                         'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+          const mesNome = meses[meta.mes - 1];
+          const excedente = (meta.totalVendido || 0) - meta.valor;
+          notifyMetaBatida(mesNome, excedente);
+        });
       }
     } catch (error) {
       console.error('Erro ao buscar metas:', error);

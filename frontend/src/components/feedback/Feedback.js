@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '../layout/Navbar';
 import api from '../../utils/api';
-import { FaPrint, FaChartLine, FaUsers, FaDollarSign } from 'react-icons/fa';
+import { FaPrint, FaChartLine, FaUsers, FaDollarSign, FaSearch, FaFilter } from 'react-icons/fa';
 import {
   LineChart,
   Line,
@@ -22,6 +22,11 @@ const Feedback = ({ setIsAuthenticated }) => {
   const [ano, setAno] = useState(new Date().getFullYear());
   const [observacaoGerente, setObservacaoGerente] = useState('');
   const [salvandoObservacao, setSalvandoObservacao] = useState(false);
+  const [buscaFuncionario, setBuscaFuncionario] = useState('');
+  const [compararPeriodos, setCompararPeriodos] = useState(false);
+  const [mesComparacao, setMesComparacao] = useState(new Date().getMonth() + 1);
+  const [anoComparacao, setAnoComparacao] = useState(new Date().getFullYear());
+  const [dadosComparacao, setDadosComparacao] = useState(null);
 
   useEffect(() => {
     fetchFuncionarios();
@@ -338,6 +343,20 @@ const Feedback = ({ setIsAuthenticated }) => {
           <p className="text-gray-600">Selecione um funcionário para visualizar seu desempenho e gerar relatório</p>
         </div>
 
+        {/* Busca de Funcionários */}
+        <div className="card mb-6">
+          <div className="relative">
+            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar funcionário por nome..."
+              value={buscaFuncionario}
+              onChange={(e) => setBuscaFuncionario(e.target.value)}
+              className="input-field pl-10 w-full"
+            />
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Seleção de Funcionário */}
           <div className="lg:col-span-1">
@@ -352,11 +371,15 @@ const Feedback = ({ setIsAuthenticated }) => {
                   className="input-field"
                 >
                   <option value="">Selecione um funcionário...</option>
-                  {funcionarios.map(func => (
-                    <option key={func._id} value={func._id}>
-                      {func.nome}
-                    </option>
-                  ))}
+                  {funcionarios
+                    .filter(func => 
+                      !buscaFuncionario || func.nome.toLowerCase().includes(buscaFuncionario.toLowerCase())
+                    )
+                    .map(func => (
+                      <option key={func._id} value={func._id}>
+                        {func.nome}
+                      </option>
+                    ))}
                 </select>
               </div>
 
@@ -398,6 +421,45 @@ const Feedback = ({ setIsAuthenticated }) => {
                       ))}
                     </select>
                   </div>
+                  <div>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={compararPeriodos}
+                        onChange={(e) => setCompararPeriodos(e.target.checked)}
+                        className="rounded"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Comparar com outro período</span>
+                    </label>
+                  </div>
+                  {compararPeriodos && (
+                    <div className="space-y-2 pl-6 border-l-2 border-gray-300">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Mês Comparação</label>
+                        <select
+                          value={mesComparacao}
+                          onChange={(e) => setMesComparacao(parseInt(e.target.value))}
+                          className="input-field"
+                        >
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                            <option key={m} value={m}>{meses[m - 1]}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Ano Comparação</label>
+                        <select
+                          value={anoComparacao}
+                          onChange={(e) => setAnoComparacao(parseInt(e.target.value))}
+                          className="input-field"
+                        >
+                          {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

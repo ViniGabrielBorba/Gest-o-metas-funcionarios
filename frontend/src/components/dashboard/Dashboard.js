@@ -7,7 +7,9 @@ import {
   FaTrophy,
   FaChartLine,
   FaBirthdayCake,
-  FaStar
+  FaStar,
+  FaSearch,
+  FaFilter
 } from 'react-icons/fa';
 import {
   BarChart,
@@ -19,18 +21,33 @@ import {
   Legend,
   ResponsiveContainer,
   LineChart,
-  Line
+  Line,
+  ComposedChart,
+  Area,
+  AreaChart
 } from 'recharts';
+import { notifyMetaBatida, notifyTarefasPendentes } from '../../utils/notifications';
 
 const Dashboard = ({ setIsAuthenticated }) => {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [compararPeriodo, setCompararPeriodo] = useState(false);
+  const [mesComparacao, setMesComparacao] = useState(new Date().getMonth());
+  const [anoComparacao, setAnoComparacao] = useState(new Date().getFullYear());
+  const [dadosComparacao, setDadosComparacao] = useState(null);
+  const [buscaFuncionario, setBuscaFuncionario] = useState('');
 
   useEffect(() => {
     fetchDashboardData();
   }, [selectedMonth, selectedYear]);
+
+  useEffect(() => {
+    if (compararPeriodo) {
+      fetchDadosComparacao();
+    }
+  }, [compararPeriodo, mesComparacao, anoComparacao]);
 
   const fetchDashboardData = async () => {
     try {
@@ -38,12 +55,68 @@ const Dashboard = ({ setIsAuthenticated }) => {
         params: { mes: selectedMonth, ano: selectedYear }
       });
       setDashboardData(response.data);
+      
+      // Verificar se meta foi batida e enviar notificação
+      if (response.data.resumo.metaBatida && response.data.resumo.excedenteMeta > 0) {
+        notifyMetaBatida(
+          new Date(2000, selectedMonth - 1).toLocaleDateString('pt-BR', { month: 'long' }),
+          response.data.resumo.excedenteMeta
+        );
+      }
+      
+      // Verificar tarefas pendentes (funcionários sem vendas no mês)
+      const funcionariosSemVendas = response.data.vendasMes.filter(v => v.valor === 0).length;
+      if (funcionariosSemVendas > 0) {
+        notifyTarefasPendentes(funcionariosSemVendas);
+      }
     } catch (error) {
       console.error('Erro ao buscar dados do dashboard:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const fetchDadosComparacao = async () => {
+    try {
+      const response = await api.get('/dashboard', {
+        params: { mes: mesComparacao, ano: anoComparacao }
+      });
+      setDadosComparacao(response.data);
+    } catch (error) {
+      console.error('Erro ao buscar dados de comparação:', error);
+    }
+  };
+
+  // Calcular previsão de vendas baseada na média diária
+  const calcularPrevisao = () => {
+    if (!dashboardData || !dashboardData.vendasDiarias || dashboardData.vendasDiarias.length === 0) {
+      return null;
+    }
+
+    const hoje = new Date();
+    const diaAtual = hoje.getDate();
+    const diasNoMes = new Date(selectedYear, selectedMonth, 0).getDate();
+    const diasRestantes = diasNoMes - diaAtual;
+
+    // Calcular média diária até agora
+    const totalAteAgora = dashboardData.vendasDiarias.reduce((sum, v) => sum + v.total, 0);
+    const mediaDiaria = totalAteAgora / dashboardData.vendasDiarias.length;
+
+    // Previsão = total atual + (média diária * dias restantes)
+    const previsaoTotal = totalAteAgora + (mediaDiaria * diasRestantes);
+
+    return {
+      totalAteAgora,
+      mediaDiaria,
+      diasRestantes,
+      previsaoTotal,
+      percentualPrevisao: dashboardData.resumo.metaMes > 0 
+        ? (previsaoTotal / dashboardData.resumo.metaMes) * 100 
+        : 0
+    };
+  };
+
+  const previsao = calcularPrevisao();
 
   if (loading) {
     return (
@@ -89,6 +162,25 @@ const Dashboard = ({ setIsAuthenticated }) => {
     quantidade: v.quantidade
   }));
 
+  // Gráfico comparativo entre períodos
+  const chartDataComparativo = compararPeriodo && dadosComparacao ? [
+    {
+      periodo: `${new Date(2000, selectedMonth - 1).toLocaleDateString('pt-BR', { month: 'short' })}/${selectedYear}`,
+      vendas: dashboardData.resumo.totalVendidoLoja,
+      meta: dashboardData.resumo.metaMes
+    },
+    {
+      periodo: `${new Date(2000, mesComparacao - 1).toLocaleDateString('pt-BR', { month: 'short' })}/${anoComparacao}`,
+      vendas: dadosComparacao.resumo.totalVendidoLoja,
+      meta: dadosComparacao.resumo.metaMes
+    }
+  ] : [];
+
+  // Filtrar funcionários por busca
+  const funcionariosFiltrados = buscaFuncionario
+    ? vendasMes.filter(v => v.nome.toLowerCase().includes(buscaFuncionario.toLowerCase()))
+    : vendasMes;
+
   return (
     <div className="min-h-screen">
       <Navbar setIsAuthenticated={setIsAuthenticated} />
@@ -122,6 +214,67 @@ const Dashboard = ({ setIsAuthenticated }) => {
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>
+            <button
+              onClick={() => setCompararPeriodo(!compararPeriodo)}
+              className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
+                compararPeriodo 
+                  ? 'bg-blue-500 text-white' 
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              <FaFilter /> Comparar Período
+            </button>
+          </div>
+        </div>
+
+        {/* Filtros de Comparação */}
+        {compararPeriodo && (
+          <div className="card mb-6 bg-blue-50">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <FaFilter /> Comparar com Outro Período
+            </h3>
+            <div className="flex gap-4 flex-wrap">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mês</label>
+                <select
+                  value={mesComparacao}
+                  onChange={(e) => setMesComparacao(parseInt(e.target.value))}
+                  className="input-field"
+                >
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                    <option key={m} value={m}>
+                      {new Date(2000, m - 1).toLocaleDateString('pt-BR', { month: 'long' })}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ano</label>
+                <select
+                  value={anoComparacao}
+                  onChange={(e) => setAnoComparacao(parseInt(e.target.value))}
+                  className="input-field"
+                >
+                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Busca de Funcionários */}
+        <div className="mb-6">
+          <div className="relative">
+            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar funcionário por nome..."
+              value={buscaFuncionario}
+              onChange={(e) => setBuscaFuncionario(e.target.value)}
+              className="input-field pl-10 w-full md:w-96"
+            />
           </div>
         </div>
 
@@ -285,6 +438,61 @@ const Dashboard = ({ setIsAuthenticated }) => {
           </div>
         )}
 
+        {/* Previsão de Vendas */}
+        {previsao && (
+          <div className="card mb-8 bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-300">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <FaChartLine /> Previsão de Vendas para o Final do Mês
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-white p-4 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Total até Agora</p>
+                <p className="text-2xl font-bold text-gray-800">
+                  R$ {previsao.totalAteAgora.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="bg-white p-4 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Média Diária</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  R$ {previsao.mediaDiaria.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="bg-white p-4 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Previsão Total</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  R$ {previsao.previsaoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="bg-white p-4 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">% da Meta (Previsão)</p>
+                <p className={`text-2xl font-bold ${
+                  previsao.percentualPrevisao >= 100 ? 'text-green-600' : 'text-orange-600'
+                }`}>
+                  {previsao.percentualPrevisao.toFixed(1)}%
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Gráfico Comparativo */}
+        {compararPeriodo && chartDataComparativo.length > 0 && (
+          <div className="card mb-8">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Comparativo entre Períodos</h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <ComposedChart data={chartDataComparativo}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="periodo" />
+                <YAxis />
+                <Tooltip formatter={(value) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} />
+                <Legend />
+                <Bar dataKey="vendas" fill="#10b981" name="Vendas" />
+                <Bar dataKey="meta" fill="#ef4444" name="Meta" />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
         {/* Gráficos */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Gráfico de Vendas do Mês (comparativo com meta) */}
@@ -323,6 +531,83 @@ const Dashboard = ({ setIsAuthenticated }) => {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Ranking Completo de Funcionários */}
+        <div className="card mb-8">
+          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <FaTrophy /> Ranking Completo de Funcionários
+          </h2>
+          {funcionariosFiltrados.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="px-4 py-2 text-left">Posição</th>
+                    <th className="px-4 py-2 text-left">Nome</th>
+                    <th className="px-4 py-2 text-right">Vendas (R$)</th>
+                    <th className="px-4 py-2 text-right">Meta (R$)</th>
+                    <th className="px-4 py-2 text-right">% da Meta</th>
+                    <th className="px-4 py-2 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {funcionariosFiltrados
+                    .sort((a, b) => b.valor - a.valor)
+                    .map((func, index) => {
+                      const percentual = func.metaIndividual > 0 
+                        ? (func.valor / func.metaIndividual) * 100 
+                        : 0;
+                      const metaBatida = func.valor >= func.metaIndividual;
+                      
+                      return (
+                        <tr key={func.funcionarioId} className="border-b hover:bg-gray-50">
+                          <td className="px-4 py-2">
+                            <span className={`font-bold ${
+                              index === 0 ? 'text-yellow-500' : 
+                              index === 1 ? 'text-gray-400' : 
+                              index === 2 ? 'text-orange-600' : 
+                              'text-gray-600'
+                            }`}>
+                              #{index + 1}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 font-semibold">{func.nome}</td>
+                          <td className="px-4 py-2 text-right font-bold text-green-600">
+                            R$ {func.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="px-4 py-2 text-right text-gray-600">
+                            R$ {func.metaIndividual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="px-4 py-2 text-right">
+                            <span className={`font-semibold ${
+                              metaBatida ? 'text-green-600' : 'text-orange-600'
+                            }`}>
+                              {percentual.toFixed(1)}%
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 text-center">
+                            {metaBatida ? (
+                              <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-semibold">
+                                ✅ Meta Batida
+                              </span>
+                            ) : (
+                              <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-semibold">
+                                ⚠️ Em Andamento
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>Nenhum funcionário encontrado</p>
+            </div>
+          )}
         </div>
 
         {/* Gráfico de Vendas Diárias */}

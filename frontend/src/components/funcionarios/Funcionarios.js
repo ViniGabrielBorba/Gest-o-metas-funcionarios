@@ -8,7 +8,9 @@ import {
   FaUsers,
   FaDollarSign,
   FaCalendar,
-  FaPrint
+  FaPrint,
+  FaSearch,
+  FaFilter
 } from 'react-icons/fa';
 
 const Funcionarios = ({ setIsAuthenticated }) => {
@@ -40,6 +42,9 @@ const Funcionarios = ({ setIsAuthenticated }) => {
     valor: '',
     observacao: ''
   });
+  const [buscaNome, setBuscaNome] = useState('');
+  const [filtroFuncao, setFiltroFuncao] = useState('');
+  const [filtroMesVenda, setFiltroMesVenda] = useState('');
 
   useEffect(() => {
     fetchFuncionarios();
@@ -624,8 +629,67 @@ const Funcionarios = ({ setIsAuthenticated }) => {
           </button>
         </div>
 
+        {/* Filtros e Busca */}
+        <div className="card mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="relative">
+              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar por nome..."
+                value={buscaNome}
+                onChange={(e) => setBuscaNome(e.target.value)}
+                className="input-field pl-10"
+              />
+            </div>
+            <div>
+              <select
+                value={filtroFuncao}
+                onChange={(e) => setFiltroFuncao(e.target.value)}
+                className="input-field"
+              >
+                <option value="">Todas as funções</option>
+                {[...new Set(funcionarios.map(f => f.funcao))].map(funcao => (
+                  <option key={funcao} value={funcao}>{funcao}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <select
+                value={filtroMesVenda}
+                onChange={(e) => setFiltroMesVenda(e.target.value)}
+                className="input-field"
+              >
+                <option value="">Todos os meses</option>
+                <option value="com-vendas">Com vendas no mês</option>
+                <option value="sem-vendas">Sem vendas no mês</option>
+                <option value="meta-batida">Meta batida</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {funcionarios.map(funcionario => (
+          {funcionarios
+            .filter(funcionario => {
+              // Filtro por nome
+              if (buscaNome && !funcionario.nome.toLowerCase().includes(buscaNome.toLowerCase())) {
+                return false;
+              }
+              // Filtro por função
+              if (filtroFuncao && funcionario.funcao !== filtroFuncao) {
+                return false;
+              }
+              // Filtro por vendas
+              if (filtroMesVenda) {
+                const vendaMes = getVendaMes(funcionario);
+                if (filtroMesVenda === 'com-vendas' && vendaMes === 0) return false;
+                if (filtroMesVenda === 'sem-vendas' && vendaMes > 0) return false;
+                if (filtroMesVenda === 'meta-batida' && vendaMes < funcionario.metaIndividual) return false;
+              }
+              return true;
+            })
+            .map(funcionario => (
             <div key={funcionario._id} className="card">
               <div className="flex justify-between items-start mb-4">
                 <div>

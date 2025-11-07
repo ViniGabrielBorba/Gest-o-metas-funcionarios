@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '../layout/Navbar';
 import api from '../../utils/api';
-import { FaPlus, FaEdit, FaTrash, FaBox, FaPrint, FaSave } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaBox, FaPrint, FaSave, FaSearch, FaFilter } from 'react-icons/fa';
 
 const Estoque = ({ setIsAuthenticated }) => {
   const [avaliacoes, setAvaliacoes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingAvaliacao, setEditingAvaliacao] = useState(null);
+  const [filtroDataInicio, setFiltroDataInicio] = useState('');
+  const [filtroDataFim, setFiltroDataFim] = useState('');
+  const [filtroFrequencia, setFiltroFrequencia] = useState('');
+  const [compararAvaliacoes, setCompararAvaliacoes] = useState(false);
+  const [avaliacaoSelecionada1, setAvaliacaoSelecionada1] = useState('');
+  const [avaliacaoSelecionada2, setAvaliacaoSelecionada2] = useState('');
   const [formData, setFormData] = useState({
     frequenciaAvaliacao: 'Semanal',
     formaPagamento: 'Ganho',
@@ -322,6 +328,114 @@ const Estoque = ({ setIsAuthenticated }) => {
           </button>
         </div>
 
+        {/* Filtros */}
+        <div className="card mb-6">
+          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <FaFilter /> Filtros
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Data Início</label>
+              <input
+                type="date"
+                value={filtroDataInicio}
+                onChange={(e) => setFiltroDataInicio(e.target.value)}
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Data Fim</label>
+              <input
+                type="date"
+                value={filtroDataFim}
+                onChange={(e) => setFiltroDataFim(e.target.value)}
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Frequência</label>
+              <select
+                value={filtroFrequencia}
+                onChange={(e) => setFiltroFrequencia(e.target.value)}
+                className="input-field"
+              >
+                <option value="">Todas</option>
+                <option value="Semanal">Semanal</option>
+                <option value="Mensal">Mensal</option>
+              </select>
+            </div>
+          </div>
+          <div className="mt-4">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={compararAvaliacoes}
+                onChange={(e) => setCompararAvaliacoes(e.target.checked)}
+                className="rounded"
+              />
+              <span className="text-sm font-medium text-gray-700">Comparar avaliações</span>
+            </label>
+          </div>
+          {compararAvaliacoes && (
+            <div className="mt-4 grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Avaliação 1</label>
+                <select
+                  value={avaliacaoSelecionada1}
+                  onChange={(e) => setAvaliacaoSelecionada1(e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">Selecione...</option>
+                  {avaliacoes.map(av => (
+                    <option key={av._id} value={av._id}>
+                      {new Date(av.data).toLocaleDateString('pt-BR')} - {av.frequenciaAvaliacao}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Avaliação 2</label>
+                <select
+                  value={avaliacaoSelecionada2}
+                  onChange={(e) => setAvaliacaoSelecionada2(e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">Selecione...</option>
+                  {avaliacoes.map(av => (
+                    <option key={av._id} value={av._id}>
+                      {new Date(av.data).toLocaleDateString('pt-BR')} - {av.frequenciaAvaliacao}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Comparação de Avaliações */}
+        {compararAvaliacoes && avaliacaoSelecionada1 && avaliacaoSelecionada2 && (
+          <div className="card mb-6 bg-blue-50">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Comparação de Avaliações</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {[avaliacaoSelecionada1, avaliacaoSelecionada2].map((avId, index) => {
+                const av = avaliacoes.find(a => a._id === avId);
+                if (!av) return null;
+                return (
+                  <div key={avId} className="bg-white p-4 rounded-lg">
+                    <h4 className="font-bold text-gray-800 mb-2">
+                      Avaliação {index + 1} - {new Date(av.data).toLocaleDateString('pt-BR')}
+                    </h4>
+                    <p><strong>Frequência:</strong> {av.frequenciaAvaliacao}</p>
+                    <p><strong>Forma de Pagamento:</strong> {av.formaPagamento}</p>
+                    <p><strong>Valor Mínimo:</strong> R$ {av.valorMinimoSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    <p><strong>Responsáveis:</strong> {av.responsaveis || 'Não informado'}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {avaliacoes.length === 0 ? (
           <div className="card text-center py-12">
             <FaBox className="text-6xl text-gray-300 mx-auto mb-4" />
@@ -335,7 +449,14 @@ const Estoque = ({ setIsAuthenticated }) => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {avaliacoes.map((avaliacao) => (
+            {avaliacoes
+              .filter(av => {
+                if (filtroDataInicio && new Date(av.data) < new Date(filtroDataInicio)) return false;
+                if (filtroDataFim && new Date(av.data) > new Date(filtroDataFim)) return false;
+                if (filtroFrequencia && av.frequenciaAvaliacao !== filtroFrequencia) return false;
+                return true;
+              })
+              .map((avaliacao) => (
               <div key={avaliacao._id} className="card">
                 <div className="flex justify-between items-start mb-4">
                   <div>

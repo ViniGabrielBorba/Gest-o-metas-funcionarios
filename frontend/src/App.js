@@ -8,13 +8,19 @@ import Metas from './components/metas/Metas';
 import Feedback from './components/feedback/Feedback';
 import Estoque from './components/estoque/Estoque';
 import { getAuthToken } from './utils/auth';
+import { requestNotificationPermission } from './utils/notifications';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!getAuthToken());
 
   useEffect(() => {
     setIsAuthenticated(!!getAuthToken());
-  }, []);
+    
+    // Solicitar permissão para notificações quando o app carregar
+    if (isAuthenticated) {
+      requestNotificationPermission();
+    }
+  }, [isAuthenticated]);
 
   return (
     <Router>
