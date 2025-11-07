@@ -42,6 +42,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
   const [dadosComparacao, setDadosComparacao] = useState(null);
   const [buscaFuncionario, setBuscaFuncionario] = useState('');
   const [eventosAgenda, setEventosAgenda] = useState([]);
+  const [darkMode, setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
 
   useEffect(() => {
     fetchDashboardData();
@@ -53,6 +54,15 @@ const Dashboard = ({ setIsAuthenticated }) => {
       fetchDadosComparacao();
     }
   }, [compararPeriodo, mesComparacao, anoComparacao]);
+
+  useEffect(() => {
+    // Escutar mudanças de darkMode do Navbar
+    const handleDarkModeChange = (event) => {
+      setDarkMode(event.detail);
+    };
+    window.addEventListener('darkModeChange', handleDarkModeChange);
+    return () => window.removeEventListener('darkModeChange', handleDarkModeChange);
+  }, []);
 
   const fetchDashboardData = async () => {
     try {
@@ -186,10 +196,16 @@ const Dashboard = ({ setIsAuthenticated }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen">
+      <div className={`min-h-screen transition-colors duration-300 ${
+        darkMode 
+          ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' 
+          : 'bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50'
+      }`}>
         <Navbar setIsAuthenticated={setIsAuthenticated} />
         <div className="flex items-center justify-center h-96">
-          <div className="text-xl text-gray-600">Carregando...</div>
+          <div className={`text-xl ${darkMode ? 'text-gray-300' : 'text-gray-600'} transition-colors`}>
+            Carregando...
+          </div>
         </div>
       </div>
     );
@@ -197,10 +213,16 @@ const Dashboard = ({ setIsAuthenticated }) => {
 
   if (!dashboardData) {
     return (
-      <div className="min-h-screen">
+      <div className={`min-h-screen transition-colors duration-300 ${
+        darkMode 
+          ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' 
+          : 'bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50'
+      }`}>
         <Navbar setIsAuthenticated={setIsAuthenticated} />
         <div className="flex items-center justify-center h-96">
-          <div className="text-xl text-red-600">Erro ao carregar dados</div>
+          <div className={`text-xl ${darkMode ? 'text-red-400' : 'text-red-600'} transition-colors`}>
+            Erro ao carregar dados
+          </div>
         </div>
       </div>
     );
@@ -248,20 +270,28 @@ const Dashboard = ({ setIsAuthenticated }) => {
     : vendasMes;
 
   return (
-    <div className="min-h-screen">
+    <div className={`min-h-screen transition-colors duration-300 ${
+      darkMode 
+        ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' 
+        : 'bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50'
+    }`}>
       <Navbar setIsAuthenticated={setIsAuthenticated} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header com filtros */}
         <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Dashboard</h1>
-            <p className="text-gray-600">Visão geral do desempenho da loja</p>
+            <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} mb-2 transition-colors`}>
+              Dashboard
+            </h1>
+            <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} transition-colors`}>
+              Visão geral do desempenho da loja
+            </p>
           </div>
           <div className="flex gap-4 flex-wrap">
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-              className="input-field"
+              className={`input-field ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
               style={{ minWidth: '200px', width: 'auto' }}
             >
               {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
@@ -273,7 +303,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              className="input-field"
+              className={`input-field ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
               style={{ minWidth: '100px', width: 'auto' }}
             >
               {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
@@ -282,10 +312,12 @@ const Dashboard = ({ setIsAuthenticated }) => {
             </select>
             <button
               onClick={() => setCompararPeriodo(!compararPeriodo)}
-              className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
+              className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
                 compararPeriodo 
                   ? 'bg-blue-500 text-white' 
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  : darkMode
+                    ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
               <FaFilter /> Comparar Período
@@ -295,17 +327,19 @@ const Dashboard = ({ setIsAuthenticated }) => {
 
         {/* Filtros de Comparação */}
         {compararPeriodo && (
-          <div className="card mb-6 bg-blue-50">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-blue-50'} rounded-xl shadow-lg p-6 mb-6 transition-colors`}>
+            <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4 flex items-center gap-2 transition-colors`}>
               <FaFilter /> Comparar com Outro Período
             </h3>
             <div className="flex gap-4 flex-wrap">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mês</label>
+                <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1 transition-colors`}>
+                  Mês
+                </label>
                 <select
                   value={mesComparacao}
                   onChange={(e) => setMesComparacao(parseInt(e.target.value))}
-                  className="input-field"
+                  className={`input-field ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
                 >
                   {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                     <option key={m} value={m}>
@@ -315,11 +349,13 @@ const Dashboard = ({ setIsAuthenticated }) => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ano</label>
+                <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1 transition-colors`}>
+                  Ano
+                </label>
                 <select
                   value={anoComparacao}
                   onChange={(e) => setAnoComparacao(parseInt(e.target.value))}
-                  className="input-field"
+                  className={`input-field ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
                 >
                   {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
                     <option key={y} value={y}>{y}</option>
@@ -339,7 +375,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
               placeholder="Buscar funcionário por nome..."
               value={buscaFuncionario}
               onChange={(e) => setBuscaFuncionario(e.target.value)}
-              className="input-field pl-10 w-full md:w-96"
+              className={`input-field pl-10 w-full md:w-96 ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : ''}`}
             />
           </div>
         </div>
@@ -409,18 +445,22 @@ const Dashboard = ({ setIsAuthenticated }) => {
 
         {/* Status da Meta da Loja */}
         {resumo.metaMes > 0 && (
-          <div className={`card mb-8 ${
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : ''} rounded-xl shadow-lg p-6 mb-8 ${
             resumo.metaBatida 
-              ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300' 
-              : 'bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-300'
-          }`}>
+              ? darkMode
+                ? 'border-2 border-green-600'
+                : 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300'
+              : darkMode
+                ? 'border-2 border-orange-600'
+                : 'bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-300'
+          } transition-colors`}>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} flex items-center gap-2 transition-colors`}>
                   <FaBullseye className={resumo.metaBatida ? 'text-green-600' : 'text-orange-600'} />
                   Status da Meta da Loja
                 </h2>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-1 transition-colors`}>
                   {new Date(2000, selectedMonth - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
                 </p>
               </div>
@@ -432,22 +472,26 @@ const Dashboard = ({ setIsAuthenticated }) => {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div className="bg-white p-4 rounded-lg shadow">
-                <p className="text-sm text-gray-600 mb-1">Meta Mensal</p>
-                <p className="text-2xl font-bold text-gray-800">
+              <div className={`${darkMode ? 'bg-gray-700' : 'bg-white'} p-4 rounded-lg shadow transition-colors`}>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-1 transition-colors`}>
+                  Meta Mensal
+                </p>
+                <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
                   R$ {resumo.metaMes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
               </div>
-              <div className="bg-white p-4 rounded-lg shadow">
-                <p className="text-sm text-gray-600 mb-1">Total Vendido</p>
+              <div className={`${darkMode ? 'bg-gray-700' : 'bg-white'} p-4 rounded-lg shadow transition-colors`}>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-1 transition-colors`}>
+                  Total Vendido
+                </p>
                 <p className={`text-2xl font-bold ${
                   resumo.metaBatida ? 'text-green-600' : 'text-orange-600'
                 }`}>
                   R$ {resumo.totalVendidoLoja.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
               </div>
-              <div className="bg-white p-4 rounded-lg shadow">
-                <p className="text-sm text-gray-600 mb-1">
+              <div className={`${darkMode ? 'bg-gray-700' : 'bg-white'} p-4 rounded-lg shadow transition-colors`}>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-1 transition-colors`}>
                   {resumo.metaBatida ? 'Excedente' : 'Faltando'}
                 </p>
                 <p className={`text-2xl font-bold ${
@@ -461,7 +505,9 @@ const Dashboard = ({ setIsAuthenticated }) => {
 
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-700 font-medium">Progresso</span>
+                <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} font-medium transition-colors`}>
+                  Progresso
+                </span>
                 <span className={`font-bold ${
                   resumo.metaBatida ? 'text-green-600' : 'text-orange-600'
                 }`}>
@@ -484,20 +530,24 @@ const Dashboard = ({ setIsAuthenticated }) => {
 
         {/* Aniversariantes */}
         {aniversariantes.length > 0 && (
-          <div className="card mb-8 bg-gradient-to-r from-pink-100 to-red-100 border-2 border-pink-300">
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gradient-to-r from-pink-100 to-red-100 border-2 border-pink-300'} rounded-xl shadow-lg p-6 mb-8 transition-colors`}>
             <div className="flex items-center gap-3 mb-4">
               <FaBirthdayCake className="text-3xl text-pink-600" />
-              <h2 className="text-2xl font-bold text-gray-800">Aniversariantes do Mês</h2>
+              <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
+                Aniversariantes do Mês
+              </h2>
             </div>
             <div className="flex flex-wrap gap-3">
               {aniversariantes.map(aniv => (
                 <div
                   key={aniv.id}
-                  className="bg-white px-4 py-2 rounded-lg shadow-md flex items-center gap-2"
+                  className={`${darkMode ? 'bg-gray-700' : 'bg-white'} px-4 py-2 rounded-lg shadow-md flex items-center gap-2 transition-colors`}
                 >
                   <FaBirthdayCake className="text-yellow-500" />
-                  <span className="font-semibold">{aniv.nome}</span>
-                  <span className="text-gray-600">- Dia {aniv.dia}</span>
+                  <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
+                    {aniv.nome}
+                  </span>
+                  <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>- Dia {aniv.dia}</span>
                 </div>
               ))}
             </div>
@@ -508,11 +558,13 @@ const Dashboard = ({ setIsAuthenticated }) => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Eventos de Hoje */}
           {getEventosHoje().length > 0 && (
-            <div className="card bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-300">
+            <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-300'} rounded-xl shadow-lg p-6 transition-colors`}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <FaCalendar className="text-3xl text-blue-600" />
-                  <h2 className="text-2xl font-bold text-gray-800">Eventos de Hoje</h2>
+                  <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
+                    Eventos de Hoje
+                  </h2>
                 </div>
                 <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-bold">
                   {getEventosHoje().length}
@@ -522,15 +574,19 @@ const Dashboard = ({ setIsAuthenticated }) => {
                 {getEventosHoje().map(evento => (
                   <div
                     key={evento._id}
-                    className="bg-white p-3 rounded-lg border-l-4 shadow-sm hover:shadow-md transition-shadow"
+                    className={`${darkMode ? 'bg-gray-700' : 'bg-white'} p-3 rounded-lg border-l-4 shadow-sm hover:shadow-md transition-all`}
                     style={{ borderLeftColor: getCorTipo(evento.tipo) }}
                   >
                     <div className="flex justify-between items-start mb-1">
-                      <h3 className="font-semibold text-gray-800">{evento.titulo}</h3>
+                      <h3 className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
+                        {evento.titulo}
+                      </h3>
                       <span className={`w-2 h-2 rounded-full ${getCorPrioridade(evento.prioridade)}`}></span>
                     </div>
                     {evento.descricao && (
-                      <p className="text-sm text-gray-600 mb-2">{evento.descricao}</p>
+                      <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-2 transition-colors`}>
+                        {evento.descricao}
+                      </p>
                     )}
                     <div className="flex items-center gap-2 text-xs">
                       <span className="px-2 py-1 rounded" style={{
@@ -548,10 +604,10 @@ const Dashboard = ({ setIsAuthenticated }) => {
                   </div>
                 ))}
               </div>
-              <div className="mt-4 pt-4 border-t border-blue-200">
+              <div className={`mt-4 pt-4 ${darkMode ? 'border-gray-600' : 'border-blue-200'} border-t`}>
                 <Link
                   to="/agenda"
-                  className="text-blue-600 hover:text-blue-800 text-sm font-semibold flex items-center gap-2"
+                  className={`${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} text-sm font-semibold flex items-center gap-2 transition-colors`}
                 >
                   Ver todos os eventos →
                 </Link>
@@ -561,11 +617,13 @@ const Dashboard = ({ setIsAuthenticated }) => {
 
           {/* Próximos Eventos */}
           {getProximosEventos().length > 0 && (
-            <div className="card bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300">
+            <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300'} rounded-xl shadow-lg p-6 transition-colors`}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <FaBell className="text-3xl text-purple-600" />
-                  <h2 className="text-2xl font-bold text-gray-800">Próximos Eventos</h2>
+                  <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
+                    Próximos Eventos
+                  </h2>
                 </div>
                 <span className="bg-purple-500 text-white px-3 py-1 rounded-full text-sm font-bold">
                   {getProximosEventos().length}
@@ -581,15 +639,19 @@ const Dashboard = ({ setIsAuthenticated }) => {
                   return (
                     <div
                       key={evento._id}
-                      className="bg-white p-3 rounded-lg border-l-4 shadow-sm hover:shadow-md transition-shadow"
+                      className={`${darkMode ? 'bg-gray-700' : 'bg-white'} p-3 rounded-lg border-l-4 shadow-sm hover:shadow-md transition-all`}
                       style={{ borderLeftColor: getCorTipo(evento.tipo) }}
                     >
                       <div className="flex justify-between items-start mb-1">
-                        <h3 className="font-semibold text-gray-800">{evento.titulo}</h3>
+                        <h3 className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
+                          {evento.titulo}
+                        </h3>
                         <span className={`w-2 h-2 rounded-full ${getCorPrioridade(evento.prioridade)}`}></span>
                       </div>
                       {evento.descricao && (
-                        <p className="text-sm text-gray-600 mb-2">{evento.descricao}</p>
+                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-2 transition-colors`}>
+                          {evento.descricao}
+                        </p>
                       )}
                       <div className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2">
@@ -599,7 +661,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
                           }}>
                             {evento.tipo}
                           </span>
-                          <span className="text-gray-500">
+                          <span className={darkMode ? 'text-gray-400' : 'text-gray-500'}>
                             {dataEvento.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                           </span>
                         </div>
@@ -613,10 +675,10 @@ const Dashboard = ({ setIsAuthenticated }) => {
                   );
                 })}
               </div>
-              <div className="mt-4 pt-4 border-t border-purple-200">
+              <div className={`mt-4 pt-4 ${darkMode ? 'border-gray-600' : 'border-purple-200'} border-t`}>
                 <Link
                   to="/agenda"
-                  className="text-purple-600 hover:text-purple-800 text-sm font-semibold flex items-center gap-2"
+                  className={`${darkMode ? 'text-purple-400 hover:text-purple-300' : 'text-purple-600 hover:text-purple-800'} text-sm font-semibold flex items-center gap-2 transition-colors`}
                 >
                   Ver todos os eventos →
                 </Link>
@@ -627,31 +689,39 @@ const Dashboard = ({ setIsAuthenticated }) => {
 
         {/* Previsão de Vendas */}
         {previsao && (
-          <div className="card mb-8 bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-300">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-300'} rounded-xl shadow-lg p-6 mb-8 transition-colors`}>
+            <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4 flex items-center gap-2 transition-colors`}>
               <FaChartLine /> Previsão de Vendas para o Final do Mês
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-white p-4 rounded-lg">
-                <p className="text-sm text-gray-600 mb-1">Total até Agora</p>
-                <p className="text-2xl font-bold text-gray-800">
+              <div className={`${darkMode ? 'bg-gray-700' : 'bg-white'} p-4 rounded-lg transition-colors`}>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-1 transition-colors`}>
+                  Total até Agora
+                </p>
+                <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
                   R$ {previsao.totalAteAgora.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
               </div>
-              <div className="bg-white p-4 rounded-lg">
-                <p className="text-sm text-gray-600 mb-1">Média Diária</p>
+              <div className={`${darkMode ? 'bg-gray-700' : 'bg-white'} p-4 rounded-lg transition-colors`}>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-1 transition-colors`}>
+                  Média Diária
+                </p>
                 <p className="text-2xl font-bold text-blue-600">
                   R$ {previsao.mediaDiaria.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
               </div>
-              <div className="bg-white p-4 rounded-lg">
-                <p className="text-sm text-gray-600 mb-1">Previsão Total</p>
+              <div className={`${darkMode ? 'bg-gray-700' : 'bg-white'} p-4 rounded-lg transition-colors`}>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-1 transition-colors`}>
+                  Previsão Total
+                </p>
                 <p className="text-2xl font-bold text-purple-600">
                   R$ {previsao.previsaoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
               </div>
-              <div className="bg-white p-4 rounded-lg">
-                <p className="text-sm text-gray-600 mb-1">% da Meta (Previsão)</p>
+              <div className={`${darkMode ? 'bg-gray-700' : 'bg-white'} p-4 rounded-lg transition-colors`}>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-1 transition-colors`}>
+                  % da Meta (Previsão)
+                </p>
                 <p className={`text-2xl font-bold ${
                   previsao.percentualPrevisao >= 100 ? 'text-green-600' : 'text-orange-600'
                 }`}>
@@ -664,8 +734,10 @@ const Dashboard = ({ setIsAuthenticated }) => {
 
         {/* Gráfico Comparativo */}
         {compararPeriodo && chartDataComparativo.length > 0 && (
-          <div className="card mb-8">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Comparativo entre Períodos</h2>
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} rounded-xl shadow-lg p-6 mb-8 transition-colors`}>
+            <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4 transition-colors`}>
+              Comparativo entre Períodos
+            </h2>
             <ResponsiveContainer width="100%" height={300}>
               <ComposedChart data={chartDataComparativo}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -683,8 +755,10 @@ const Dashboard = ({ setIsAuthenticated }) => {
         {/* Gráficos */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Gráfico de Vendas do Mês (comparativo com meta) */}
-          <div className="card">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Vendas do Mês vs Meta Individual</h2>
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} rounded-xl shadow-lg p-6 transition-colors`}>
+            <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4 transition-colors`}>
+              Vendas do Mês vs Meta Individual
+            </h2>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={chartDataMes}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -699,8 +773,10 @@ const Dashboard = ({ setIsAuthenticated }) => {
           </div>
 
           {/* Gráfico de Top Vendedores do Mês (ranking) */}
-          <div className="card">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Top Vendedores do Mês</h2>
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} rounded-xl shadow-lg p-6 transition-colors`}>
+            <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4 transition-colors`}>
+              Top Vendedores do Mês
+            </h2>
             {chartDataTopMes.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={chartDataTopMes} layout="vertical">
@@ -713,7 +789,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-[300px] text-gray-500">
+              <div className={`flex items-center justify-center h-[300px] ${darkMode ? 'text-gray-400' : 'text-gray-500'} transition-colors`}>
                 <p>Nenhuma venda registrada este mês</p>
               </div>
             )}
@@ -721,21 +797,33 @@ const Dashboard = ({ setIsAuthenticated }) => {
         </div>
 
         {/* Ranking Completo de Funcionários */}
-        <div className="card mb-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+        <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} rounded-xl shadow-lg p-6 mb-8 transition-colors`}>
+          <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4 flex items-center gap-2 transition-colors`}>
             <FaTrophy /> Ranking Completo de Funcionários
           </h2>
           {funcionariosFiltrados.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-100">
+                <thead className={darkMode ? 'bg-gray-700' : 'bg-gray-100'}>
                   <tr>
-                    <th className="px-4 py-2 text-left">Posição</th>
-                    <th className="px-4 py-2 text-left">Nome</th>
-                    <th className="px-4 py-2 text-right">Vendas (R$)</th>
-                    <th className="px-4 py-2 text-right">Meta (R$)</th>
-                    <th className="px-4 py-2 text-right">% da Meta</th>
-                    <th className="px-4 py-2 text-center">Status</th>
+                    <th className={`px-4 py-2 text-left ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Posição
+                    </th>
+                    <th className={`px-4 py-2 text-left ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Nome
+                    </th>
+                    <th className={`px-4 py-2 text-right ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Vendas (R$)
+                    </th>
+                    <th className={`px-4 py-2 text-right ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Meta (R$)
+                    </th>
+                    <th className={`px-4 py-2 text-right ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      % da Meta
+                    </th>
+                    <th className={`px-4 py-2 text-center ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Status
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -748,22 +836,24 @@ const Dashboard = ({ setIsAuthenticated }) => {
                       const metaBatida = func.valor >= func.metaIndividual;
                       
                       return (
-                        <tr key={func.funcionarioId} className="border-b hover:bg-gray-50">
+                        <tr key={func.funcionarioId} className={`border-b ${darkMode ? 'border-gray-700 hover:bg-gray-700' : 'hover:bg-gray-50'} transition-colors`}>
                           <td className="px-4 py-2">
                             <span className={`font-bold ${
                               index === 0 ? 'text-yellow-500' : 
                               index === 1 ? 'text-gray-400' : 
                               index === 2 ? 'text-orange-600' : 
-                              'text-gray-600'
+                              darkMode ? 'text-gray-300' : 'text-gray-600'
                             }`}>
                               #{index + 1}
                             </span>
                           </td>
-                          <td className="px-4 py-2 font-semibold">{func.nome}</td>
+                          <td className={`px-4 py-2 font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                            {func.nome}
+                          </td>
                           <td className="px-4 py-2 text-right font-bold text-green-600">
                             R$ {func.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </td>
-                          <td className="px-4 py-2 text-right text-gray-600">
+                          <td className={`px-4 py-2 text-right ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                             R$ {func.metaIndividual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </td>
                           <td className="px-4 py-2 text-right">
@@ -791,7 +881,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
               </table>
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className={`text-center py-8 ${darkMode ? 'text-gray-400' : 'text-gray-500'} transition-colors`}>
               <p>Nenhum funcionário encontrado</p>
             </div>
           )}
@@ -799,8 +889,10 @@ const Dashboard = ({ setIsAuthenticated }) => {
 
         {/* Gráfico de Vendas Diárias */}
         {chartDataDiarias.length > 0 && (
-          <div className="card mb-8">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Vendas Diárias do Mês</h2>
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} rounded-xl shadow-lg p-6 mb-8 transition-colors`}>
+            <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4 transition-colors`}>
+              Vendas Diárias do Mês
+            </h2>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={chartDataDiarias}>
                 <CartesianGrid strokeDasharray="3 3" />

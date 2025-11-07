@@ -12,12 +12,15 @@ import {
   FaCalendar,
   FaSignOutAlt,
   FaBars,
-  FaTimes
+  FaTimes,
+  FaMoon,
+  FaSun
 } from 'react-icons/fa';
 
 const Navbar = ({ setIsAuthenticated }) => {
   const [gerente, setGerente] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
 
   useEffect(() => {
     const fetchGerente = async () => {
@@ -30,6 +33,12 @@ const Navbar = ({ setIsAuthenticated }) => {
     };
     fetchGerente();
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('darkMode', darkMode);
+    // Disparar evento customizado para outros componentes
+    window.dispatchEvent(new CustomEvent('darkModeChange', { detail: darkMode }));
+  }, [darkMode]);
 
   const handleLogout = () => {
     removeAuthToken();
@@ -98,6 +107,16 @@ const Navbar = ({ setIsAuthenticated }) => {
               <FaCalendar /> Agenda
             </Link>
             <div className="ml-4 flex items-center space-x-3">
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className="px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2"
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
+                title={darkMode ? 'Modo Claro' : 'Modo Escuro'}
+              >
+                {darkMode ? <FaSun /> : <FaMoon />}
+              </button>
               <span className="text-sm">Olá, {gerente?.nome || 'Gerente'}</span>
               <button
                 onClick={handleLogout}
@@ -176,6 +195,16 @@ const Navbar = ({ setIsAuthenticated }) => {
             </Link>
             <div className="px-3 py-2 border-t border-white border-opacity-20 mt-2">
               <p className="text-sm mb-2">Olá, {gerente?.nome || 'Gerente'}</p>
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className="w-full mb-2 px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
+                title={darkMode ? 'Modo Claro' : 'Modo Escuro'}
+              >
+                {darkMode ? <FaSun /> : <FaMoon />} {darkMode ? 'Modo Claro' : 'Modo Escuro'}
+              </button>
               <button
                 onClick={handleLogout}
                 className="w-full px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2"
