@@ -97,19 +97,18 @@ const Feedback = ({ setIsAuthenticated }) => {
         }
       );
       
-      // Após salvar, oferecer opção de imprimir (apenas uma notificação)
-      setTimeout(() => {
-        if (vendasDiarias.length > 0) {
-          const confirmarImpressao = window.confirm(
-            'Observação salva com sucesso! Deseja imprimir o relatório completo para mostrar ao funcionário?'
-          );
-          if (confirmarImpressao) {
-            handleImprimir();
-          }
-        } else {
-          toast.success('Observação salva com sucesso! Quando houver vendas registradas, você poderá imprimir o relatório completo.');
-        }
-      }, 500);
+      // Mostrar notificação elegante
+      if (vendasDiarias.length > 0) {
+        toast.success(
+          'Observação salva com sucesso! Use o botão "Imprimir Relatório" para gerar o relatório completo.',
+          'Observação Salva'
+        );
+      } else {
+        toast.success(
+          'Observação salva com sucesso! Quando houver vendas registradas, você poderá imprimir o relatório completo.',
+          'Observação Salva'
+        );
+      }
     } catch (error) {
       console.error('Erro ao salvar observação:', error);
       toast.error('Erro ao salvar observação. Tente novamente.');
