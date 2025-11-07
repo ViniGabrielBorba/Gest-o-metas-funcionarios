@@ -161,6 +161,77 @@ const Feedback = ({ setIsAuthenticated }) => {
     // Usar a observação que já está no estado
     const observacaoGerenteTexto = observacaoGerente || '';
 
+    // Gerar gráfico SVG para impressão
+    const gerarGraficoSVG = () => {
+      if (chartData.length === 0) return '';
+      
+      const maxValor = Math.max(...chartData.map(d => d.valor), selectedFuncionario.metaIndividual || 0, 1);
+      const svgWidth = 800;
+      const svgHeight = 300;
+      const padding = 60;
+      const chartWidth = svgWidth - (padding * 2);
+      const chartHeight = svgHeight - (padding * 2);
+      const barWidth = Math.max(15, (chartWidth / chartData.length) - 3);
+      
+      let svg = `<svg width="${svgWidth}" height="${svgHeight}" style="background: white;">`;
+      
+      // Eixos
+      svg += `<line x1="${padding}" y1="${padding}" x2="${padding}" y2="${svgHeight - padding}" stroke="#169486" stroke-width="2"/>`;
+      svg += `<line x1="${padding}" y1="${svgHeight - padding}" x2="${svgWidth - padding}" y2="${svgHeight - padding}" stroke="#169486" stroke-width="2"/>`;
+      
+      // Linha de referência da meta (se aplicável)
+      if (selectedFuncionario.metaIndividual > 0) {
+        const metaPorDia = selectedFuncionario.metaIndividual / chartData.length;
+        const metaY = svgHeight - padding - ((metaPorDia / maxValor) * chartHeight);
+        if (metaY >= padding && metaY <= svgHeight - padding) {
+          svg += `<line x1="${padding}" y1="${metaY}" x2="${svgWidth - padding}" y2="${metaY}" stroke="#ef4444" stroke-width="2" stroke-dasharray="5,5" opacity="0.7"/>`;
+          svg += `<text x="${svgWidth - padding + 10}" y="${metaY + 4}" fill="#ef4444" font-size="11" font-weight="bold">Meta/dia: R$ ${metaPorDia.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</text>`;
+        }
+      }
+      
+      // Barras do gráfico
+      chartData.forEach((item, index) => {
+        const barHeight = (item.valor / maxValor) * chartHeight;
+        const x = padding + (index * (chartWidth / chartData.length));
+        const y = svgHeight - padding - barHeight;
+        const isMetaBatida = selectedFuncionario.metaIndividual > 0 && 
+                            item.valor >= (selectedFuncionario.metaIndividual / chartData.length);
+        
+        svg += `<rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" 
+                      fill="${isMetaBatida ? '#10b981' : '#169486'}" 
+                      stroke="#fff" stroke-width="1" opacity="0.9"/>`;
+        
+        // Valor acima da barra
+        if (barHeight > 20) {
+          svg += `<text x="${x + barWidth/2}" y="${y - 5}" 
+                        text-anchor="middle" font-size="10" fill="#333" font-weight="bold">
+                    R$ ${item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                  </text>`;
+        }
+        
+        // Dia abaixo da barra
+        svg += `<text x="${x + barWidth/2}" y="${svgHeight - padding + 15}" 
+                      text-anchor="middle" font-size="9" fill="#666">
+                  Dia ${item.dia}
+                </text>`;
+      });
+      
+      // Valores do eixo Y
+      for (let i = 0; i <= 5; i++) {
+        const valor = (maxValor / 5) * i;
+        const y = svgHeight - padding - (i * (chartHeight / 5));
+        svg += `<text x="${padding - 10}" y="${y + 4}" text-anchor="end" font-size="10" fill="#666">
+                  R$ ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                </text>`;
+        svg += `<line x1="${padding - 5}" y1="${y}" x2="${padding}" y2="${y}" stroke="#e5e7eb" stroke-width="1"/>`;
+      }
+      
+      svg += `</svg>`;
+      return svg;
+    };
+
+    const graficoSVG = gerarGraficoSVG();
+
     const janelaImpressao = window.open('', '_blank');
     janelaImpressao.document.write(`
       <!DOCTYPE html>
@@ -322,10 +393,18 @@ const Feedback = ({ setIsAuthenticated }) => {
           <div class="grafico-container">
             <h3>Gráfico de Vendas Diárias</h3>
             <p style="color: #666; font-size: 14px;">Evolução das vendas ao longo do mês</p>
-            <div style="height: 300px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-top: 20px;">
-              <p style="text-align: center; color: #666; padding-top: 120px;">
-                Gráfico disponível na versão digital do relatório
-              </p>
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-top: 20px; text-align: center;">
+              ${graficoSVG}
+              <div style="margin-top: 15px; padding: 10px; background: #f0fdfa; border-radius: 4px;">
+                <p style="margin: 0; font-size: 12px; color: #169486;">
+                  <span style="display: inline-block; width: 15px; height: 15px; background: #169486; margin-right: 5px; vertical-align: middle;"></span>
+                  Vendas Diárias
+                  ${selectedFuncionario.metaIndividual > 0 ? `
+                    <span style="display: inline-block; width: 15px; height: 15px; background: #ef4444; margin-left: 15px; margin-right: 5px; vertical-align: middle; border-top: 2px dashed #ef4444;"></span>
+                    Meta Individual (R$ ${selectedFuncionario.metaIndividual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})
+                  ` : ''}
+                </p>
+              </div>
             </div>
           </div>
           ` : ''}
