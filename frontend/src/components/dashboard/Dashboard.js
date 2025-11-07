@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import Navbar from '../layout/Navbar';
 import api from '../../utils/api';
 import {
@@ -9,7 +10,9 @@ import {
   FaBirthdayCake,
   FaStar,
   FaSearch,
-  FaFilter
+  FaFilter,
+  FaCalendar,
+  FaBell
 } from 'react-icons/fa';
 import {
   BarChart,
@@ -38,9 +41,11 @@ const Dashboard = ({ setIsAuthenticated }) => {
   const [anoComparacao, setAnoComparacao] = useState(new Date().getFullYear());
   const [dadosComparacao, setDadosComparacao] = useState(null);
   const [buscaFuncionario, setBuscaFuncionario] = useState('');
+  const [eventosAgenda, setEventosAgenda] = useState([]);
 
   useEffect(() => {
     fetchDashboardData();
+    fetchEventosAgenda();
   }, [selectedMonth, selectedYear]);
 
   useEffect(() => {
@@ -84,6 +89,67 @@ const Dashboard = ({ setIsAuthenticated }) => {
       setDadosComparacao(response.data);
     } catch (error) {
       console.error('Erro ao buscar dados de comparação:', error);
+    }
+  };
+
+  const fetchEventosAgenda = async () => {
+    try {
+      const hoje = new Date();
+      const mesAtual = hoje.getMonth() + 1;
+      const anoAtual = hoje.getFullYear();
+      
+      const response = await api.get(`/agenda/eventos?mes=${mesAtual}&ano=${anoAtual}`);
+      setEventosAgenda(response.data.eventos || []);
+    } catch (error) {
+      console.error('Erro ao buscar eventos da agenda:', error);
+    }
+  };
+
+  // Obter eventos de hoje
+  const getEventosHoje = () => {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    
+    return eventosAgenda.filter(evento => {
+      const dataEvento = new Date(evento.data);
+      dataEvento.setHours(0, 0, 0, 0);
+      return dataEvento.getTime() === hoje.getTime() && !evento.concluido;
+    }).slice(0, 5); // Máximo 5 eventos
+  };
+
+  // Obter próximos eventos (próximos 7 dias)
+  const getProximosEventos = () => {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const proximos7Dias = new Date(hoje);
+    proximos7Dias.setDate(proximos7Dias.getDate() + 7);
+    
+    return eventosAgenda.filter(evento => {
+      const dataEvento = new Date(evento.data);
+      dataEvento.setHours(0, 0, 0, 0);
+      return dataEvento > hoje && 
+             dataEvento <= proximos7Dias && 
+             !evento.concluido;
+    }).sort((a, b) => new Date(a.data) - new Date(b.data)).slice(0, 5); // Máximo 5 eventos
+  };
+
+  const getCorPrioridade = (prioridade) => {
+    switch (prioridade) {
+      case 'alta': return 'bg-red-500';
+      case 'media': return 'bg-yellow-500';
+      case 'baixa': return 'bg-green-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
+  const getCorTipo = (tipo) => {
+    switch (tipo) {
+      case 'tarefa': return '#169486';
+      case 'compromisso': return '#3b82f6';
+      case 'reuniao': return '#8b5cf6';
+      case 'lembrete': return '#f59e0b';
+      case 'meta': return '#ef4444';
+      default: return '#169486';
     }
   };
 
@@ -437,6 +503,127 @@ const Dashboard = ({ setIsAuthenticated }) => {
             </div>
           </div>
         )}
+
+        {/* Eventos da Agenda */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Eventos de Hoje */}
+          {getEventosHoje().length > 0 && (
+            <div className="card bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-300">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <FaCalendar className="text-3xl text-blue-600" />
+                  <h2 className="text-2xl font-bold text-gray-800">Eventos de Hoje</h2>
+                </div>
+                <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                  {getEventosHoje().length}
+                </span>
+              </div>
+              <div className="space-y-2">
+                {getEventosHoje().map(evento => (
+                  <div
+                    key={evento._id}
+                    className="bg-white p-3 rounded-lg border-l-4 shadow-sm hover:shadow-md transition-shadow"
+                    style={{ borderLeftColor: getCorTipo(evento.tipo) }}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <h3 className="font-semibold text-gray-800">{evento.titulo}</h3>
+                      <span className={`w-2 h-2 rounded-full ${getCorPrioridade(evento.prioridade)}`}></span>
+                    </div>
+                    {evento.descricao && (
+                      <p className="text-sm text-gray-600 mb-2">{evento.descricao}</p>
+                    )}
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="px-2 py-1 rounded" style={{
+                        backgroundColor: getCorTipo(evento.tipo) + '20',
+                        color: getCorTipo(evento.tipo)
+                      }}>
+                        {evento.tipo}
+                      </span>
+                      {evento.notificacao.ativo && (
+                        <span className="text-blue-600 flex items-center gap-1">
+                          <FaBell /> Lembrete ativo
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 pt-4 border-t border-blue-200">
+                <Link
+                  to="/agenda"
+                  className="text-blue-600 hover:text-blue-800 text-sm font-semibold flex items-center gap-2"
+                >
+                  Ver todos os eventos →
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Próximos Eventos */}
+          {getProximosEventos().length > 0 && (
+            <div className="card bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <FaBell className="text-3xl text-purple-600" />
+                  <h2 className="text-2xl font-bold text-gray-800">Próximos Eventos</h2>
+                </div>
+                <span className="bg-purple-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                  {getProximosEventos().length}
+                </span>
+              </div>
+              <div className="space-y-2">
+                {getProximosEventos().map(evento => {
+                  const dataEvento = new Date(evento.data);
+                  const hoje = new Date();
+                  hoje.setHours(0, 0, 0, 0);
+                  const diasRestantes = Math.ceil((dataEvento - hoje) / (1000 * 60 * 60 * 24));
+                  
+                  return (
+                    <div
+                      key={evento._id}
+                      className="bg-white p-3 rounded-lg border-l-4 shadow-sm hover:shadow-md transition-shadow"
+                      style={{ borderLeftColor: getCorTipo(evento.tipo) }}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <h3 className="font-semibold text-gray-800">{evento.titulo}</h3>
+                        <span className={`w-2 h-2 rounded-full ${getCorPrioridade(evento.prioridade)}`}></span>
+                      </div>
+                      {evento.descricao && (
+                        <p className="text-sm text-gray-600 mb-2">{evento.descricao}</p>
+                      )}
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-1 rounded" style={{
+                            backgroundColor: getCorTipo(evento.tipo) + '20',
+                            color: getCorTipo(evento.tipo)
+                          }}>
+                            {evento.tipo}
+                          </span>
+                          <span className="text-gray-500">
+                            {dataEvento.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                          </span>
+                        </div>
+                        <span className={`font-semibold ${
+                          diasRestantes <= 2 ? 'text-red-600' : 'text-gray-600'
+                        }`}>
+                          {diasRestantes === 1 ? 'Amanhã' : `Em ${diasRestantes} dias`}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-4 pt-4 border-t border-purple-200">
+                <Link
+                  to="/agenda"
+                  className="text-purple-600 hover:text-purple-800 text-sm font-semibold flex items-center gap-2"
+                >
+                  Ver todos os eventos →
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Previsão de Vendas */}
         {previsao && (
