@@ -119,6 +119,11 @@ const Login = ({ setIsAuthenticated }) => {
                 Cadastre-se
               </Link>
             </p>
+            <p className="text-sm text-gray-500 mt-4">
+              <Link to="/login-dono" className="hover:underline">
+                Sou dono da loja
+              </Link>
+            </p>
           </div>
         </div>
       </div>
