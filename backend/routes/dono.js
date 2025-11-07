@@ -680,25 +680,132 @@ router.get('/previsao', authDono, async (req, res) => {
         // O meta.totalVendido já inclui vendas diretas da loja + vendas dos funcionários
         const vendasAteHoje = meta ? (meta.totalVendido || 0) : 0;
         
-        // Calcular média diária
-        const mediaDiaria = diaAtual > 0 ? vendasAteHoje / diaAtual : 0;
+        // Buscar vendas diárias para cálculo estatístico
+        const funcionarios = await Funcionario.find({ gerenteId: gerente._id });
+        const vendasDiarias = [];
         
-        // Projeção para o resto do mês
-        const projecaoRestoMes = mediaDiaria * diasRestantes;
-        const projecaoTotal = vendasAteHoje + projecaoRestoMes;
+        // Vendas diárias da loja
+        if (meta && meta.vendasDiarias) {
+          meta.vendasDiarias.forEach(v => {
+            const vDate = new Date(v.data);
+            if (vDate.getUTCMonth() + 1 === mesAtual && vDate.getUTCFullYear() === anoAtual) {
+              vendasDiarias.push({ dia: vDate.getUTCDate(), valor: v.valor });
+            }
+          });
+        }
         
-        // Percentual de confiança baseado em dias decorridos
-        const percentualConfianca = diaAtual >= 15 ? 85 : diaAtual >= 7 ? 70 : 50;
+        // Vendas diárias dos funcionários
+        funcionarios.forEach(f => {
+          if (f.vendasDiarias) {
+            f.vendasDiarias.forEach(v => {
+              const vDate = new Date(v.data);
+              if (vDate.getUTCMonth() + 1 === mesAtual && vDate.getUTCFullYear() === anoAtual) {
+                vendasDiarias.push({ dia: vDate.getUTCDate(), valor: v.valor });
+              }
+            });
+          }
+        });
+        
+        // Agrupar vendas por dia
+        const vendasPorDia = {};
+        vendasDiarias.forEach(v => {
+          if (!vendasPorDia[v.dia]) {
+            vendasPorDia[v.dia] = 0;
+          }
+          vendasPorDia[v.dia] += v.valor;
+        });
+        
+        const vendasOrdenadas = Object.keys(vendasPorDia)
+          .map(dia => ({ dia: parseInt(dia), valor: vendasPorDia[dia] }))
+          .sort((a, b) => a.dia - b.dia);
+        
+        // Método 1: Média Simples
+        const mediaSimples = vendasOrdenadas.length > 0 
+          ? vendasOrdenadas.reduce((sum, v) => sum + v.valor, 0) / vendasOrdenadas.length 
+          : vendasAteHoje / diaAtual;
+        const previsaoSimples = vendasAteHoje + (mediaSimples * diasRestantes);
+        
+        // Método 2: Média Móvel (últimos 7 dias)
+        let mediaMovel = mediaSimples;
+        if (vendasOrdenadas.length >= 7) {
+          const ultimos7Dias = vendasOrdenadas.slice(-7);
+          mediaMovel = ultimos7Dias.reduce((sum, v) => sum + v.valor, 0) / 7;
+        }
+        const previsaoMediaMovel = vendasAteHoje + (mediaMovel * diasRestantes);
+        
+        // Método 3: Regressão Linear
+        let previsaoRegressao = previsaoSimples;
+        let tendencia = 0;
+        if (vendasOrdenadas.length >= 3) {
+          const n = vendasOrdenadas.length;
+          let somaX = 0, somaY = 0, somaXY = 0, somaX2 = 0;
+          
+          vendasOrdenadas.forEach((venda, index) => {
+            const x = index + 1;
+            const y = venda.valor;
+            somaX += x;
+            somaY += y;
+            somaXY += x * y;
+            somaX2 += x * x;
+          });
+          
+          const b = (n * somaXY - somaX * somaY) / (n * somaX2 - somaX * somaX);
+          const a = (somaY - b * somaX) / n;
+          tendencia = b;
+          
+          let projecaoRegressao = 0;
+          for (let i = 1; i <= diasRestantes; i++) {
+            const diaProjecao = n + i;
+            const valorProjecao = a + b * diaProjecao;
+            projecaoRegressao += Math.max(0, valorProjecao);
+          }
+          previsaoRegressao = vendasAteHoje + projecaoRegressao;
+        }
+        
+        // Combinar métodos
+        let projecaoTotal = previsaoSimples;
+        if (vendasOrdenadas.length >= 7) {
+          projecaoTotal = (
+            previsaoRegressao * 0.4 +
+            previsaoMediaMovel * 0.3 +
+            previsaoSimples * 0.3
+          );
+        } else if (vendasOrdenadas.length >= 3) {
+          projecaoTotal = (
+            previsaoRegressao * 0.5 +
+            previsaoSimples * 0.5
+          );
+        }
+        
+        // Calcular confiança
+        let confianca = 50;
+        if (vendasOrdenadas.length >= 15) confianca = 85;
+        else if (vendasOrdenadas.length >= 10) confianca = 75;
+        else if (vendasOrdenadas.length >= 7) confianca = 65;
+        else if (vendasOrdenadas.length >= 3) confianca = 55;
+        
+        // Ajustar confiança baseado na variabilidade
+        if (vendasOrdenadas.length >= 3) {
+          const valores = vendasOrdenadas.map(v => v.valor);
+          const media = valores.reduce((sum, v) => sum + v, 0) / valores.length;
+          const variacao = valores.reduce((sum, v) => sum + Math.pow(v - media, 2), 0) / valores.length;
+          const desvioPadrao = Math.sqrt(variacao);
+          const coeficienteVariacao = media > 0 ? (desvioPadrao / media) : 1;
+          
+          if (coeficienteVariacao < 0.2) confianca += 10;
+          else if (coeficienteVariacao > 0.5) confianca -= 10;
+        }
         
         return {
           loja: gerente.nomeLoja,
           vendasAteHoje,
-          mediaDiaria,
+          mediaDiaria: mediaMovel,
           diasRestantes,
           projecaoTotal,
           meta: meta ? meta.valor : 0,
-          percentualConfianca,
-          previsaoMeta: meta && meta.valor > 0 ? (projecaoTotal / meta.valor) * 100 : 0
+          percentualConfianca: Math.min(95, Math.max(30, confianca)),
+          previsaoMeta: meta && meta.valor > 0 ? (projecaoTotal / meta.valor) * 100 : 0,
+          tendencia: tendencia > 0 ? 'crescimento' : tendencia < 0 ? 'declinio' : 'estavel'
         };
       })
     );
