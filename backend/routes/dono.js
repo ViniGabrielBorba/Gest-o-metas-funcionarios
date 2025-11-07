@@ -145,7 +145,7 @@ router.get('/dashboard', authDono, async (req, res) => {
           ano: anoAtual
         });
 
-        // Vendas do mês dos funcionários
+        // Vendas do mês dos funcionários (para ranking e exibição)
         const vendasFuncionarios = funcionarios.map(func => {
           const venda = func.vendas.find(
             v => v.mes === mesAtual && v.ano === anoAtual
@@ -158,9 +158,10 @@ router.get('/dashboard', authDono, async (req, res) => {
           };
         });
 
+        // O meta.totalVendido já inclui vendas diretas da loja + vendas dos funcionários
+        // Não precisamos somar novamente para evitar duplicação
+        const totalGeral = meta ? (meta.totalVendido || 0) : 0;
         const totalVendasFuncionarios = vendasFuncionarios.reduce((sum, v) => sum + v.valor, 0);
-        const totalVendidoLoja = meta ? (meta.totalVendido || 0) : 0;
-        const totalGeral = totalVendasFuncionarios + totalVendidoLoja;
 
         // Top vendedores
         const topVendedores = [...vendasFuncionarios]
@@ -175,8 +176,8 @@ router.get('/dashboard', authDono, async (req, res) => {
           emailGerente: gerente.email,
           totalFuncionarios: funcionarios.length,
           metaMes: meta ? meta.valor : 0,
-          totalVendidoLoja,
-          totalVendasFuncionarios,
+          totalVendidoLoja: totalGeral, // Mantido para compatibilidade
+          totalVendasFuncionarios, // Apenas para referência (já incluído em totalGeral)
           totalGeral,
           metaBatida: meta ? totalGeral >= meta.valor : false,
           percentualAtingido: meta && meta.valor > 0 
@@ -360,17 +361,12 @@ router.get('/dashboard/comparacao', authDono, async (req, res) => {
         
         const funcionarios = await Funcionario.find({ gerenteId: gerente._id });
         
+        // O meta.totalVendido já inclui vendas diretas da loja + vendas dos funcionários
         // Vendas período 1
-        const vendas1 = funcionarios.reduce((sum, f) => {
-          const v = f.vendas.find(v => v.mes === parseInt(mes1) && v.ano === parseInt(ano1));
-          return sum + (v ? v.valor : 0);
-        }, 0) + (meta1 ? (meta1.totalVendido || 0) : 0);
+        const vendas1 = meta1 ? (meta1.totalVendido || 0) : 0;
         
         // Vendas período 2
-        const vendas2 = funcionarios.reduce((sum, f) => {
-          const v = f.vendas.find(v => v.mes === parseInt(mes2) && v.ano === parseInt(ano2));
-          return sum + (v ? v.valor : 0);
-        }, 0) + (meta2 ? (meta2.totalVendido || 0) : 0);
+        const vendas2 = meta2 ? (meta2.totalVendido || 0) : 0;
         
         const diferenca = vendas2 - vendas1;
         const percentualVariacao = vendas1 > 0 ? ((diferenca / vendas1) * 100) : 0;
@@ -406,12 +402,8 @@ router.get('/dashboard/evolucao', authDono, async (req, res) => {
         if (tipo === 'mensal') {
           for (let mes = 1; mes <= 12; mes++) {
             const meta = await Meta.findOne({ gerenteId: gerente._id, mes, ano: anoAtual });
-            const funcionarios = await Funcionario.find({ gerenteId: gerente._id });
-            const vendasFunc = funcionarios.reduce((sum, f) => {
-              const v = f.vendas.find(v => v.mes === mes && v.ano === anoAtual);
-              return sum + (v ? v.valor : 0);
-            }, 0);
-            const total = vendasFunc + (meta ? (meta.totalVendido || 0) : 0);
+            // O meta.totalVendido já inclui vendas diretas da loja + vendas dos funcionários
+            const total = meta ? (meta.totalVendido || 0) : 0;
             
             dados.push({
               periodo: `${mes}/${anoAtual}`,
@@ -432,12 +424,8 @@ router.get('/dashboard/evolucao', authDono, async (req, res) => {
             
             for (const mes of meses) {
               const meta = await Meta.findOne({ gerenteId: gerente._id, mes, ano: anoAtual });
-              const funcionarios = await Funcionario.find({ gerenteId: gerente._id });
-              const vendasFunc = funcionarios.reduce((sum, f) => {
-                const v = f.vendas.find(v => v.mes === mes && v.ano === anoAtual);
-                return sum + (v ? v.valor : 0);
-              }, 0);
-              totalVendas += vendasFunc + (meta ? (meta.totalVendido || 0) : 0);
+              // O meta.totalVendido já inclui vendas diretas da loja + vendas dos funcionários
+              totalVendas += meta ? (meta.totalVendido || 0) : 0;
               totalMeta += meta ? meta.valor : 0;
             }
             
@@ -475,14 +463,8 @@ router.get('/alertas', authDono, async (req, res) => {
 
     for (const gerente of gerentes) {
       const meta = await Meta.findOne({ gerenteId: gerente._id, mes: mesAtual, ano: anoAtual });
-      const funcionarios = await Funcionario.find({ gerenteId: gerente._id });
-      
-      const vendasFunc = funcionarios.reduce((sum, f) => {
-        const v = f.vendas.find(v => v.mes === mesAtual && v.ano === anoAtual);
-        return sum + (v ? v.valor : 0);
-      }, 0);
-      
-      const totalGeral = vendasFunc + (meta ? (meta.totalVendido || 0) : 0);
+      // O meta.totalVendido já inclui vendas diretas da loja + vendas dos funcionários
+      const totalGeral = meta ? (meta.totalVendido || 0) : 0;
       
       // Meta batida
       if (meta && totalGeral >= meta.valor) {
@@ -542,40 +524,37 @@ router.get('/metricas', authDono, async (req, res) => {
         const funcionarios = await Funcionario.find({ gerenteId: gerente._id });
         const meta = await Meta.findOne({ gerenteId: gerente._id, mes: mesAtual, ano: anoAtual });
         
-        const vendasFunc = funcionarios.reduce((sum, f) => {
-          const v = f.vendas.find(v => v.mes === mesAtual && v.ano === anoAtual);
-          return sum + (v ? v.valor : 0);
-        }, 0);
-        
-        const totalGeral = vendasFunc + (meta ? (meta.totalVendido || 0) : 0);
+        // O meta.totalVendido já inclui vendas diretas da loja + vendas dos funcionários
+        const totalGeral = meta ? (meta.totalVendido || 0) : 0;
         
         // Contar vendas diárias para calcular ticket médio
-        let totalVendasDiarias = 0;
+        // Contar apenas o número de transações (vendas diárias), não o valor total
         let quantidadeVendas = 0;
         
+        // Vendas diretas da loja
         if (meta && meta.vendasDiarias) {
           meta.vendasDiarias.forEach(v => {
             const vDate = new Date(v.data);
             if (vDate.getUTCMonth() + 1 === mesAtual && vDate.getUTCFullYear() === anoAtual) {
-              totalVendasDiarias += v.valor;
               quantidadeVendas++;
             }
           });
         }
         
+        // Vendas dos funcionários
         funcionarios.forEach(f => {
           if (f.vendasDiarias) {
             f.vendasDiarias.forEach(v => {
               const vDate = new Date(v.data);
               if (vDate.getUTCMonth() + 1 === mesAtual && vDate.getUTCFullYear() === anoAtual) {
-                totalVendasDiarias += v.valor;
                 quantidadeVendas++;
               }
             });
           }
         });
         
-        const ticketMedio = quantidadeVendas > 0 ? totalVendasDiarias / quantidadeVendas : 0;
+        // Ticket médio = total de vendas / quantidade de transações
+        const ticketMedio = quantidadeVendas > 0 ? totalGeral / quantidadeVendas : 0;
         const vendasPorFuncionario = funcionarios.length > 0 ? totalGeral / funcionarios.length : 0;
         const taxaConversao = meta && meta.valor > 0 ? (totalGeral / meta.valor) * 100 : 0;
         
@@ -688,15 +667,8 @@ router.get('/previsao', authDono, async (req, res) => {
     const previsoes = await Promise.all(
       gerentes.map(async (gerente) => {
         const meta = await Meta.findOne({ gerenteId: gerente._id, mes: mesAtual, ano: anoAtual });
-        const funcionarios = await Funcionario.find({ gerenteId: gerente._id });
-        
-        // Calcular vendas até hoje
-        const vendasFunc = funcionarios.reduce((sum, f) => {
-          const v = f.vendas.find(v => v.mes === mesAtual && v.ano === anoAtual);
-          return sum + (v ? v.valor : 0);
-        }, 0);
-        
-        const vendasAteHoje = vendasFunc + (meta ? (meta.totalVendido || 0) : 0);
+        // O meta.totalVendido já inclui vendas diretas da loja + vendas dos funcionários
+        const vendasAteHoje = meta ? (meta.totalVendido || 0) : 0;
         
         // Calcular média diária
         const mediaDiaria = diaAtual > 0 ? vendasAteHoje / diaAtual : 0;
