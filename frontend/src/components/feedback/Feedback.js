@@ -97,6 +97,20 @@ const Feedback = ({ setIsAuthenticated }) => {
         }
       );
       toast.success('Observação salva com sucesso!');
+      
+      // Após salvar, oferecer opção de imprimir
+      setTimeout(() => {
+        if (vendasDiarias.length > 0) {
+          const confirmarImpressao = window.confirm(
+            'Observação salva com sucesso! Deseja imprimir o relatório completo para mostrar ao funcionário?'
+          );
+          if (confirmarImpressao) {
+            handleImprimir();
+          }
+        } else {
+          toast.info('Observação salva! Quando houver vendas registradas, você poderá imprimir o relatório completo.');
+        }
+      }, 500);
     } catch (error) {
       console.error('Erro ao salvar observação:', error);
       toast.error('Erro ao salvar observação. Tente novamente.');
@@ -562,7 +576,7 @@ const Feedback = ({ setIsAuthenticated }) => {
                       rows="5"
                       placeholder="Digite suas observações sobre o desempenho do funcionário neste período..."
                     />
-                    <div className="flex justify-end">
+                    <div className="flex justify-end gap-3">
                       <button
                         onClick={handleSalvarObservacao}
                         disabled={salvandoObservacao}
@@ -570,10 +584,19 @@ const Feedback = ({ setIsAuthenticated }) => {
                       >
                         {salvandoObservacao ? 'Salvando...' : 'Salvar Observação'}
                       </button>
+                      {observacaoGerente && vendasDiarias.length > 0 && (
+                        <button
+                          onClick={handleImprimir}
+                          className="btn-secondary flex items-center gap-2"
+                        >
+                          <FaPrint /> Imprimir Relatório
+                        </button>
+                      )}
                     </div>
                     {observacaoGerente && (
                       <p className="text-sm text-gray-500">
                         💡 Sua observação será salva para o período de {meses[mes - 1]} de {ano}
+                        {vendasDiarias.length > 0 && ' - Após salvar, você poderá imprimir o relatório completo'}
                       </p>
                     )}
                   </div>
