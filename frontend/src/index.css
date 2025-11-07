@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* React Grid Layout Styles */
+@import 'react-grid-layout/css/styles.css';
+@import 'react-resizable/css/styles.css';
+
 @layer base {
   body {
     @apply bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 min-h-screen;

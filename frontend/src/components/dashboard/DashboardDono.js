@@ -22,7 +22,9 @@ import {
   FaSun,
   FaCog,
   FaPrint,
-  FaDownload
+  FaDownload,
+  FaArrowUp,
+  FaArrowDown
 } from 'react-icons/fa';
 import {
   BarChart,
@@ -40,7 +42,8 @@ import {
   Line,
   AreaChart,
   Area,
-  ComposedChart
+  ComposedChart,
+  Brush
 } from 'recharts';
 import { useToast } from '../../contexts/ToastContext';
 
@@ -66,6 +69,7 @@ const DashboardDono = ({ setIsAuthenticated }) => {
   const [agendaEventos, setAgendaEventos] = useState([]);
   const [showMensagemModal, setShowMensagemModal] = useState(false);
   const [darkMode, setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
+  const [dadosMesAnterior, setDadosMesAnterior] = useState(null);
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -75,6 +79,7 @@ const DashboardDono = ({ setIsAuthenticated }) => {
     fetchMetricas();
     fetchPrevisoes();
     fetchAgenda();
+    fetchDadosMesAnterior(); // Comparação automática com mês anterior
   }, [selectedMonth, selectedYear]);
 
   useEffect(() => {
@@ -137,6 +142,27 @@ const DashboardDono = ({ setIsAuthenticated }) => {
       setAgendaEventos(response.data.eventos || []);
     } catch (error) {
       console.error('Erro ao buscar agenda:', error);
+    }
+  };
+
+  // Buscar dados do mês anterior automaticamente
+  const fetchDadosMesAnterior = async () => {
+    try {
+      let mesAnterior = selectedMonth - 1;
+      let anoAnterior = selectedYear;
+      
+      if (mesAnterior < 1) {
+        mesAnterior = 12;
+        anoAnterior = selectedYear - 1;
+      }
+
+      const response = await api.get('/dono/dashboard', {
+        params: { mes: mesAnterior, ano: anoAnterior }
+      });
+      setDadosMesAnterior(response.data);
+    } catch (error) {
+      console.error('Erro ao buscar dados do mês anterior:', error);
+      setDadosMesAnterior(null);
     }
   };
 
@@ -469,6 +495,99 @@ const DashboardDono = ({ setIsAuthenticated }) => {
           </div>
         </div>
 
+        {/* Comparação Automática com Mês Anterior */}
+        {dadosMesAnterior && dashboardData && (
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-300'} rounded-xl shadow-lg p-6 mb-8 transition-colors`}>
+            <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4 flex items-center gap-2 transition-colors`}>
+              <FaChartLine /> Comparação com Mês Anterior
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className={`${darkMode ? 'bg-gray-700' : 'bg-white'} p-4 rounded-lg transition-colors`}>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-1 transition-colors`}>
+                  Vendas - Mês Anterior
+                </p>
+                <p className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
+                  R$ {dadosMesAnterior.resumo.totalVendidoGeral?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                </p>
+              </div>
+              <div className={`${darkMode ? 'bg-gray-700' : 'bg-white'} p-4 rounded-lg transition-colors`}>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-1 transition-colors`}>
+                  Vendas - Mês Atual
+                </p>
+                <p className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
+                  R$ {dashboardData.resumo.totalVendidoGeral?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                </p>
+              </div>
+              <div className={`${darkMode ? 'bg-gray-700' : 'bg-white'} p-4 rounded-lg transition-colors`}>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-1 transition-colors`}>
+                  Variação
+                </p>
+                {(() => {
+                  const vendasAnterior = dadosMesAnterior.resumo.totalVendidoGeral || 0;
+                  const vendasAtual = dashboardData.resumo.totalVendidoGeral || 0;
+                  const variacao = vendasAnterior > 0 ? ((vendasAtual - vendasAnterior) / vendasAnterior) * 100 : 0;
+                  const diferenca = vendasAtual - vendasAnterior;
+                  return (
+                    <>
+                      <p className={`text-xl font-bold ${variacao >= 0 ? 'text-green-600' : 'text-red-600'} flex items-center gap-2`}>
+                        {variacao >= 0 ? <FaArrowUp /> : <FaArrowDown />}
+                        {Math.abs(variacao).toFixed(1)}%
+                      </p>
+                      <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+                        {diferenca >= 0 ? '+' : ''}R$ {Math.abs(diferenca).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                    </>
+                  );
+                })()}
+              </div>
+              <div className={`${darkMode ? 'bg-gray-700' : 'bg-white'} p-4 rounded-lg transition-colors`}>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-1 transition-colors`}>
+                  Meta - Comparação
+                </p>
+                {(() => {
+                  const metaAnterior = dadosMesAnterior.resumo.totalMetaGeral || 0;
+                  const metaAtual = dashboardData.resumo.totalMetaGeral || 0;
+                  const variacaoMeta = metaAnterior > 0 ? ((metaAtual - metaAnterior) / metaAnterior) * 100 : 0;
+                  return (
+                    <p className={`text-xl font-bold ${variacaoMeta >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                      {variacaoMeta >= 0 ? '+' : ''}{variacaoMeta.toFixed(1)}%
+                    </p>
+                  );
+                })()}
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <ComposedChart data={[
+                {
+                  periodo: 'Mês Anterior',
+                  vendas: dadosMesAnterior.resumo.totalVendidoGeral || 0,
+                  meta: dadosMesAnterior.resumo.totalMetaGeral || 0
+                },
+                {
+                  periodo: 'Mês Atual',
+                  vendas: dashboardData.resumo.totalVendidoGeral || 0,
+                  meta: dashboardData.resumo.totalMetaGeral || 0
+                }
+              ]}>
+                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#4b5563' : '#e5e7eb'} />
+                <XAxis dataKey="periodo" stroke={darkMode ? '#9ca3af' : '#6b7280'} />
+                <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} />
+                <Tooltip 
+                  formatter={(value) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                  contentStyle={{
+                    backgroundColor: darkMode ? '#374151' : '#ffffff',
+                    border: darkMode ? '1px solid #4b5563' : '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="vendas" fill="#10b981" name="Vendas" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="meta" fill="#ef4444" name="Meta" radius={[8, 8, 0, 0]} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
         {/* Gráficos */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Gráfico de Barras - Lojas */}
@@ -476,15 +595,31 @@ const DashboardDono = ({ setIsAuthenticated }) => {
             <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4 transition-colors`}>
               Vendas por Loja
             </h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={dadosGraficoLojas}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="nome" />
-                <YAxis />
-                <Tooltip formatter={(value) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} />
+            <ResponsiveContainer width="100%" height={350}>
+              <BarChart data={dadosGraficoLojas} margin={{ top: 5, right: 30, left: 20, bottom: 60 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#4b5563' : '#e5e7eb'} />
+                <XAxis 
+                  dataKey="nome" 
+                  angle={-45} 
+                  textAnchor="end" 
+                  height={100}
+                  stroke={darkMode ? '#9ca3af' : '#6b7280'}
+                  tick={{ fill: darkMode ? '#9ca3af' : '#6b7280' }}
+                />
+                <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} />
+                <Tooltip 
+                  formatter={(value) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                  contentStyle={{
+                    backgroundColor: darkMode ? '#374151' : '#ffffff',
+                    border: darkMode ? '1px solid #4b5563' : '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}
+                  cursor={{ fill: 'rgba(0, 0, 0, 0.1)' }}
+                />
                 <Legend />
-                <Bar dataKey="vendido" fill="#169486" name="Vendido" />
-                <Bar dataKey="meta" fill="#94a3b8" name="Meta" />
+                <Brush dataKey="nome" height={30} stroke={darkMode ? '#4b5563' : '#8884d8'} />
+                <Bar dataKey="vendido" fill="#169486" name="Vendido" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="meta" fill="#94a3b8" name="Meta" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -505,12 +640,20 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
+                  animationDuration={300}
                 >
                   {dadosPizza.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} />
+                <Tooltip 
+                  formatter={(value) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                  contentStyle={{
+                    backgroundColor: darkMode ? '#374151' : '#ffffff',
+                    border: darkMode ? '1px solid #4b5563' : '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -631,6 +774,31 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                       <span>Confiança: {previsao.percentualConfianca}%</span>
                       <span>{previsao.diasRestantes} dias restantes</span>
                     </div>
+                    {previsao.tendencia && (
+                      <div className="mt-2 pt-2 border-t border-gray-300">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-600">Tendência:</span>
+                          <span className={`text-xs font-semibold ${
+                            previsao.tendencia === 'crescimento' ? 'text-green-600' :
+                            previsao.tendencia === 'declinio' ? 'text-red-600' : 'text-gray-600'
+                          }`}>
+                            {previsao.tendencia === 'crescimento' ? '📈 Crescimento' :
+                             previsao.tendencia === 'declinio' ? '📉 Declínio' : '➡️ Estável'}
+                          </span>
+                        </div>
+                        <div className="mt-1">
+                          <div className="w-full bg-gray-200 rounded-full h-1.5">
+                            <div 
+                              className={`h-1.5 rounded-full transition-all ${
+                                previsao.percentualConfianca >= 75 ? 'bg-green-500' : 
+                                previsao.percentualConfianca >= 60 ? 'bg-yellow-500' : 'bg-orange-500'
+                              }`}
+                              style={{ width: `${previsao.percentualConfianca}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

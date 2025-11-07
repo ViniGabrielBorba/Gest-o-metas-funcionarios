@@ -13,7 +13,9 @@ import {
   FaSearch,
   FaFilter,
   FaCalendar,
-  FaBell
+  FaBell,
+  FaArrowUp,
+  FaArrowDown
 } from 'react-icons/fa';
 import {
   BarChart,
@@ -28,7 +30,9 @@ import {
   Line,
   ComposedChart,
   Area,
-  AreaChart
+  AreaChart,
+  Brush,
+  ReferenceLine
 } from 'recharts';
 import { notifyMetaBatida, notifyTarefasPendentes } from '../../utils/notifications';
 import { useToast } from '../../contexts/ToastContext';
@@ -42,6 +46,11 @@ const Dashboard = ({ setIsAuthenticated }) => {
   const [mesComparacao, setMesComparacao] = useState(new Date().getMonth());
   const [anoComparacao, setAnoComparacao] = useState(new Date().getFullYear());
   const [dadosComparacao, setDadosComparacao] = useState(null);
+  const [dadosMesAnterior, setDadosMesAnterior] = useState(null);
+  const [layoutWidgets, setLayoutWidgets] = useState(() => {
+    const saved = localStorage.getItem('dashboardLayout');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [buscaFuncionario, setBuscaFuncionario] = useState('');
   const [eventosAgenda, setEventosAgenda] = useState([]);
   const [alertas, setAlertas] = useState([]);
@@ -53,6 +62,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
     fetchDashboardData();
     fetchEventosAgenda();
     fetchAlertas();
+    fetchDadosMesAnterior(); // Comparação automática com mês anterior
     // Resetar flag quando mudar o mês/ano para mostrar notificações novamente
     setAlertasJaNotificados(false);
   }, [selectedMonth, selectedYear]);
@@ -116,6 +126,27 @@ const Dashboard = ({ setIsAuthenticated }) => {
       setDadosComparacao(response.data);
     } catch (error) {
       console.error('Erro ao buscar dados de comparação:', error);
+    }
+  };
+
+  // Buscar dados do mês anterior automaticamente
+  const fetchDadosMesAnterior = async () => {
+    try {
+      let mesAnterior = selectedMonth - 1;
+      let anoAnterior = selectedYear;
+      
+      if (mesAnterior < 1) {
+        mesAnterior = 12;
+        anoAnterior = selectedYear - 1;
+      }
+
+      const response = await api.get('/dashboard', {
+        params: { mes: mesAnterior, ano: anoAnterior }
+      });
+      setDadosMesAnterior(response.data);
+    } catch (error) {
+      console.error('Erro ao buscar dados do mês anterior:', error);
+      setDadosMesAnterior(null);
     }
   };
 
@@ -192,7 +223,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
     }
   };
 
-  // Calcular previsão de vendas baseada na média diária
+  // Calcular previsão de vendas usando métodos estatísticos (média móvel e regressão linear)
   const calcularPrevisao = () => {
     if (!dashboardData || !dashboardData.vendasDiarias || dashboardData.vendasDiarias.length === 0) {
       return null;
@@ -203,20 +234,120 @@ const Dashboard = ({ setIsAuthenticated }) => {
     const diasNoMes = new Date(selectedYear, selectedMonth, 0).getDate();
     const diasRestantes = diasNoMes - diaAtual;
 
-    // Calcular média diária até agora
-    const totalAteAgora = dashboardData.vendasDiarias.reduce((sum, v) => sum + v.total, 0);
-    const mediaDiaria = totalAteAgora / dashboardData.vendasDiarias.length;
+    if (diasRestantes <= 0) {
+      return null; // Mês já terminou
+    }
 
-    // Previsão = total atual + (média diária * dias restantes)
-    const previsaoTotal = totalAteAgora + (mediaDiaria * diasRestantes);
+    // Ordenar vendas por dia
+    const vendasOrdenadas = [...dashboardData.vendasDiarias].sort((a, b) => a.dia - b.dia);
+    const totalAteAgora = vendasOrdenadas.reduce((sum, v) => sum + v.total, 0);
+    
+    // Método 1: Média Simples (método atual)
+    const mediaSimples = totalAteAgora / vendasOrdenadas.length;
+    const previsaoSimples = totalAteAgora + (mediaSimples * diasRestantes);
+
+    // Método 2: Média Móvel (últimos 7 dias, se houver)
+    let mediaMovel = mediaSimples;
+    if (vendasOrdenadas.length >= 7) {
+      const ultimos7Dias = vendasOrdenadas.slice(-7);
+      const somaUltimos7 = ultimos7Dias.reduce((sum, v) => sum + v.total, 0);
+      mediaMovel = somaUltimos7 / 7;
+    }
+    const previsaoMediaMovel = totalAteAgora + (mediaMovel * diasRestantes);
+
+    // Método 3: Regressão Linear Simples (tendência)
+    let tendencia = 0;
+    let previsaoRegressao = previsaoSimples;
+    if (vendasOrdenadas.length >= 3) {
+      // Calcular tendência usando regressão linear simples
+      const n = vendasOrdenadas.length;
+      let somaX = 0, somaY = 0, somaXY = 0, somaX2 = 0;
+      
+      vendasOrdenadas.forEach((venda, index) => {
+        const x = index + 1; // Dia sequencial
+        const y = venda.total;
+        somaX += x;
+        somaY += y;
+        somaXY += x * y;
+        somaX2 += x * x;
+      });
+
+      // Fórmula da regressão linear: y = a + b*x
+      const b = (n * somaXY - somaX * somaY) / (n * somaX2 - somaX * somaX);
+      const a = (somaY - b * somaX) / n;
+      
+      tendencia = b; // Inclinação da reta
+      
+      // Projetar para os próximos dias
+      let projecaoRegressao = 0;
+      for (let i = 1; i <= diasRestantes; i++) {
+        const diaProjecao = n + i;
+        const valorProjecao = a + b * diaProjecao;
+        projecaoRegressao += Math.max(0, valorProjecao); // Não permitir valores negativos
+      }
+      previsaoRegressao = totalAteAgora + projecaoRegressao;
+    }
+
+    // Método 4: Média ponderada (últimos dias têm mais peso)
+    let mediaPonderada = mediaSimples;
+    if (vendasOrdenadas.length >= 3) {
+      const pesos = vendasOrdenadas.map((_, index) => index + 1); // Peso aumenta com o tempo
+      const somaPonderada = vendasOrdenadas.reduce((sum, v, index) => sum + (v.total * pesos[index]), 0);
+      const somaPesos = pesos.reduce((sum, p) => sum + p, 0);
+      mediaPonderada = somaPonderada / somaPesos;
+    }
+    const previsaoPonderada = totalAteAgora + (mediaPonderada * diasRestantes);
+
+    // Combinar métodos: média ponderada dos resultados (50% regressão, 30% média móvel, 20% simples)
+    let previsaoFinal = previsaoSimples;
+    if (vendasOrdenadas.length >= 7) {
+      previsaoFinal = (
+        previsaoRegressao * 0.4 +
+        previsaoMediaMovel * 0.3 +
+        previsaoPonderada * 0.2 +
+        previsaoSimples * 0.1
+      );
+    } else if (vendasOrdenadas.length >= 3) {
+      previsaoFinal = (
+        previsaoRegressao * 0.5 +
+        previsaoPonderada * 0.3 +
+        previsaoSimples * 0.2
+      );
+    }
+
+    // Calcular confiança baseada em quantidade de dados e consistência
+    let confianca = 50;
+    if (vendasOrdenadas.length >= 15) confianca = 85;
+    else if (vendasOrdenadas.length >= 10) confianca = 75;
+    else if (vendasOrdenadas.length >= 7) confianca = 65;
+    else if (vendasOrdenadas.length >= 3) confianca = 55;
+
+    // Ajustar confiança baseado na variabilidade dos dados
+    if (vendasOrdenadas.length >= 3) {
+      const valores = vendasOrdenadas.map(v => v.total);
+      const media = valores.reduce((sum, v) => sum + v, 0) / valores.length;
+      const variacao = valores.reduce((sum, v) => sum + Math.pow(v - media, 2), 0) / valores.length;
+      const desvioPadrao = Math.sqrt(variacao);
+      const coeficienteVariacao = media > 0 ? (desvioPadrao / media) : 1;
+      
+      // Menor variabilidade = maior confiança
+      if (coeficienteVariacao < 0.2) confianca += 10;
+      else if (coeficienteVariacao > 0.5) confianca -= 10;
+    }
 
     return {
       totalAteAgora,
-      mediaDiaria,
+      mediaDiaria: mediaMovel,
       diasRestantes,
-      previsaoTotal,
+      previsaoTotal: previsaoFinal,
+      previsaoSimples,
+      previsaoMediaMovel,
+      previsaoRegressao,
+      previsaoPonderada,
+      tendencia,
+      confianca: Math.min(95, Math.max(30, confianca)),
       percentualPrevisao: dashboardData.resumo.metaMes > 0 
-        ? (previsaoTotal / dashboardData.resumo.metaMes) * 100 
+        ? (previsaoFinal / dashboardData.resumo.metaMes) * 100 
         : 0
     };
   };
@@ -839,7 +970,123 @@ const Dashboard = ({ setIsAuthenticated }) => {
                   {previsao.percentualPrevisao.toFixed(1)}%
                 </p>
               </div>
+              {previsao.confianca && (
+                <div className={`${darkMode ? 'bg-gray-700' : 'bg-white'} p-4 rounded-lg transition-colors md:col-span-4`}>
+                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-2 transition-colors`}>
+                    Confiança da Previsão: {previsao.confianca.toFixed(0)}%
+                  </p>
+                  <div className={`w-full ${darkMode ? 'bg-gray-600' : 'bg-gray-200'} rounded-full h-2`}>
+                    <div 
+                      className={`h-2 rounded-full transition-all ${
+                        previsao.confianca >= 75 ? 'bg-green-500' : 
+                        previsao.confianca >= 60 ? 'bg-yellow-500' : 'bg-orange-500'
+                      }`}
+                      style={{ width: `${previsao.confianca}%` }}
+                    ></div>
+                  </div>
+                  {previsao.tendencia && (
+                    <p className={`text-xs mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'} transition-colors`}>
+                      Tendência: {previsao.tendencia > 0 ? '📈 Crescimento' : previsao.tendencia < 0 ? '📉 Declínio' : '➡️ Estável'}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
+          </div>
+        )}
+
+        {/* Comparação Automática com Mês Anterior */}
+        {dadosMesAnterior && dashboardData && (
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-300'} rounded-xl shadow-lg p-6 mb-8 transition-colors`}>
+            <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4 flex items-center gap-2 transition-colors`}>
+              <FaChartLine /> Comparação com Mês Anterior
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className={`${darkMode ? 'bg-gray-700' : 'bg-white'} p-4 rounded-lg transition-colors`}>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-1 transition-colors`}>
+                  Vendas - Mês Anterior
+                </p>
+                <p className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
+                  R$ {dadosMesAnterior.resumo.totalVendidoGeral?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || 
+                      dadosMesAnterior.resumo.totalVendidoLoja?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                </p>
+              </div>
+              <div className={`${darkMode ? 'bg-gray-700' : 'bg-white'} p-4 rounded-lg transition-colors`}>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-1 transition-colors`}>
+                  Vendas - Mês Atual
+                </p>
+                <p className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
+                  R$ {dashboardData.resumo.totalVendidoGeral?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || 
+                      dashboardData.resumo.totalVendidoLoja?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                </p>
+              </div>
+              <div className={`${darkMode ? 'bg-gray-700' : 'bg-white'} p-4 rounded-lg transition-colors`}>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-1 transition-colors`}>
+                  Variação
+                </p>
+                {(() => {
+                  const vendasAnterior = dadosMesAnterior.resumo.totalVendidoGeral || dadosMesAnterior.resumo.totalVendidoLoja || 0;
+                  const vendasAtual = dashboardData.resumo.totalVendidoGeral || dashboardData.resumo.totalVendidoLoja || 0;
+                  const variacao = vendasAnterior > 0 ? ((vendasAtual - vendasAnterior) / vendasAnterior) * 100 : 0;
+                  const diferenca = vendasAtual - vendasAnterior;
+                  return (
+                    <>
+                      <p className={`text-xl font-bold ${variacao >= 0 ? 'text-green-600' : 'text-red-600'} flex items-center gap-2`}>
+                        {variacao >= 0 ? <FaArrowUp /> : <FaArrowDown />}
+                        {Math.abs(variacao).toFixed(1)}%
+                      </p>
+                      <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+                        {diferenca >= 0 ? '+' : ''}R$ {Math.abs(diferenca).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                    </>
+                  );
+                })()}
+              </div>
+              <div className={`${darkMode ? 'bg-gray-700' : 'bg-white'} p-4 rounded-lg transition-colors`}>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-1 transition-colors`}>
+                  Meta - Comparação
+                </p>
+                {(() => {
+                  const metaAnterior = dadosMesAnterior.resumo.metaMes || 0;
+                  const metaAtual = dashboardData.resumo.metaMes || 0;
+                  const variacaoMeta = metaAnterior > 0 ? ((metaAtual - metaAnterior) / metaAnterior) * 100 : 0;
+                  return (
+                    <p className={`text-xl font-bold ${variacaoMeta >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                      {variacaoMeta >= 0 ? '+' : ''}{variacaoMeta.toFixed(1)}%
+                    </p>
+                  );
+                })()}
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <ComposedChart data={[
+                {
+                  periodo: 'Mês Anterior',
+                  vendas: dadosMesAnterior.resumo.totalVendidoGeral || dadosMesAnterior.resumo.totalVendidoLoja || 0,
+                  meta: dadosMesAnterior.resumo.metaMes || 0
+                },
+                {
+                  periodo: 'Mês Atual',
+                  vendas: dashboardData.resumo.totalVendidoGeral || dashboardData.resumo.totalVendidoLoja || 0,
+                  meta: dashboardData.resumo.metaMes || 0
+                }
+              ]}>
+                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#4b5563' : '#e5e7eb'} />
+                <XAxis dataKey="periodo" stroke={darkMode ? '#9ca3af' : '#6b7280'} />
+                <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} />
+                <Tooltip 
+                  formatter={(value) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                  contentStyle={{
+                    backgroundColor: darkMode ? '#374151' : '#ffffff',
+                    border: darkMode ? '1px solid #4b5563' : '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="vendas" fill="#10b981" name="Vendas" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="meta" fill="#ef4444" name="Meta" radius={[8, 8, 0, 0]} />
+              </ComposedChart>
+            </ResponsiveContainer>
           </div>
         )}
 
@@ -871,14 +1118,30 @@ const Dashboard = ({ setIsAuthenticated }) => {
               Vendas do Mês vs Meta Individual
             </h2>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartDataMes}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                <YAxis />
-                <Tooltip formatter={(value) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} />
+              <BarChart data={chartDataMes} margin={{ top: 5, right: 30, left: 20, bottom: 80 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#4b5563' : '#e5e7eb'} />
+                <XAxis 
+                  dataKey="name" 
+                  angle={-45} 
+                  textAnchor="end" 
+                  height={100}
+                  stroke={darkMode ? '#9ca3af' : '#6b7280'}
+                  tick={{ fill: darkMode ? '#9ca3af' : '#6b7280' }}
+                />
+                <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} />
+                <Tooltip 
+                  formatter={(value) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                  contentStyle={{
+                    backgroundColor: darkMode ? '#374151' : '#ffffff',
+                    border: darkMode ? '1px solid #4b5563' : '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}
+                  cursor={{ fill: 'rgba(0, 0, 0, 0.1)' }}
+                />
                 <Legend />
-                <Bar dataKey="vendas" fill="#ef4444" name="Vendas" />
-                <Bar dataKey="meta" fill="#f97316" name="Meta Individual" />
+                <Brush dataKey="name" height={30} stroke={darkMode ? '#4b5563' : '#8884d8'} />
+                <Bar dataKey="vendas" fill="#ef4444" name="Vendas" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="meta" fill="#f97316" name="Meta Individual" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -890,13 +1153,21 @@ const Dashboard = ({ setIsAuthenticated }) => {
             </h2>
             {chartDataTopMes.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={chartDataTopMes} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={100} />
-                  <Tooltip formatter={(value) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} />
+                <BarChart data={chartDataTopMes} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#4b5563' : '#e5e7eb'} />
+                  <XAxis type="number" stroke={darkMode ? '#9ca3af' : '#6b7280'} />
+                  <YAxis dataKey="name" type="category" width={100} stroke={darkMode ? '#9ca3af' : '#6b7280'} />
+                  <Tooltip 
+                    formatter={(value) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                    contentStyle={{
+                      backgroundColor: darkMode ? '#374151' : '#ffffff',
+                      border: darkMode ? '1px solid #4b5563' : '1px solid #e5e7eb',
+                      borderRadius: '8px'
+                    }}
+                    cursor={{ fill: 'rgba(0, 0, 0, 0.1)' }}
+                  />
                   <Legend />
-                  <Bar dataKey="vendas" fill="#eab308" name="Vendas do Mês" />
+                  <Bar dataKey="vendas" fill="#eab308" name="Vendas do Mês" radius={[0, 8, 8, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -1004,29 +1275,46 @@ const Dashboard = ({ setIsAuthenticated }) => {
             <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4 transition-colors`}>
               Vendas Diárias do Mês
             </h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartDataDiarias}>
-                <CartesianGrid strokeDasharray="3 3" />
+            <ResponsiveContainer width="100%" height={400}>
+              <LineChart data={chartDataDiarias} margin={{ top: 5, right: 30, left: 20, bottom: 60 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#4b5563' : '#e5e7eb'} />
                 <XAxis 
                   dataKey="dia" 
                   label={{ value: 'Dia do Mês', position: 'insideBottom', offset: -5 }}
+                  stroke={darkMode ? '#9ca3af' : '#6b7280'}
+                  tick={{ fill: darkMode ? '#9ca3af' : '#6b7280' }}
                 />
                 <YAxis 
                   label={{ value: 'Valor (R$)', angle: -90, position: 'insideLeft' }}
+                  stroke={darkMode ? '#9ca3af' : '#6b7280'}
                 />
                 <Tooltip 
                   formatter={(value) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
                   labelFormatter={(dia) => `Dia ${dia}`}
+                  contentStyle={{
+                    backgroundColor: darkMode ? '#374151' : '#ffffff',
+                    border: darkMode ? '1px solid #4b5563' : '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    padding: '10px'
+                  }}
+                  cursor={{ stroke: '#ef4444', strokeWidth: 2, strokeDasharray: '5 5' }}
                 />
                 <Legend />
+                <Brush 
+                  dataKey="dia" 
+                  height={30} 
+                  stroke={darkMode ? '#4b5563' : '#8884d8'}
+                  fill={darkMode ? '#374151' : '#f3f4f6'}
+                />
                 <Line 
                   type="monotone" 
                   dataKey="total" 
                   stroke="#ef4444" 
                   strokeWidth={3}
                   name="Total de Vendas (R$)"
-                  dot={{ r: 5 }}
-                  activeDot={{ r: 8 }}
+                  dot={{ r: 5, fill: '#ef4444', strokeWidth: 2, stroke: '#fff' }}
+                  activeDot={{ r: 8, fill: '#ef4444', strokeWidth: 2, stroke: '#fff' }}
+                  animationDuration={300}
                 />
               </LineChart>
             </ResponsiveContainer>
