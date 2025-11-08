@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: flowgest-backend
+    env: node
+    buildCommand: npm install
+    startCommand: node server-start.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+

@@ -1,5 +1,4 @@
 const ExcelJS = require('exceljs');
-const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const logger = require('./logger');
 
 /**
@@ -44,21 +43,24 @@ const exportToExcel = async (data, headers, filename = 'export.xlsx') => {
 };
 
 /**
- * Exportar dados para CSV
+ * Exportar dados para CSV (geração manual - mais leve)
  */
-const exportToCSV = async (data, headers, filename = 'export.csv') => {
+const exportToCSV = (data, headers) => {
   try {
-    const csvWriter = createCsvWriter({
-      path: filename,
-      header: headers.map(header => ({
-        id: header.key,
-        title: header.label
-      }))
+    // Gerar CSV manualmente (não precisa de biblioteca pesada)
+    const csvHeaders = headers.map(h => h.label || h.key).join(',');
+    const csvRows = data.map(row => {
+      return headers.map(h => {
+        const value = row[h.key];
+        // Escapar valores que contêm vírgula ou aspas
+        if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return value !== null && value !== undefined ? value : '';
+      }).join(',');
     });
-
-    await csvWriter.writeRecords(data);
-    logger.info('CSV exportado com sucesso', { filename, records: data.length });
-    return filename;
+    
+    return csvHeaders + '\n' + csvRows.join('\n');
   } catch (error) {
     logger.error('Erro ao exportar para CSV', { error: error.message });
     throw error;
