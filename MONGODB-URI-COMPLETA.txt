@@ -1,0 +1,40 @@
+================================================================================
+MONGODB_URI COMPLETA - COPIAR E COLAR
+================================================================================
+
+mongodb+srv://gerente:uPAO9DrzGPKU1DDq@cluster0.gbemu6i.mongodb.net/gestao-metas?retryWrites=true&w=majority
+
+================================================================================
+COMO USAR:
+================================================================================
+
+1. Railway:
+   - Settings → Variables
+   - Name: MONGODB_URI
+   - Value: [cole a URI acima]
+   - Add → Save
+
+2. Render:
+   - Environment → Add Environment Variable
+   - Key: MONGODB_URI
+   - Value: [cole a URI acima]
+   - Save Changes
+
+3. Fly.io:
+   fly secrets set MONGODB_URI="mongodb+srv://gerente:uPAO9DrzGPKU1DDq@cluster0.gbemu6i.mongodb.net/gestao-metas?retryWrites=true&w=majority"
+
+================================================================================
+IMPORTANTE:
+================================================================================
+
+1. Libere o acesso de rede no MongoDB Atlas:
+   - Network Access → Add IP Address → Allow Access from Anywhere
+
+2. Após adicionar, faça deploy novamente
+
+3. Verifique se funcionou:
+   - GET https://seu-backend.railway.app/health
+   - Deve retornar: { "database": "connected" }
+
+================================================================================
+
