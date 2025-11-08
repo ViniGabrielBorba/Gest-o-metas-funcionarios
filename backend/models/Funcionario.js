@@ -93,8 +93,12 @@ const funcionarioSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Índice para busca eficiente
+// Índices para busca eficiente
 funcionarioSchema.index({ gerenteId: 1 });
+funcionarioSchema.index({ gerenteId: 1, nome: 1 }); // Para buscas por nome
+funcionarioSchema.index({ gerenteId: 1, funcao: 1 }); // Para filtros por função
+funcionarioSchema.index({ 'vendasDiarias.data': 1 }); // Para buscas por data de venda
+funcionarioSchema.index({ dataAniversario: 1 }); // Para aniversariantes
 
 module.exports = mongoose.model('Funcionario', funcionarioSchema);
 

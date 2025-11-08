@@ -2,17 +2,47 @@ const express = require('express');
 const Funcionario = require('../models/Funcionario');
 const Meta = require('../models/Meta');
 const auth = require('../middleware/auth');
+const { getPaginationOptions, createPaginationResponse } = require('../utils/pagination');
+const { validate, funcionarioSchema, vendaDiariaSchema } = require('../utils/validators');
+const logger = require('../utils/logger');
 const router = express.Router();
 
 // Todos os endpoints precisam de autenticação
 router.use(auth);
 
-// Listar todos os funcionários da loja do gerente
+// Listar todos os funcionários da loja do gerente (com paginação)
 router.get('/', async (req, res) => {
   try {
-    const funcionarios = await Funcionario.find({ gerenteId: req.user.id });
-    res.json(funcionarios);
+    const pagination = getPaginationOptions(req.query, { defaultPageSize: 20, maxPageSize: 100 });
+    const { search, funcao } = req.query;
+
+    // Construir query
+    const query = { gerenteId: req.user.id };
+    
+    if (search) {
+      query.nome = { $regex: search, $options: 'i' };
+    }
+    
+    if (funcao) {
+      query.funcao = funcao;
+    }
+
+    // Buscar funcionários com paginação
+    const [funcionarios, total] = await Promise.all([
+      Funcionario.find(query)
+        .skip(pagination.skip)
+        .limit(pagination.limit)
+        .sort({ nome: 1 }),
+      Funcionario.countDocuments(query)
+    ]);
+
+    const response = createPaginationResponse(funcionarios, total, pagination);
+    res.json(response);
   } catch (error) {
+    logger.error('Erro ao listar funcionários', {
+      error: error.message,
+      userId: req.user.id
+    });
     res.status(500).json({ message: error.message });
   }
 });
@@ -36,7 +66,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Criar novo funcionário
-router.post('/', async (req, res) => {
+router.post('/', validate(funcionarioSchema), async (req, res) => {
   try {
     const { nome, sexo, idade, funcao, dataAniversario, metaIndividual } = req.body;
 
@@ -51,8 +81,17 @@ router.post('/', async (req, res) => {
       vendas: []
     });
 
+    logger.audit('Funcionário criado', req.user.id, {
+      funcionarioId: funcionario._id,
+      nome: funcionario.nome
+    });
+
     res.status(201).json(funcionario);
   } catch (error) {
+    logger.error('Erro ao criar funcionário', {
+      error: error.message,
+      userId: req.user.id
+    });
     res.status(500).json({ message: error.message });
   }
 });

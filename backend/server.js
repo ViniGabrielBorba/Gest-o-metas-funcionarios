@@ -1,9 +1,35 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
+const morgan = require('morgan');
 require('dotenv').config();
 
+const logger = require('./utils/logger');
+const { apiLimiter } = require('./utils/rateLimiter');
+
 const app = express();
+
+// Segurança - Helmet
+app.use(helmet({
+  contentSecurityPolicy: false, // Desabilitar CSP para permitir gráficos
+  crossOriginEmbedderPolicy: false
+}));
+
+// Compressão de respostas
+app.use(compression());
+
+// Logging HTTP
+if (process.env.NODE_ENV === 'production') {
+  app.use(morgan('combined', {
+    stream: {
+      write: (message) => logger.info(message.trim())
+    }
+  }));
+} else {
+  app.use(morgan('dev'));
+}
 
 // Middleware CORS - normalizar URL removendo barra final
 const allowedOrigins = process.env.FRONTEND_URL 
@@ -30,64 +56,69 @@ app.use(cors({
   },
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Rate limiting geral
+app.use('/api', apiLimiter);
 
 // Conectar ao MongoDB
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/gestao-metas';
 
+// Verificar configurações críticas
+if (!process.env.JWT_SECRET) {
+  logger.error('JWT_SECRET não está configurado! Sistema não funcionará corretamente.');
+  logger.error('Configure a variável JWT_SECRET nas variáveis de ambiente.');
+  process.exit(1);
+}
+
 // Debug: mostrar se a variável está configurada (sem mostrar senha completa)
-console.log('🔍 Verificando configuração MongoDB...');
+logger.info('Verificando configuração MongoDB...');
 if (process.env.MONGODB_URI) {
   const uriParts = MONGODB_URI.split('@');
   if (uriParts.length > 1) {
-    console.log(`✅ MONGODB_URI encontrada: mongodb+srv://***@${uriParts[1]}`);
+    logger.info(`MONGODB_URI encontrada: mongodb+srv://***@${uriParts[1]}`);
   } else {
-    console.log(`✅ MONGODB_URI encontrada: ${MONGODB_URI.substring(0, 20)}...`);
+    logger.info(`MONGODB_URI encontrada: ${MONGODB_URI.substring(0, 20)}...`);
   }
 } else {
-  console.error('❌ MONGODB_URI não encontrada! Usando padrão localhost');
-  console.error('💡 Configure a variável MONGODB_URI no Railway:');
-  console.error('   Settings → Variables → Add MONGODB_URI');
+  logger.warn('MONGODB_URI não encontrada! Usando padrão localhost');
+  logger.warn('Configure a variável MONGODB_URI nas variáveis de ambiente');
 }
 
 // Conectar ao MongoDB (com retry automático)
 mongoose.connect(MONGODB_URI, {
-  serverSelectionTimeoutMS: 30000, // Aumentado para 30 segundos
+  serverSelectionTimeoutMS: 30000,
   socketTimeoutMS: 45000,
   connectTimeoutMS: 30000,
 })
 .then(() => {
-  console.log('✅ MongoDB conectado com sucesso!');
-  console.log(`📦 Database: ${mongoose.connection.name}`);
+  logger.info('MongoDB conectado com sucesso!', { database: mongoose.connection.name });
 })
 .catch(err => {
-  console.error('\n❌ ERRO: Não foi possível conectar ao MongoDB!');
-  console.error('💡 Possíveis soluções:');
-  if (!process.env.MONGODB_URI) {
-    console.error('   ⚠️  VARIÁVEL MONGODB_URI NÃO CONFIGURADA!');
-    console.error('   1. No Render: Settings → Environment Variables → Add Variable');
-    console.error('   2. Name: MONGODB_URI');
-    console.error('   3. Value: mongodb+srv://usuario:senha@cluster0.xxxxx.mongodb.net/gestao-metas');
-  } else {
-    console.error('   1. Verifique se a string de conexão está correta');
-    console.error('   2. Verifique Network Access no MongoDB Atlas (deve permitir 0.0.0.0/0)');
-    console.error('   3. Verifique usuário e senha do MongoDB Atlas');
-  }
-  console.error('\nDetalhes do erro:', err.message);
-  console.error('⚠️  Servidor continuará rodando, mas funcionalidades do banco não estarão disponíveis.');
-  console.error('💡 Tente novamente em alguns segundos - MongoDB pode estar respondendo lentamente.');
+  logger.error('Erro ao conectar ao MongoDB!', { error: err.message });
+  logger.error('Possíveis soluções:', {
+    mongodbUri: !process.env.MONGODB_URI ? 'Variável não configurada' : 'Configurada',
+    message: 'Verifique Network Access no MongoDB Atlas'
+  });
   
   // Não fazer exit(1) - permite que o servidor inicie mesmo sem MongoDB
   // O servidor pode tentar reconectar depois
 });
 
-// Middleware de log para debug (apenas em desenvolvimento)
-if (process.env.NODE_ENV !== 'production') {
-  app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-    next();
-  });
-}
+// Health check endpoint
+app.get('/health', (req, res) => {
+  const health = {
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    environment: process.env.NODE_ENV || 'development'
+  };
+  
+  const statusCode = health.database === 'connected' ? 200 : 503;
+  res.status(statusCode).json(health);
+});
 
 // Rotas
 app.use('/api/auth', require('./routes/auth'));
@@ -97,27 +128,45 @@ app.use('/api/metas', require('./routes/metas'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/estoque', require('./routes/estoque'));
 app.use('/api/agenda', require('./routes/agenda'));
-
-// Middleware de tratamento de erros global (DEVE vir DEPOIS das rotas)
-app.use((err, req, res, next) => {
-  console.error('Erro capturado:', err);
-  res.status(500).json({ 
-    message: 'Erro interno do servidor',
-    error: process.env.NODE_ENV !== 'production' ? err.message : undefined,
-    stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined
-  });
-});
+app.use('/api/backup', require('./routes/backup'));
+app.use('/api/export', require('./routes/export'));
 
 // Rota de teste
 app.get('/api/test', (req, res) => {
   res.json({ message: 'API funcionando!' });
 });
 
+// Middleware de tratamento de erros global (DEVE vir DEPOIS das rotas)
+app.use((err, req, res, next) => {
+  logger.error('Erro capturado no middleware de erro', {
+    error: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method,
+    ip: req.ip
+  });
+  
+  res.status(err.status || 500).json({ 
+    message: err.message || 'Erro interno do servidor',
+    error: process.env.NODE_ENV !== 'production' ? err.message : undefined,
+    stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined
+  });
+});
+
 const PORT = process.env.PORT || 5000;
 const HOST = process.env.HOST || '0.0.0.0';
 
-app.listen(PORT, HOST, () => {
-  console.log(`🚀 Servidor rodando em http://${HOST}:${PORT}`);
-  console.log(`🌐 Acessível externamente na porta ${PORT}`);
-});
+// Iniciar servidor apenas se não estiver em modo de teste
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, HOST, () => {
+    logger.info(`Servidor rodando em http://${HOST}:${PORT}`, {
+      port: PORT,
+      host: HOST,
+      environment: process.env.NODE_ENV || 'development'
+    });
+  });
+}
+
+// Exportar app para testes
+module.exports = app;
 

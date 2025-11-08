@@ -45,8 +45,11 @@ const metaSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Índice único para uma meta por loja/mês/ano
+// Índices para busca eficiente
 metaSchema.index({ gerenteId: 1, mes: 1, ano: 1 }, { unique: true });
+metaSchema.index({ gerenteId: 1, ano: 1 }); // Para listar metas por ano
+metaSchema.index({ 'vendasDiarias.data': 1 }); // Para buscas por data de venda
+metaSchema.index({ createdAt: -1 }); // Para ordenação por data de criação
 
 module.exports = mongoose.model('Meta', metaSchema);
 

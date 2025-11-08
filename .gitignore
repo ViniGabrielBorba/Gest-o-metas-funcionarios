@@ -1,10 +1,37 @@
 node_modules/
 frontend/node_modules/
 .env
+.env.test
 .DS_Store
 *.log
 dist/
 build/
+
+# Logs
+backend/logs/
+logs/
+*.log
+
+# Backups
+backend/backups/
+backups/
+
+# Testes
+coverage/
+.nyc_output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+
 
 
 

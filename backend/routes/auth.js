@@ -1,37 +1,70 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const Gerente = require('../models/Gerente');
 const router = express.Router();
 
+const { validate, cadastroGerenteSchema, loginSchema, recuperarSenhaSchema, resetSenhaSchema } = require('../utils/validators');
+const { authLimiter, passwordResetLimiter } = require('../utils/rateLimiter');
+const { sendPasswordResetEmail, sendVerificationEmail } = require('../utils/email');
+const logger = require('../utils/logger');
+const auth = require('../middleware/auth');
+
 // Gerar token JWT
 const generateToken = (id, tipo = 'gerente') => {
-  return jwt.sign({ id, tipo }, process.env.JWT_SECRET || 'secret_key_gestao_metas', {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET não está configurado');
+  }
+  return jwt.sign({ id, tipo }, process.env.JWT_SECRET, {
     expiresIn: '30d'
   });
 };
 
 // Cadastro de gerente
-router.post('/cadastro', async (req, res) => {
+router.post('/cadastro', authLimiter, validate(cadastroGerenteSchema), async (req, res) => {
   try {
     const { nome, email, senha, nomeLoja, cnpj, telefone } = req.body;
 
     // Verificar se email já existe
-    const gerenteExistente = await Gerente.findOne({ email });
+    const gerenteExistente = await Gerente.findOne({ email: email.toLowerCase().trim() });
     if (gerenteExistente) {
+      logger.warn('Tentativa de cadastro com email já existente', { email });
       return res.status(400).json({ message: 'Email já cadastrado' });
     }
 
     // Criar novo gerente
     const gerente = await Gerente.create({
       nome,
-      email,
+      email: email.toLowerCase().trim(),
       senha,
       nomeLoja,
-      cnpj,
-      telefone
+      cnpj: cnpj || undefined,
+      telefone: telefone || undefined
     });
 
+    // Gerar token de verificação de email
+    const verificationToken = gerente.generateEmailVerificationToken();
+    await gerente.save({ validateBeforeSave: false });
+
+    // Enviar email de verificação (não bloqueia o cadastro)
+    try {
+      await sendVerificationEmail(gerente.email, verificationToken);
+      logger.info('Email de verificação enviado', { email: gerente.email });
+    } catch (emailError) {
+      logger.error('Erro ao enviar email de verificação', { 
+        error: emailError.message, 
+        email: gerente.email 
+      });
+      // Não falha o cadastro se o email não for enviado
+    }
+
     const token = generateToken(gerente._id, 'gerente');
+
+    logger.audit('Novo gerente cadastrado', gerente._id, {
+      nome: gerente.nome,
+      email: gerente.email,
+      nomeLoja: gerente.nomeLoja
+    });
 
     res.status(201).json({
       token,
@@ -39,37 +72,83 @@ router.post('/cadastro', async (req, res) => {
         id: gerente._id,
         nome: gerente.nome,
         email: gerente.email,
-        nomeLoja: gerente.nomeLoja
-      }
+        nomeLoja: gerente.nomeLoja,
+        emailVerificado: gerente.emailVerificado
+      },
+      message: 'Cadastro realizado com sucesso! Verifique seu email para ativar sua conta.'
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    logger.error('Erro no cadastro de gerente', { 
+      error: error.message, 
+      stack: error.stack 
+    });
+    res.status(500).json({ 
+      message: 'Erro ao cadastrar gerente',
+      error: process.env.NODE_ENV !== 'production' ? error.message : undefined
+    });
   }
 });
 
 // Login de gerente
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, validate(loginSchema), async (req, res) => {
   try {
     const { email, senha } = req.body;
 
-    // Validar dados de entrada
-    if (!email || !senha) {
-      return res.status(400).json({ message: 'Email e senha são obrigatórios' });
+    // Buscar gerente (incluindo campos de bloqueio)
+    const gerente = await Gerente.findOne({ email: email.toLowerCase().trim() })
+      .select('+tentativasLogin +bloqueadoAte');
+    
+    if (!gerente) {
+      logger.warn('Tentativa de login com email inexistente', { email });
+      return res.status(401).json({ message: 'Email ou senha incorretos' });
     }
 
-    // Buscar gerente
-    const gerente = await Gerente.findOne({ email: email.toLowerCase().trim() });
-    if (!gerente) {
-      return res.status(401).json({ message: 'Email ou senha incorretos' });
+    // Verificar se conta está bloqueada
+    if (gerente.bloqueadoAte && gerente.bloqueadoAte > Date.now()) {
+      const minutosRestantes = Math.ceil((gerente.bloqueadoAte - Date.now()) / 60000);
+      logger.warn('Tentativa de login em conta bloqueada', { 
+        email, 
+        bloqueadoAte: gerente.bloqueadoAte 
+      });
+      return res.status(403).json({ 
+        message: `Conta temporariamente bloqueada. Tente novamente em ${minutosRestantes} minutos.`
+      });
     }
 
     // Verificar senha
     const senhaValida = await gerente.comparePassword(senha);
     if (!senhaValida) {
+      // Incrementar tentativas de login
+      gerente.tentativasLogin = (gerente.tentativasLogin || 0) + 1;
+      
+      // Bloquear após 5 tentativas por 30 minutos
+      if (gerente.tentativasLogin >= 5) {
+        gerente.bloqueadoAte = Date.now() + 30 * 60 * 1000; // 30 minutos
+        gerente.tentativasLogin = 0;
+        await gerente.save();
+        logger.warn('Conta bloqueada após múltiplas tentativas de login falhas', { email });
+        return res.status(403).json({ 
+          message: 'Muitas tentativas de login falhas. Conta bloqueada por 30 minutos.'
+        });
+      }
+      
+      await gerente.save();
+      logger.warn('Senha incorreta no login', { email, tentativas: gerente.tentativasLogin });
       return res.status(401).json({ message: 'Email ou senha incorretos' });
     }
 
+    // Resetar tentativas e atualizar último login
+    gerente.tentativasLogin = 0;
+    gerente.bloqueadoAte = undefined;
+    gerente.ultimoLogin = new Date();
+    await gerente.save();
+
     const token = generateToken(gerente._id, 'gerente');
+
+    logger.audit('Login realizado com sucesso', gerente._id, {
+      email: gerente.email,
+      ultimoLogin: gerente.ultimoLogin
+    });
 
     res.json({
       token,
@@ -77,25 +156,220 @@ router.post('/login', async (req, res) => {
         id: gerente._id,
         nome: gerente.nome,
         email: gerente.email,
-        nomeLoja: gerente.nomeLoja
+        nomeLoja: gerente.nomeLoja,
+        emailVerificado: gerente.emailVerificado
       }
     });
   } catch (error) {
-    console.error('Erro no login:', error);
-    console.error('Stack trace:', error.stack);
+    logger.error('Erro no login', { 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ 
       message: 'Erro interno do servidor',
-      error: process.env.NODE_ENV !== 'production' ? error.message : undefined,
-      details: process.env.NODE_ENV !== 'production' ? {
-        name: error.name,
-        stack: error.stack
-      } : undefined
+      error: process.env.NODE_ENV !== 'production' ? error.message : undefined
+    });
+  }
+});
+
+// Recuperar senha - solicitar reset
+router.post('/recuperar-senha', passwordResetLimiter, validate(recuperarSenhaSchema), async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const gerente = await Gerente.findOne({ email: email.toLowerCase().trim() });
+    
+    // Sempre retornar sucesso (por segurança, não revelar se email existe)
+    if (!gerente) {
+      logger.warn('Tentativa de recuperação de senha com email inexistente', { email });
+      return res.json({ 
+        message: 'Se o email existir, você receberá um link para redefinir sua senha.' 
+      });
+    }
+
+    // Gerar token de reset
+    const resetToken = gerente.generatePasswordResetToken();
+    await gerente.save({ validateBeforeSave: false });
+
+    // Enviar email
+    try {
+      await sendPasswordResetEmail(gerente.email, resetToken);
+      logger.info('Email de recuperação de senha enviado', { email: gerente.email });
+      logger.audit('Solicitação de recuperação de senha', gerente._id, {
+        email: gerente.email
+      });
+    } catch (emailError) {
+      logger.error('Erro ao enviar email de recuperação', { 
+        error: emailError.message, 
+        email: gerente.email 
+      });
+      // Limpar token se email não foi enviado
+      gerente.resetSenhaToken = undefined;
+      gerente.resetSenhaExpira = undefined;
+      await gerente.save({ validateBeforeSave: false });
+      
+      return res.status(500).json({ 
+        message: 'Erro ao enviar email. Tente novamente mais tarde.' 
+      });
+    }
+
+    res.json({ 
+      message: 'Se o email existir, você receberá um link para redefinir sua senha.' 
+    });
+  } catch (error) {
+    logger.error('Erro ao processar recuperação de senha', { 
+      error: error.message, 
+      stack: error.stack 
+    });
+    res.status(500).json({ 
+      message: 'Erro ao processar solicitação',
+      error: process.env.NODE_ENV !== 'production' ? error.message : undefined
+    });
+  }
+});
+
+// Reset de senha - redefinir com token
+router.post('/reset-senha', validate(resetSenhaSchema), async (req, res) => {
+  try {
+    const { token, senha } = req.body;
+
+    // Hash do token para comparação
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Buscar gerente com token válido
+    const gerente = await Gerente.findOne({
+      resetSenhaToken: hashedToken,
+      resetSenhaExpira: { $gt: Date.now() }
+    }).select('+resetSenhaToken +resetSenhaExpira');
+
+    if (!gerente) {
+      logger.warn('Tentativa de reset de senha com token inválido ou expirado');
+      return res.status(400).json({ 
+        message: 'Token inválido ou expirado. Solicite um novo link de recuperação.' 
+      });
+    }
+
+    // Atualizar senha
+    gerente.senha = senha;
+    gerente.resetSenhaToken = undefined;
+    gerente.resetSenhaExpira = undefined;
+    gerente.tentativasLogin = 0;
+    gerente.bloqueadoAte = undefined;
+    await gerente.save();
+
+    logger.audit('Senha redefinida com sucesso', gerente._id, {
+      email: gerente.email
+    });
+
+    res.json({ 
+      message: 'Senha redefinida com sucesso! Faça login com sua nova senha.' 
+    });
+  } catch (error) {
+    logger.error('Erro ao resetar senha', { 
+      error: error.message, 
+      stack: error.stack 
+    });
+    res.status(500).json({ 
+      message: 'Erro ao redefinir senha',
+      error: process.env.NODE_ENV !== 'production' ? error.message : undefined
+    });
+  }
+});
+
+// Verificar email
+router.get('/verificar-email/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    // Hash do token para comparação
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Buscar gerente com token válido
+    const gerente = await Gerente.findOne({
+      emailVerificacaoToken: hashedToken,
+      emailVerificacaoExpira: { $gt: Date.now() }
+    }).select('+emailVerificacaoToken +emailVerificacaoExpira');
+
+    if (!gerente) {
+      logger.warn('Tentativa de verificação de email com token inválido ou expirado');
+      return res.status(400).json({ 
+        message: 'Token inválido ou expirado.' 
+      });
+    }
+
+    // Marcar email como verificado
+    gerente.emailVerificado = true;
+    gerente.emailVerificacaoToken = undefined;
+    gerente.emailVerificacaoExpira = undefined;
+    await gerente.save();
+
+    logger.audit('Email verificado', gerente._id, {
+      email: gerente.email
+    });
+
+    res.json({ 
+      message: 'Email verificado com sucesso!' 
+    });
+  } catch (error) {
+    logger.error('Erro ao verificar email', { 
+      error: error.message, 
+      stack: error.stack 
+    });
+    res.status(500).json({ 
+      message: 'Erro ao verificar email',
+      error: process.env.NODE_ENV !== 'production' ? error.message : undefined
+    });
+  }
+});
+
+// Reenviar email de verificação
+router.post('/reenviar-verificacao', authLimiter, auth, async (req, res) => {
+  try {
+    const gerente = await Gerente.findById(req.user.id);
+
+    if (!gerente) {
+      return res.status(404).json({ message: 'Gerente não encontrado' });
+    }
+
+    if (gerente.emailVerificado) {
+      return res.status(400).json({ message: 'Email já verificado' });
+    }
+
+    // Gerar novo token
+    const verificationToken = gerente.generateEmailVerificationToken();
+    await gerente.save({ validateBeforeSave: false });
+
+    // Enviar email
+    try {
+      await sendVerificationEmail(gerente.email, verificationToken);
+      logger.info('Email de verificação reenviado', { email: gerente.email });
+    } catch (emailError) {
+      logger.error('Erro ao reenviar email de verificação', { 
+        error: emailError.message, 
+        email: gerente.email 
+      });
+      return res.status(500).json({ 
+        message: 'Erro ao enviar email. Tente novamente mais tarde.' 
+      });
+    }
+
+    res.json({ 
+      message: 'Email de verificação reenviado com sucesso!' 
+    });
+  } catch (error) {
+    logger.error('Erro ao reenviar verificação', { 
+      error: error.message, 
+      stack: error.stack 
+    });
+    res.status(500).json({ 
+      message: 'Erro ao processar solicitação',
+      error: process.env.NODE_ENV !== 'production' ? error.message : undefined
     });
   }
 });
 
 // Obter dados do gerente autenticado
-router.get('/me', require('../middleware/auth'), async (req, res) => {
+router.get('/me', auth, async (req, res) => {
   try {
     const gerente = await Gerente.findById(req.user.id).select('-senha');
     if (!gerente) {
@@ -103,9 +377,12 @@ router.get('/me', require('../middleware/auth'), async (req, res) => {
     }
     res.json(gerente);
   } catch (error) {
+    logger.error('Erro ao buscar dados do gerente', { 
+      error: error.message, 
+      userId: req.user.id 
+    });
     res.status(500).json({ message: error.message });
   }
 });
 
 module.exports = router;
-
