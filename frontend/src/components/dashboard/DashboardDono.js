@@ -22,9 +22,7 @@ import {
   FaSun,
   FaCog,
   FaPrint,
-  FaDownload,
-  FaArrowUp,
-  FaArrowDown
+  FaDownload
 } from 'react-icons/fa';
 import {
   BarChart,
