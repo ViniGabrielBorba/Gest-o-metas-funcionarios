@@ -92,7 +92,12 @@ const Cadastro = ({ setIsAuthenticated }) => {
         }
       } else if (err.request) {
         // Requisição foi feita mas não houve resposta
-        setError('Não foi possível conectar ao servidor. Verifique se o backend está rodando e se a URL está correta.');
+        console.error('Não houve resposta do servidor:', err.request);
+        setError('Não foi possível conectar ao servidor. Verifique sua conexão e se o backend está online.');
+      } else if (err.code === 'ERR_NETWORK' || err.message.includes('Network Error')) {
+        setError('Erro de rede. Verifique sua conexão com a internet.');
+      } else if (err.code === 'ECONNABORTED' || err.message.includes('timeout')) {
+        setError('Tempo de conexão esgotado. O servidor pode estar lento ou offline.');
       } else {
         // Erro ao configurar a requisição
         setError('Erro ao fazer cadastro: ' + (err.message || 'Erro desconhecido'));

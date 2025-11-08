@@ -37,13 +37,37 @@ const Login = ({ setIsAuthenticated }) => {
       }
     } catch (err) {
       console.error('Erro no login:', err);
+      console.error('Detalhes do erro:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        request: err.request
+      });
       
       if (err.response) {
         // Servidor respondeu com erro
-        setError(err.response.data?.message || `Erro ${err.response.status}: ${err.response.statusText}`);
+        const status = err.response.status;
+        const errorData = err.response.data;
+        
+        if (status === 401) {
+          setError(errorData?.message || 'Email ou senha incorretos');
+        } else if (status === 403) {
+          setError(errorData?.message || 'Acesso negado');
+        } else if (status === 400) {
+          setError(errorData?.message || 'Dados inválidos. Verifique os campos preenchidos.');
+        } else if (status === 429) {
+          setError('Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.');
+        } else {
+          setError(errorData?.message || `Erro ${status}: ${err.response.statusText}`);
+        }
       } else if (err.request) {
         // Requisição foi feita mas não houve resposta
-        setError('Não foi possível conectar ao servidor. Verifique se o backend está rodando.');
+        console.error('Não houve resposta do servidor:', err.request);
+        setError('Não foi possível conectar ao servidor. Verifique sua conexão e se o backend está online.');
+      } else if (err.code === 'ERR_NETWORK' || err.message.includes('Network Error')) {
+        setError('Erro de rede. Verifique sua conexão com a internet.');
+      } else if (err.code === 'ECONNABORTED' || err.message.includes('timeout')) {
+        setError('Tempo de conexão esgotado. O servidor pode estar lento ou offline.');
       } else {
         // Erro ao configurar a requisição
         setError('Erro ao fazer login: ' + (err.message || 'Erro desconhecido'));
