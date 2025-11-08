@@ -46,9 +46,23 @@ const Feedback = ({ setIsAuthenticated }) => {
   const fetchFuncionarios = async () => {
     try {
       const response = await api.get('/funcionarios');
-      setFuncionarios(response.data);
+      // A API retorna um objeto de paginação, extrair o array de dados
+      const data = response.data;
+      // Se for um objeto de paginação, usar data.data, senão usar data diretamente
+      const funcionariosArray = Array.isArray(data) 
+        ? data 
+        : (data?.data && Array.isArray(data.data) 
+            ? data.data 
+            : (data?.funcionarios && Array.isArray(data.funcionarios) 
+                ? data.funcionarios 
+                : []));
+      setFuncionarios(funcionariosArray);
     } catch (error) {
       console.error('Erro ao buscar funcionários:', error);
+      console.error('Resposta da API:', error.response?.data);
+      // Em caso de erro, garantir que funcionarios seja um array vazio
+      setFuncionarios([]);
+      toast.error('Erro ao carregar funcionários');
     }
   };
 
@@ -60,10 +74,21 @@ const Feedback = ({ setIsAuthenticated }) => {
       const response = await api.get(
         `/funcionarios/${selectedFuncionario._id}/vendas-diarias?mes=${mes}&ano=${ano}`
       );
-      setVendasDiarias(response.data || []);
+      // Garantir que seja um array
+      const data = response.data;
+      const vendasArray = Array.isArray(data) 
+        ? data 
+        : (data?.data && Array.isArray(data.data) 
+            ? data.data 
+            : (data?.vendasDiarias && Array.isArray(data.vendasDiarias) 
+                ? data.vendasDiarias 
+                : []));
+      setVendasDiarias(vendasArray);
     } catch (error) {
       console.error('Erro ao buscar vendas:', error);
+      console.error('Resposta da API:', error.response?.data);
       setVendasDiarias([]);
+      toast.error('Erro ao carregar vendas do funcionário');
     } finally {
       setLoading(false);
     }
@@ -98,7 +123,7 @@ const Feedback = ({ setIsAuthenticated }) => {
       );
       
       // Mostrar notificação elegante
-      if (vendasDiarias.length > 0) {
+      if (Array.isArray(vendasDiarias) && vendasDiarias.length > 0) {
         toast.success(
           'Observação salva com sucesso! Use o botão "Imprimir Relatório" para gerar o relatório completo.',
           'Observação Salva'
@@ -118,8 +143,9 @@ const Feedback = ({ setIsAuthenticated }) => {
   };
 
   const handleSelectFuncionario = (funcionarioId) => {
-    const funcionario = funcionarios.find(f => f._id === funcionarioId);
-    setSelectedFuncionario(funcionario);
+    if (!Array.isArray(funcionarios)) return;
+    const funcionario = funcionarios.find(f => f && f._id === funcionarioId);
+    setSelectedFuncionario(funcionario || null);
   };
 
   const getVendaMes = () => {
@@ -131,7 +157,9 @@ const Feedback = ({ setIsAuthenticated }) => {
   };
 
   const getChartData = () => {
+    if (!Array.isArray(vendasDiarias)) return [];
     return vendasDiarias
+      .filter(v => v && v.data && v.valor !== undefined)
       .map(v => ({
         dia: new Date(v.data).getUTCDate(),
         valor: v.valor,
@@ -141,7 +169,7 @@ const Feedback = ({ setIsAuthenticated }) => {
   };
 
   const handleImprimir = () => {
-    if (!selectedFuncionario || vendasDiarias.length === 0) {
+    if (!selectedFuncionario || !Array.isArray(vendasDiarias) || vendasDiarias.length === 0) {
       toast.warning('Selecione um funcionário e um período com vendas para imprimir');
       return;
     }
@@ -149,7 +177,7 @@ const Feedback = ({ setIsAuthenticated }) => {
     const meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 
                    'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
     const mesNome = meses[mes - 1];
-    const totalVendas = vendasDiarias.reduce((sum, v) => sum + v.valor, 0);
+    const totalVendas = Array.isArray(vendasDiarias) ? vendasDiarias.reduce((sum, v) => sum + (v?.valor || 0), 0) : 0;
     const percentualMeta = selectedFuncionario.metaIndividual > 0 
       ? ((totalVendas / selectedFuncionario.metaIndividual) * 100).toFixed(1)
       : 0;
@@ -357,13 +385,13 @@ const Feedback = ({ setIsAuthenticated }) => {
                 </tr>
               </thead>
               <tbody>
-                ${vendasDiarias.map(v => `
+                ${Array.isArray(vendasDiarias) ? vendasDiarias.filter(v => v && v.data).map(v => `
                   <tr>
                     <td>${new Date(v.data).toLocaleDateString('pt-BR')}</td>
-                    <td>R$ ${v.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                    <td>R$ ${(v.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                     <td>${v.observacao || '-'}</td>
                   </tr>
-                `).join('')}
+                `).join('') : ''}
               </tbody>
               <tfoot>
                 <tr>
@@ -407,10 +435,10 @@ const Feedback = ({ setIsAuthenticated }) => {
           </div>
           ` : ''}
 
-          ${vendasDiarias.filter(v => v.observacao && v.observacao.trim() !== '').length > 0 ? `
+          ${Array.isArray(vendasDiarias) && vendasDiarias.filter(v => v && v.observacao && v.observacao.trim() !== '').length > 0 ? `
           <div class="observacoes">
             <h2 style="color: #169486; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">Observações das Vendas</h2>
-            ${vendasDiarias.filter(v => v.observacao && v.observacao.trim() !== '').map(v => `
+            ${vendasDiarias.filter(v => v && v.observacao && v.observacao.trim() !== '').map(v => `
               <div class="observacao-item">
                 <strong>${new Date(v.data).toLocaleDateString('pt-BR')}:</strong> ${v.observacao}
               </div>
@@ -466,9 +494,9 @@ const Feedback = ({ setIsAuthenticated }) => {
                   className="input-field"
                 >
                   <option value="">Selecione um funcionário...</option>
-                  {funcionarios
+                  {Array.isArray(funcionarios) && funcionarios
                     .filter(func => 
-                      !buscaFuncionario || func.nome.toLowerCase().includes(buscaFuncionario.toLowerCase())
+                      func && func.nome && (!buscaFuncionario || func.nome.toLowerCase().includes(buscaFuncionario.toLowerCase()))
                     )
                     .map(func => (
                       <option key={func._id} value={func._id}>
@@ -579,7 +607,7 @@ const Feedback = ({ setIsAuthenticated }) => {
                     <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                       <FaChartLine /> Resumo do Período
                     </h2>
-                    {vendasDiarias.length > 0 && (
+                    {Array.isArray(vendasDiarias) && vendasDiarias.length > 0 && (
                       <button
                         onClick={handleImprimir}
                         className="btn-primary flex items-center gap-2"
@@ -661,7 +689,7 @@ const Feedback = ({ setIsAuthenticated }) => {
                       >
                         {salvandoObservacao ? 'Salvando...' : 'Salvar Observação'}
                       </button>
-                      {observacaoGerente && vendasDiarias.length > 0 && (
+                      {observacaoGerente && Array.isArray(vendasDiarias) && vendasDiarias.length > 0 && (
                         <button
                           onClick={handleImprimir}
                           className="btn-secondary flex items-center gap-2"
@@ -673,14 +701,14 @@ const Feedback = ({ setIsAuthenticated }) => {
                     {observacaoGerente && (
                       <p className="text-sm text-gray-500">
                         💡 Sua observação será salva para o período de {meses[mes - 1]} de {ano}
-                        {vendasDiarias.length > 0 && ' - Após salvar, você poderá imprimir o relatório completo'}
+                        {Array.isArray(vendasDiarias) && vendasDiarias.length > 0 && ' - Após salvar, você poderá imprimir o relatório completo'}
                       </p>
                     )}
                   </div>
                 </div>
 
                 {/* Gráfico */}
-                {vendasDiarias.length > 0 && getChartData().length > 0 && (
+                {Array.isArray(vendasDiarias) && vendasDiarias.length > 0 && getChartData().length > 0 && (
                   <div className={`card ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
                     <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                       <FaChartLine /> Gráfico de Vendas Diárias
@@ -714,7 +742,7 @@ const Feedback = ({ setIsAuthenticated }) => {
                 )}
 
                 {/* Tabela de Vendas */}
-                {vendasDiarias.length > 0 ? (
+                {Array.isArray(vendasDiarias) && vendasDiarias.length > 0 ? (
                   <div className={`card ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
                     <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                       <FaDollarSign /> Vendas Diárias
@@ -729,7 +757,7 @@ const Feedback = ({ setIsAuthenticated }) => {
                           </tr>
                         </thead>
                         <tbody>
-                          {vendasDiarias.map((venda, index) => (
+                          {Array.isArray(vendasDiarias) && vendasDiarias.map((venda, index) => (
                             <tr key={index} className="border-b hover:bg-gray-50">
                               <td className="px-4 py-2">
                                 {new Date(venda.data).toLocaleDateString('pt-BR')}
@@ -747,7 +775,7 @@ const Feedback = ({ setIsAuthenticated }) => {
                           <tr>
                             <td className="px-4 py-2">Total:</td>
                             <td className="px-4 py-2 text-right" style={{ color: '#169486' }}>
-                              R$ {vendasDiarias.reduce((sum, v) => sum + v.valor, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              R$ {Array.isArray(vendasDiarias) ? vendasDiarias.reduce((sum, v) => sum + (v?.valor || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}
                             </td>
                             <td className="px-4 py-2"></td>
                           </tr>
