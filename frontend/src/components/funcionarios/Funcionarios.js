@@ -57,9 +57,23 @@ const Funcionarios = ({ setIsAuthenticated }) => {
   const fetchFuncionarios = async () => {
     try {
       const response = await api.get('/funcionarios');
-      setFuncionarios(response.data);
+      // A API retorna um objeto de paginação, extrair o array de dados
+      const data = response.data;
+      // Se for um objeto de paginação, usar data.data, senão usar data diretamente
+      const funcionariosArray = Array.isArray(data) 
+        ? data 
+        : (data?.data && Array.isArray(data.data) 
+            ? data.data 
+            : (data?.funcionarios && Array.isArray(data.funcionarios) 
+                ? data.funcionarios 
+                : []));
+      setFuncionarios(funcionariosArray);
     } catch (error) {
       console.error('Erro ao buscar funcionários:', error);
+      console.error('Resposta da API:', error.response?.data);
+      // Em caso de erro, garantir que funcionarios seja um array vazio
+      setFuncionarios([]);
+      toast.error('Erro ao carregar funcionários');
     } finally {
       setLoading(false);
     }
@@ -655,7 +669,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
                 className={`input-field ${darkMode ? 'bg-gray-700 text-white border-gray-600' : ''}`}
               >
                 <option value="">Todas as funções</option>
-                {[...new Set(funcionarios.map(f => f.funcao))].map(funcao => (
+                {Array.isArray(funcionarios) && funcionarios.length > 0 && [...new Set(funcionarios.map(f => f.funcao).filter(Boolean))].map(funcao => (
                   <option key={funcao} value={funcao}>{funcao}</option>
                 ))}
               </select>
@@ -676,7 +690,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {funcionarios
+          {Array.isArray(funcionarios) && funcionarios
             .filter(funcionario => {
               // Filtro por nome
               if (buscaNome && !funcionario.nome.toLowerCase().includes(buscaNome.toLowerCase())) {
@@ -787,7 +801,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
           ))}
         </div>
 
-        {funcionarios.length === 0 && (
+        {(!Array.isArray(funcionarios) || funcionarios.length === 0) && !loading && (
           <div className="text-center py-12">
             <FaUsers className="text-6xl text-gray-300 mx-auto mb-4" />
             <p className={`text-xl ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Nenhum funcionário cadastrado</p>
