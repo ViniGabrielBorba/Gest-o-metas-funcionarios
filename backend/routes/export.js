@@ -74,24 +74,18 @@ router.get('/funcionarios/csv', async (req, res) => {
       totalVendas: func.vendas.reduce((sum, v) => sum + v.valor, 0)
     }));
 
-    // Gerar CSV manualmente
-    const headers = ['Nome', 'Sexo', 'Idade', 'Função', 'Data Aniversário', 'Meta Individual', 'Total Vendas'];
-    const csvRows = [headers.join(',')];
-    
-    data.forEach(row => {
-      const values = [
-        `"${row.nome}"`,
-        `"${row.sexo}"`,
-        row.idade,
-        `"${row.funcao}"`,
-        `"${row.dataAniversario}"`,
-        row.metaIndividual,
-        row.totalVendas
-      ];
-      csvRows.push(values.join(','));
-    });
+    // Gerar CSV usando função otimizada
+    const headers = [
+      { label: 'Nome', key: 'nome' },
+      { label: 'Sexo', key: 'sexo' },
+      { label: 'Idade', key: 'idade' },
+      { label: 'Função', key: 'funcao' },
+      { label: 'Data Aniversário', key: 'dataAniversario' },
+      { label: 'Meta Individual', key: 'metaIndividual' },
+      { label: 'Total Vendas', key: 'totalVendas' }
+    ];
 
-    const csv = csvRows.join('\n');
+    const csv = exportToCSV(data, headers);
     const filename = `funcionarios-${Date.now()}.csv`;
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
