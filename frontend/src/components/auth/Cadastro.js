@@ -31,11 +31,35 @@ const Cadastro = ({ setIsAuthenticated }) => {
 
     try {
       const response = await api.post('/auth/cadastro', formData);
-      setAuthToken(response.data.token);
-      setIsAuthenticated(true);
-      window.location.href = '/dashboard';
+      
+      if (response.data && response.data.token) {
+        setAuthToken(response.data.token);
+        setIsAuthenticated(true);
+        window.location.href = '/dashboard';
+      } else {
+        setError('Resposta inválida do servidor');
+      }
     } catch (err) {
-      setError(err.response?.data?.message || 'Erro ao cadastrar');
+      console.error('Erro no cadastro:', err);
+      
+      if (err.response) {
+        // Servidor respondeu com erro
+        const errorData = err.response.data;
+        
+        // Se houver erros de validação, mostrar todos
+        if (errorData.errors && Array.isArray(errorData.errors)) {
+          const errorMessages = errorData.errors.map(e => e.message).join(', ');
+          setError(`Erro de validação: ${errorMessages}`);
+        } else {
+          setError(errorData?.message || `Erro ${err.response.status}: ${err.response.statusText}`);
+        }
+      } else if (err.request) {
+        // Requisição foi feita mas não houve resposta
+        setError('Não foi possível conectar ao servidor. Verifique se o backend está rodando e se a URL está correta.');
+      } else {
+        // Erro ao configurar a requisição
+        setError('Erro ao fazer cadastro: ' + (err.message || 'Erro desconhecido'));
+      }
     } finally {
       setLoading(false);
     }
@@ -90,7 +114,7 @@ const Cadastro = ({ setIsAuthenticated }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Senha (mín. 6 caracteres)
+                Senha (mín. 8 caracteres, 1 maiúscula, 1 número, 1 especial)
               </label>
               <input
                 type="password"
@@ -99,8 +123,12 @@ const Cadastro = ({ setIsAuthenticated }) => {
                 onChange={handleChange}
                 className="input-field"
                 required
-                minLength={6}
+                minLength={8}
+                placeholder="Ex: MinhaSenha123!@#"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                A senha deve conter: mínimo 8 caracteres, 1 letra maiúscula, 1 número e 1 caractere especial (@$!%*?&)
+              </p>
             </div>
 
             <div>
