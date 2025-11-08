@@ -1,34 +1,70 @@
+// Carregar dotenv primeiro
+require('dotenv').config();
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const helmet = require('helmet');
-const compression = require('compression');
-const morgan = require('morgan');
-require('dotenv').config();
-
-const logger = require('./utils/logger');
-const { apiLimiter } = require('./utils/rateLimiter');
 
 const app = express();
 
-// Segurança - Helmet
-app.use(helmet({
-  contentSecurityPolicy: false, // Desabilitar CSP para permitir gráficos
-  crossOriginEmbedderPolicy: false
-}));
+// Tentar carregar módulos opcionais com fallback
+let helmet, compression, morgan, logger, apiLimiter;
 
-// Compressão de respostas
-app.use(compression());
+try {
+  helmet = require('helmet');
+  compression = require('compression');
+  morgan = require('morgan');
+  logger = require('./utils/logger');
+  apiLimiter = require('./utils/rateLimiter').apiLimiter;
+} catch (error) {
+  console.error('Erro ao carregar módulos:', error.message);
+  // Criar logger básico se falhar
+  logger = {
+    info: (...args) => console.log('[INFO]', ...args),
+    error: (...args) => console.error('[ERROR]', ...args),
+    warn: (...args) => console.warn('[WARN]', ...args),
+    audit: () => {}
+  };
+  // Criar rate limiter básico se falhar
+  apiLimiter = (req, res, next) => next();
+}
 
-// Logging HTTP
-if (process.env.NODE_ENV === 'production') {
-  app.use(morgan('combined', {
-    stream: {
-      write: (message) => logger.info(message.trim())
+// Segurança - Helmet (se disponível)
+if (helmet) {
+  try {
+    app.use(helmet({
+      contentSecurityPolicy: false, // Desabilitar CSP para permitir gráficos
+      crossOriginEmbedderPolicy: false
+    }));
+  } catch (error) {
+    logger.warn('Helmet não pôde ser configurado:', error.message);
+  }
+}
+
+// Compressão de respostas (se disponível)
+if (compression) {
+  try {
+    app.use(compression());
+  } catch (error) {
+    logger.warn('Compression não pôde ser configurado:', error.message);
+  }
+}
+
+// Logging HTTP (se disponível)
+if (morgan) {
+  try {
+    if (process.env.NODE_ENV === 'production') {
+      app.use(morgan('combined', {
+        stream: {
+          write: (message) => logger.info(message.trim())
+        }
+      }));
+    } else {
+      app.use(morgan('dev'));
     }
-  }));
-} else {
-  app.use(morgan('dev'));
+  } catch (error) {
+    logger.warn('Morgan não pôde ser configurado:', error.message);
+  }
 }
 
 // Middleware CORS - normalizar URL removendo barra final
@@ -122,16 +158,33 @@ app.get('/health', (req, res) => {
   res.status(statusCode).json(health);
 });
 
-// Rotas
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/dono', require('./routes/dono'));
-app.use('/api/funcionarios', require('./routes/funcionarios'));
-app.use('/api/metas', require('./routes/metas'));
-app.use('/api/dashboard', require('./routes/dashboard'));
-app.use('/api/estoque', require('./routes/estoque'));
-app.use('/api/agenda', require('./routes/agenda'));
-app.use('/api/backup', require('./routes/backup'));
-app.use('/api/export', require('./routes/export'));
+// Rotas (com tratamento de erro)
+const loadRoute = (path, routeName) => {
+  try {
+    return require(path);
+  } catch (error) {
+    logger.error(`Erro ao carregar rota ${routeName}:`, error.message);
+    // Retornar router vazio para não quebrar o servidor
+    const express = require('express');
+    const router = express.Router();
+    router.all('*', (req, res) => {
+      res.status(500).json({ 
+        message: `Rota ${routeName} não está disponível: ${error.message}` 
+      });
+    });
+    return router;
+  }
+};
+
+app.use('/api/auth', loadRoute('./routes/auth', 'auth'));
+app.use('/api/dono', loadRoute('./routes/dono', 'dono'));
+app.use('/api/funcionarios', loadRoute('./routes/funcionarios', 'funcionarios'));
+app.use('/api/metas', loadRoute('./routes/metas', 'metas'));
+app.use('/api/dashboard', loadRoute('./routes/dashboard', 'dashboard'));
+app.use('/api/estoque', loadRoute('./routes/estoque', 'estoque'));
+app.use('/api/agenda', loadRoute('./routes/agenda', 'agenda'));
+app.use('/api/backup', loadRoute('./routes/backup', 'backup'));
+app.use('/api/export', loadRoute('./routes/export', 'export'));
 
 // Rota de teste
 app.get('/api/test', (req, res) => {
@@ -158,15 +211,57 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 const HOST = process.env.HOST || '0.0.0.0';
 
+// Capturar erros não tratados
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception:', {
+    error: error.message,
+    stack: error.stack
+  });
+  // Não encerrar o processo, apenas logar
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection:', {
+    reason: reason?.message || reason,
+    stack: reason?.stack
+  });
+  // Não encerrar o processo, apenas logar
+});
+
 // Iniciar servidor apenas se não estiver em modo de teste
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, HOST, () => {
-    logger.info(`Servidor rodando em http://${HOST}:${PORT}`, {
-      port: PORT,
-      host: HOST,
-      environment: process.env.NODE_ENV || 'development'
+  try {
+    app.listen(PORT, HOST, () => {
+      logger.info(`Servidor rodando em http://${HOST}:${PORT}`, {
+        port: PORT,
+        host: HOST,
+        environment: process.env.NODE_ENV || 'development'
+      });
+    }).on('error', (error) => {
+      logger.error('Erro ao iniciar servidor:', {
+        error: error.message,
+        port: PORT,
+        host: HOST
+      });
+      // Tentar porta alternativa se a porta padrão estiver ocupada
+      if (error.code === 'EADDRINUSE') {
+        const altPort = parseInt(PORT) + 1;
+        logger.warn(`Porta ${PORT} em uso, tentando ${altPort}...`);
+        app.listen(altPort, HOST, () => {
+          logger.info(`Servidor rodando em http://${HOST}:${altPort}`, {
+            port: altPort,
+            host: HOST
+          });
+        });
+      }
     });
-  });
+  } catch (error) {
+    logger.error('Erro fatal ao iniciar servidor:', {
+      error: error.message,
+      stack: error.stack
+    });
+    // Não fazer exit(1) - deixar o processo continuar para ver o erro
+  }
 }
 
 // Exportar app para testes

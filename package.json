@@ -4,7 +4,7 @@
   "description": "FlowGest - Sistema de Gestão de Metas para Gerentes de Loja",
   "main": "server.js",
   "scripts": {
-    "start": "node backend/server.js",
+    "start": "node server-start.js",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "nodemon backend/server.js",
     "client": "cd frontend && npm start",
