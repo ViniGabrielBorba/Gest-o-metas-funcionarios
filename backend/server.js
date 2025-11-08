@@ -67,10 +67,35 @@ if (morgan) {
   }
 }
 
-// Middleware CORS - normalizar URL removendo barra final
-const allowedOrigins = process.env.FRONTEND_URL 
-  ? [process.env.FRONTEND_URL.replace(/\/$/, '')] // Remove barra final se existir
-  : '*';
+// Middleware CORS - permitir múltiplas origens
+const getAllowedOrigins = () => {
+  const origins = [];
+  
+  // Adicionar FRONTEND_URL se configurada
+  if (process.env.FRONTEND_URL) {
+    const url = process.env.FRONTEND_URL.replace(/\/$/, '');
+    origins.push(url);
+    // Também adicionar versões com/sem www
+    if (!url.includes('www.')) {
+      origins.push(url.replace('https://', 'https://www.'));
+    }
+  }
+  
+  // Adicionar origens do Vercel (padrão)
+  origins.push('https://gest-o-metas-funcionarios-89ed.vercel.app');
+  
+  // Permitir todas as origens do Vercel (*.vercel.app)
+  // Em produção, você pode querer ser mais específico
+  if (process.env.NODE_ENV === 'production') {
+    // Permitir todas as origens do Vercel
+    return origins.length > 0 ? origins : '*';
+  }
+  
+  // Em desenvolvimento, permitir tudo
+  return origins.length > 0 ? origins : '*';
+};
+
+const allowedOrigins = getAllowedOrigins();
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -78,19 +103,31 @@ app.use(cors({
     if (!origin) return callback(null, true);
     
     // Se está configurado como '*', permitir tudo
-    if (allowedOrigins === '*') return callback(null, true);
+    if (allowedOrigins === '*') {
+      logger.info('CORS: Permitindo todas as origens');
+      return callback(null, true);
+    }
     
     // Normalizar origem removendo barra final
     const normalizedOrigin = origin.replace(/\/$/, '');
     
     // Verificar se a origem normalizada está na lista
-    if (allowedOrigins.includes(normalizedOrigin)) {
+    if (Array.isArray(allowedOrigins) && allowedOrigins.includes(normalizedOrigin)) {
+      logger.info(`CORS: Permitindo origem: ${normalizedOrigin}`);
+      callback(null, true);
+    } else if (Array.isArray(allowedOrigins) && normalizedOrigin.includes('.vercel.app')) {
+      // Permitir qualquer subdomínio do Vercel
+      logger.info(`CORS: Permitindo origem Vercel: ${normalizedOrigin}`);
       callback(null, true);
     } else {
+      logger.warn(`CORS: Origem bloqueada: ${normalizedOrigin}`);
+      logger.warn(`CORS: Origens permitidas: ${JSON.stringify(allowedOrigins)}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
