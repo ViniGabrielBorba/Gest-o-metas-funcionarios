@@ -14,6 +14,7 @@ const Cadastro = ({ setIsAuthenticated }) => {
     telefone: ''
   });
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -22,15 +23,32 @@ const Cadastro = ({ setIsAuthenticated }) => {
       [e.target.name]: e.target.value
     });
     setError('');
+    // Limpar erro do campo específico quando o usuário começar a digitar
+    if (fieldErrors[e.target.name]) {
+      setFieldErrors({
+        ...fieldErrors,
+        [e.target.name]: ''
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setFieldErrors({});
 
     try {
-      const response = await api.post('/auth/cadastro', formData);
+      // Preparar dados (remover campos vazios opcionais)
+      const dataToSend = {
+        ...formData,
+        cnpj: (formData.cnpj && formData.cnpj.trim()) || undefined,
+        telefone: (formData.telefone && formData.telefone.trim()) || undefined
+      };
+
+      console.log('Enviando dados:', dataToSend);
+
+      const response = await api.post('/auth/cadastro', dataToSend);
       
       if (response.data && response.data.token) {
         setAuthToken(response.data.token);
@@ -41,15 +59,34 @@ const Cadastro = ({ setIsAuthenticated }) => {
       }
     } catch (err) {
       console.error('Erro no cadastro:', err);
+      console.error('Resposta do servidor:', err.response?.data);
       
       if (err.response) {
         // Servidor respondeu com erro
         const errorData = err.response.data;
         
-        // Se houver erros de validação, mostrar todos
+        // Se houver erros de validação por campo
         if (errorData.errors && Array.isArray(errorData.errors)) {
-          const errorMessages = errorData.errors.map(e => e.message).join(', ');
-          setError(`Erro de validação: ${errorMessages}`);
+          const errorsByField = {};
+          const generalErrors = [];
+          
+          errorData.errors.forEach(error => {
+            if (error.field) {
+              errorsByField[error.field] = error.message;
+            } else {
+              generalErrors.push(error.message);
+            }
+          });
+          
+          setFieldErrors(errorsByField);
+          
+          if (generalErrors.length > 0) {
+            setError(generalErrors.join(', '));
+          } else if (Object.keys(errorsByField).length > 0) {
+            // Mostrar primeiro erro como mensagem geral também
+            const firstError = errorData.errors[0];
+            setError(`Erro de validação: ${firstError.message}`);
+          }
         } else {
           setError(errorData?.message || `Erro ${err.response.status}: ${err.response.statusText}`);
         }
@@ -93,9 +130,12 @@ const Cadastro = ({ setIsAuthenticated }) => {
                 name="nome"
                 value={formData.nome}
                 onChange={handleChange}
-                className="input-field"
+                className={`input-field ${fieldErrors.nome ? 'border-red-500' : ''}`}
                 required
               />
+              {fieldErrors.nome && (
+                <p className="text-red-500 text-xs mt-1">{fieldErrors.nome}</p>
+              )}
             </div>
 
             <div>
@@ -107,9 +147,12 @@ const Cadastro = ({ setIsAuthenticated }) => {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="input-field"
+                className={`input-field ${fieldErrors.email ? 'border-red-500' : ''}`}
                 required
               />
+              {fieldErrors.email && (
+                <p className="text-red-500 text-xs mt-1">{fieldErrors.email}</p>
+              )}
             </div>
 
             <div>
@@ -121,14 +164,18 @@ const Cadastro = ({ setIsAuthenticated }) => {
                 name="senha"
                 value={formData.senha}
                 onChange={handleChange}
-                className="input-field"
+                className={`input-field ${fieldErrors.senha ? 'border-red-500' : ''}`}
                 required
                 minLength={8}
                 placeholder="Ex: MinhaSenha123!@#"
               />
-              <p className="text-xs text-gray-500 mt-1">
-                A senha deve conter: mínimo 8 caracteres, 1 letra maiúscula, 1 número e 1 caractere especial (@$!%*?&)
-              </p>
+              {fieldErrors.senha ? (
+                <p className="text-red-500 text-xs mt-1">{fieldErrors.senha}</p>
+              ) : (
+                <p className="text-xs text-gray-500 mt-1">
+                  A senha deve conter: mínimo 8 caracteres, 1 letra maiúscula, 1 número e 1 caractere especial (@$!%*?&)
+                </p>
+              )}
             </div>
 
             <div>
@@ -140,9 +187,12 @@ const Cadastro = ({ setIsAuthenticated }) => {
                 name="nomeLoja"
                 value={formData.nomeLoja}
                 onChange={handleChange}
-                className="input-field"
+                className={`input-field ${fieldErrors.nomeLoja ? 'border-red-500' : ''}`}
                 required
               />
+              {fieldErrors.nomeLoja && (
+                <p className="text-red-500 text-xs mt-1">{fieldErrors.nomeLoja}</p>
+              )}
             </div>
 
             <div>
@@ -154,8 +204,12 @@ const Cadastro = ({ setIsAuthenticated }) => {
                 name="cnpj"
                 value={formData.cnpj}
                 onChange={handleChange}
-                className="input-field"
+                className={`input-field ${fieldErrors.cnpj ? 'border-red-500' : ''}`}
+                placeholder="00.000.000/0000-00"
               />
+              {fieldErrors.cnpj && (
+                <p className="text-red-500 text-xs mt-1">{fieldErrors.cnpj}</p>
+              )}
             </div>
 
             <div>
@@ -167,8 +221,17 @@ const Cadastro = ({ setIsAuthenticated }) => {
                 name="telefone"
                 value={formData.telefone}
                 onChange={handleChange}
-                className="input-field"
+                className={`input-field ${fieldErrors.telefone ? 'border-red-500' : ''}`}
+                placeholder="(11) 98765-4321 ou 11987654321"
               />
+              {fieldErrors.telefone && (
+                <p className="text-red-500 text-xs mt-1">{fieldErrors.telefone}</p>
+              )}
+              {!fieldErrors.telefone && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Formato: (11) 98765-4321 ou 11987654321
+                </p>
+              )}
             </div>
 
             <button

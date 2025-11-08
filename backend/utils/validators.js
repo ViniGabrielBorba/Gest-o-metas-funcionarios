@@ -72,19 +72,38 @@ const validarCNPJ = (cnpj) => {
   return true;
 };
 
-const cnpjSchema = Joi.string().custom((value, helpers) => {
-  if (!value) return value; // CNPJ é opcional
-  if (!validarCNPJ(value)) {
-    return helpers.error('string.cnpj');
-  }
-  return value;
-}).messages({
-  'string.cnpj': 'CNPJ inválido'
-});
+const cnpjSchema = Joi.string()
+  .allow('', null)
+  .custom((value, helpers) => {
+    // Se vazio ou null, é válido (campo opcional)
+    if (!value || value.trim() === '') {
+      return value;
+    }
+    // Validar CNPJ apenas se preenchido
+    if (!validarCNPJ(value)) {
+      return helpers.error('string.cnpj');
+    }
+    return value;
+  })
+  .messages({
+    'string.cnpj': 'CNPJ inválido'
+  });
 
 // Validação de telefone brasileiro
 const telefoneSchema = Joi.string()
-  .pattern(/^(\d{10,11}|\(\d{2}\)\s?\d{4,5}-?\d{4})$/)
+  .allow('', null)
+  .custom((value, helpers) => {
+    // Se vazio ou null, é válido (campo opcional)
+    if (!value || value.trim() === '') {
+      return value;
+    }
+    // Validar formato apenas se preenchido
+    const pattern = /^(\d{10,11}|\(\d{2}\)\s?\d{4,5}-?\d{4})$/;
+    if (!pattern.test(value)) {
+      return helpers.error('string.pattern.base');
+    }
+    return value;
+  })
   .messages({
     'string.pattern.base': 'Telefone inválido. Use formato: (11) 98765-4321 ou 11987654321'
   });
@@ -105,8 +124,8 @@ const cadastroGerenteSchema = Joi.object({
     'string.empty': 'Nome da loja é obrigatório',
     'any.required': 'Nome da loja é obrigatório'
   }),
-  cnpj: cnpjSchema.allow('', null),
-  telefone: telefoneSchema.allow('', null)
+  cnpj: cnpjSchema,
+  telefone: telefoneSchema
 });
 
 // Schema de validação para login
