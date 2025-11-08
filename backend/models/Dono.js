@@ -98,7 +98,7 @@ donoSchema.methods.generateEmailVerificationToken = function() {
 };
 
 // Índices para melhor performance
-donoSchema.index({ email: 1 });
+// email já tem unique: true, não precisa de index adicional
 donoSchema.index({ resetSenhaToken: 1 });
 donoSchema.index({ emailVerificacaoToken: 1 });
 

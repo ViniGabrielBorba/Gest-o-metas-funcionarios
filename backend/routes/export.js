@@ -72,7 +72,7 @@ router.get('/funcionarios/csv', async (req, res) => {
       dataAniversario: formatDate(func.dataAniversario),
       metaIndividual: func.metaIndividual,
       totalVendas: func.vendas.reduce((sum, v) => sum + v.valor, 0)
-    });
+    }));
 
     // Gerar CSV manualmente
     const headers = ['Nome', 'Sexo', 'Idade', 'Função', 'Data Aniversário', 'Meta Individual', 'Total Vendas'];

@@ -102,10 +102,9 @@ gerenteSchema.methods.generateEmailVerificationToken = function() {
 };
 
 // Índices para melhor performance
-gerenteSchema.index({ email: 1 });
+// email já tem unique: true, não precisa de index adicional
 gerenteSchema.index({ resetSenhaToken: 1 });
 gerenteSchema.index({ emailVerificacaoToken: 1 });
-gerenteSchema.index({ gerenteId: 1 }); // Para queries de funcionários
 
 module.exports = mongoose.model('Gerente', gerenteSchema);
 
