@@ -1,0 +1,11 @@
+# Ignorar arquivos desnecessários no build do Vercel
+node_modules
+.git
+*.md
+.env.local
+.env.development
+.vscode
+.idea
+*.log
+.DS_Store
+
