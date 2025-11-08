@@ -69,7 +69,9 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/gestao
 if (!process.env.JWT_SECRET) {
   logger.error('JWT_SECRET não está configurado! Sistema não funcionará corretamente.');
   logger.error('Configure a variável JWT_SECRET nas variáveis de ambiente.');
-  process.exit(1);
+  logger.warn('⚠️  ATENÇÃO: JWT_SECRET não configurado. O servidor iniciará, mas autenticação não funcionará.');
+  // Não fazer exit(1) para permitir que o servidor inicie e mostre o erro claramente
+  // O middleware de auth irá tratar isso adequadamente
 }
 
 // Debug: mostrar se a variável está configurada (sem mostrar senha completa)

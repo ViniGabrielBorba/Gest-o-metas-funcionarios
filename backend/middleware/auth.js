@@ -1,14 +1,19 @@
 const jwt = require('jsonwebtoken');
 const logger = require('../utils/logger');
 
-// Verificar se JWT_SECRET está configurado
-if (!process.env.JWT_SECRET) {
-  logger.error('JWT_SECRET não está configurado! Sistema não funcionará corretamente.');
-  throw new Error('JWT_SECRET não está configurado nas variáveis de ambiente');
-}
+// Verificar se JWT_SECRET está configurado (não lançar erro no carregamento do módulo)
+// O erro será tratado nas funções que usam JWT_SECRET
 
 const auth = (req, res, next) => {
   try {
+    // Verificar se JWT_SECRET está configurado
+    if (!process.env.JWT_SECRET) {
+      logger.error('JWT_SECRET não está configurado! Autenticação não disponível.');
+      return res.status(500).json({ 
+        message: 'Erro de configuração do servidor. JWT_SECRET não está configurado.' 
+      });
+    }
+
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
     if (!token) {
@@ -47,6 +52,14 @@ const auth = (req, res, next) => {
 // Middleware para verificar se é gerente (não dono)
 const authGerente = (req, res, next) => {
   try {
+    // Verificar se JWT_SECRET está configurado
+    if (!process.env.JWT_SECRET) {
+      logger.error('JWT_SECRET não está configurado! Autenticação não disponível.');
+      return res.status(500).json({ 
+        message: 'Erro de configuração do servidor. JWT_SECRET não está configurado.' 
+      });
+    }
+
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
     if (!token) {

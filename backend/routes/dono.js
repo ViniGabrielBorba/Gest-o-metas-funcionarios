@@ -9,9 +9,15 @@ const Agenda = require('../models/Agenda');
 const MensagemDono = require('../models/MensagemDono');
 const router = express.Router();
 
+const logger = require('../utils/logger');
+
 // Gerar token JWT
 const generateToken = (id, tipo = 'gerente') => {
-  return jwt.sign({ id, tipo }, process.env.JWT_SECRET || 'secret_key_gestao_metas', {
+  if (!process.env.JWT_SECRET) {
+    logger.error('JWT_SECRET não está configurado! Não é possível gerar token.');
+    throw new Error('JWT_SECRET não está configurado. Configure a variável de ambiente JWT_SECRET.');
+  }
+  return jwt.sign({ id, tipo }, process.env.JWT_SECRET, {
     expiresIn: '30d'
   });
 };
@@ -25,7 +31,13 @@ const authDono = async (req, res, next) => {
       return res.status(401).json({ message: 'Token não fornecido' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_key_gestao_metas');
+    if (!process.env.JWT_SECRET) {
+      logger.error('JWT_SECRET não está configurado! Autenticação não disponível.');
+      return res.status(500).json({ 
+        message: 'Erro de configuração do servidor. JWT_SECRET não está configurado.' 
+      });
+    }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Verificar se é dono
     if (decoded.tipo !== 'dono') {

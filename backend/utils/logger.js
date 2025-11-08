@@ -5,8 +5,13 @@ const path = require('path');
 const fs = require('fs');
 const logDir = path.join(__dirname, '../logs');
 
-if (!fs.existsSync(logDir)) {
-  fs.mkdirSync(logDir, { recursive: true });
+try {
+  if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+  }
+} catch (error) {
+  // Se não conseguir criar o diretório, continuar sem logs em arquivo
+  console.warn('Aviso: Não foi possível criar diretório de logs:', error.message);
 }
 
 // Formato de log personalizado
@@ -31,32 +36,56 @@ const consoleFormat = winston.format.combine(
 );
 
 // Criar logger
+const loggerTransports = [];
+
+// Adicionar transporte de arquivo apenas se o diretório existir
+try {
+  if (fs.existsSync(logDir)) {
+    loggerTransports.push(
+      new winston.transports.File({
+        filename: path.join(logDir, 'error.log'),
+        level: 'error',
+        maxsize: 5242880, // 5MB
+        maxFiles: 5
+      }),
+      new winston.transports.File({
+        filename: path.join(logDir, 'combined.log'),
+        maxsize: 5242880, // 5MB
+        maxFiles: 5
+      })
+    );
+  }
+} catch (error) {
+  // Continuar sem logs em arquivo se houver erro
+  console.warn('Aviso: Logs em arquivo desabilitados:', error.message);
+}
+
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: logFormat,
   defaultMeta: { service: 'gestao-metas-api' },
-  transports: [
-    // Escrever todos os logs em combined.log
-    new winston.transports.File({
-      filename: path.join(logDir, 'error.log'),
-      level: 'error',
-      maxsize: 5242880, // 5MB
-      maxFiles: 5
-    }),
-    new winston.transports.File({
-      filename: path.join(logDir, 'combined.log'),
-      maxsize: 5242880, // 5MB
-      maxFiles: 5
+  transports: loggerTransports.length > 0 ? loggerTransports : [
+    // Fallback: apenas console se não conseguir criar arquivos
+    new winston.transports.Console({
+      format: consoleFormat
     })
   ],
-  exceptionHandlers: [
+  exceptionHandlers: loggerTransports.length > 0 ? [
     new winston.transports.File({
       filename: path.join(logDir, 'exceptions.log')
     })
+  ] : [
+    new winston.transports.Console({
+      format: consoleFormat
+    })
   ],
-  rejectionHandlers: [
+  rejectionHandlers: loggerTransports.length > 0 ? [
     new winston.transports.File({
       filename: path.join(logDir, 'rejections.log')
+    })
+  ] : [
+    new winston.transports.Console({
+      format: consoleFormat
     })
   ]
 });

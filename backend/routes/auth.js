@@ -13,7 +13,8 @@ const auth = require('../middleware/auth');
 // Gerar token JWT
 const generateToken = (id, tipo = 'gerente') => {
   if (!process.env.JWT_SECRET) {
-    throw new Error('JWT_SECRET não está configurado');
+    logger.error('JWT_SECRET não está configurado! Não é possível gerar token.');
+    throw new Error('JWT_SECRET não está configurado. Configure a variável de ambiente JWT_SECRET.');
   }
   return jwt.sign({ id, tipo }, process.env.JWT_SECRET, {
     expiresIn: '30d'
