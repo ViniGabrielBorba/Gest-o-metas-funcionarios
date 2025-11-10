@@ -167,7 +167,6 @@ const Agenda = ({ setIsAuthenticated }) => {
   };
 
   const handleDateClick = (date) => {
-    setSelectedDate(date);
     handleOpenModal(date);
   };
 
@@ -510,82 +509,7 @@ const Agenda = ({ setIsAuthenticated }) => {
           </div>
         </div>
 
-        {/* Lista de Eventos */}
-        {viewMode === 'lista' && (
-          <div className={`card ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
-            <h2 className={`text-xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Todos os Eventos</h2>
-            <div className="space-y-2">
-              {eventosFiltrados.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">Nenhum evento encontrado</p>
-              ) : (
-                eventosFiltrados.map(evento => (
-                  <div
-                    key={evento._id}
-                    className="p-4 border rounded-lg hover:bg-gray-50"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className={`font-semibold ${evento.concluido ? 'line-through text-gray-500' : 'text-gray-800'}`}>
-                            {evento.titulo}
-                          </h3>
-                          <span className={`w-2 h-2 rounded-full ${getCorPrioridade(evento.prioridade)}`}></span>
-                          <span className="text-xs px-2 py-1 rounded" style={{
-                            backgroundColor: getCorTipo(evento.tipo) + '20',
-                            color: getCorTipo(evento.tipo)
-                          }}>
-                            {evento.tipo}
-                          </span>
-                        </div>
-                        {evento.descricao && (
-                          <p className="text-sm text-gray-600 mb-2">{evento.descricao}</p>
-                        )}
-                        <p className="text-xs text-gray-500">
-                          {new Date(evento.data).toLocaleDateString('pt-BR', {
-                            weekday: 'long',
-                            day: '2-digit',
-                            month: 'long',
-                            year: 'numeric'
-                          })}
-                        </p>
-                        {evento.notificacao.ativo && (
-                          <p className="text-xs text-blue-600 mt-1">
-                            <FaBell className="inline mr-1" />
-                            Lembrete: {evento.notificacao.diasAntecedencia} dia(s) antes às {evento.notificacao.horario}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleToggleConcluido(evento)}
-                          className={`p-2 rounded ${
-                            evento.concluido
-                              ? 'bg-gray-200 text-gray-600'
-                              : 'bg-green-100 text-green-700'
-                          }`}
-                        >
-                          {evento.concluido ? <FaTimes /> : <FaCheck />}
-                        </button>
-                        <button
-                          onClick={() => handleOpenModal(null, evento)}
-                          className="p-2 rounded bg-blue-100 text-blue-700"
-                        >
-                          <FaEdit />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(evento._id)}
-                          className="p-2 rounded bg-red-100 text-red-700"
-                        >
-                          <FaTrash />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
+        {/* Lista de Eventos - Removida funcionalidade de viewMode */}
       </div>
 
       {/* Modal de Evento */}
