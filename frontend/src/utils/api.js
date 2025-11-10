@@ -5,17 +5,20 @@ import { getAuthHeaders, removeAuthToken } from './auth';
 const getApiUrl = () => {
   // Se a variável de ambiente estiver configurada, usar ela
   if (process.env.REACT_APP_API_URL) {
+    console.log('🔗 Usando REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
     return process.env.REACT_APP_API_URL;
   }
   
-  // Se estiver em produção (Vercel), tentar usar a URL do Render
+  // Se estiver em produção (Netlify), tentar usar a URL do Render
   // Por padrão, assumir que o backend está no Render
   if (process.env.NODE_ENV === 'production') {
-    // URL padrão do Render (substitua pela sua URL real)
-    return 'https://gest-o-metas-funcionarios-3.onrender.com/api';
+    const defaultUrl = 'https://gest-o-metas-funcionarios-3.onrender.com/api';
+    console.warn('⚠️ REACT_APP_API_URL não configurada! Usando URL padrão:', defaultUrl);
+    return defaultUrl;
   }
   
   // Em desenvolvimento, usar proxy local
+  console.log('🔗 Modo desenvolvimento - usando proxy local: /api');
   return '/api';
 };
 

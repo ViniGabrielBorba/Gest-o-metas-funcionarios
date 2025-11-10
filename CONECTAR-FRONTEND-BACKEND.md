@@ -82,6 +82,30 @@ Após o deploy:
 
 ## 🆘 Problemas Comuns
 
+### **Erro 404: "Failed to load resource: the server responded with a status of 404"**
+**Este é o erro mais comum!** Significa que a variável `REACT_APP_API_URL` não está configurada ou o build não foi refeito.
+
+**Solução:**
+1. ✅ **Verifique se a variável está configurada:**
+   - No Netlify, vá em **Site settings** → **Environment variables**
+   - Procure por `REACT_APP_API_URL`
+   - Se não existir, adicione com o valor: `https://gest-o-metas-funcionarios-3.onrender.com/api`
+
+2. ✅ **FAÇA UM NOVO DEPLOY (MUITO IMPORTANTE!):**
+   - Variáveis de ambiente só são aplicadas em novos builds
+   - Vá em **Deploys** → **Trigger deploy** → **Deploy site**
+   - Aguarde o build completar
+
+3. ✅ **Verifique a URL:**
+   - Abra o Console do navegador (F12 → Console)
+   - Procure por mensagens que começam com `🔗` ou `⚠️`
+   - Verifique qual URL está sendo usada
+
+4. ✅ **Teste a URL do backend diretamente:**
+   - Abra: `https://gest-o-metas-funcionarios-3.onrender.com/api/auth/login`
+   - Se retornar erro de método (POST required), o backend está funcionando
+   - Se retornar 404, verifique a URL do backend no Render
+
 ### **Erro: "Network Error" ou "Failed to fetch"**
 - ✅ Verifique se a variável `REACT_APP_API_URL` está configurada corretamente
 - ✅ Verifique se o backend está rodando no Render (verifique o status no dashboard)
