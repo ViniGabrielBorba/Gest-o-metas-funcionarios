@@ -323,8 +323,9 @@ const DashboardDono = ({ setIsAuthenticated }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Filtros e Busca */}
         <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} rounded-xl shadow-lg p-6 mb-6 transition-colors`}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
-            <div className="lg:col-span-2">
+          {/* Primeira linha: Busca, Status, Ordenar */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
               <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1 transition-colors`}>
                 Buscar Loja
               </label>
@@ -335,7 +336,7 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                   placeholder="Nome da loja ou gerente..."
                   value={buscaLoja}
                   onChange={(e) => setBuscaLoja(e.target.value)}
-                  className={`input-field pl-10 ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : ''}`}
+                  className={`input-field w-full pl-10 ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : ''}`}
                 />
               </div>
             </div>
@@ -346,7 +347,7 @@ const DashboardDono = ({ setIsAuthenticated }) => {
               <select
                 value={filtroStatus}
                 onChange={(e) => setFiltroStatus(e.target.value)}
-                className={`input-field ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
+                className={`input-field w-full ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
               >
                 <option value="">Todos</option>
                 <option value="batida">Meta Batida</option>
@@ -361,60 +362,68 @@ const DashboardDono = ({ setIsAuthenticated }) => {
               <select
                 value={ordenacao}
                 onChange={(e) => setOrdenacao(e.target.value)}
-                className={`input-field ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
+                className={`input-field w-full ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
               >
                 <option value="desempenho">Desempenho</option>
                 <option value="vendas">Vendas</option>
                 <option value="nome">Nome</option>
               </select>
             </div>
-            <div className="flex gap-2 items-end">
+          </div>
+          
+          {/* Segunda linha: Período (Mês/Ano), Tipo de Evolução e Botão */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div>
+              <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1 transition-colors`}>
+                Período
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                  className={`input-field flex-1 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
+                    <option key={m} value={m}>
+                      {new Date(2000, m - 1).toLocaleDateString('pt-BR', { month: 'short' })}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                  className={`input-field flex-1 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
+                >
+                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map(ano => (
+                    <option key={ano} value={ano}>{ano}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1 transition-colors`}>
+                Tipo de Evolução
+              </label>
               <select
                 value={tipoEvolucao}
                 onChange={(e) => setTipoEvolucao(e.target.value)}
-                className={`input-field ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
+                className={`input-field w-full ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
               >
                 <option value="mensal">Evolução Mensal</option>
                 <option value="trimestral">Evolução Trimestral</option>
               </select>
+            </div>
+            <div>
+              <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1 transition-colors opacity-0 pointer-events-none`}>
+                Ação
+              </label>
               <button
                 onClick={() => fetchEvolucao(tipoEvolucao)}
-                className="btn-secondary flex items-center justify-center gap-2"
+                className="btn-secondary w-full flex items-center justify-center gap-2 px-4 py-2.5 font-medium"
               >
-                <FaChartLine /> Evolução
+                <FaChartLine className="text-lg" /> 
+                <span>Evolução</span>
               </button>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-4 items-end">
-            <div className="flex-1 min-w-[200px]">
-              <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1 transition-colors`}>
-                Mês
-              </label>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                className={`input-field ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
-              >
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
-                  <option key={m} value={m}>
-                    {new Date(2000, m - 1).toLocaleDateString('pt-BR', { month: 'long' })}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex-1 min-w-[200px]">
-              <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1 transition-colors`}>
-                Ano
-              </label>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className={`input-field ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
-              >
-                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map(ano => (
-                  <option key={ano} value={ano}>{ano}</option>
-                ))}
-              </select>
             </div>
           </div>
         </div>
