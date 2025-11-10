@@ -40,10 +40,6 @@ export const ToastProvider = ({ children }) => {
     return id;
   }, [removeToast]);
 
-  const removeToast = useCallback((id) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
-  }, []);
-
   const toast = {
     success: (message, title = 'Sucesso!') => showToast(message, 'success', title),
     error: (message, title = 'Erro!') => showToast(message, 'error', title),
