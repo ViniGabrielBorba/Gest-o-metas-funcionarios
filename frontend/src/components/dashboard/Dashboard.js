@@ -432,6 +432,11 @@ const Dashboard = ({ setIsAuthenticated }) => {
 
   const { resumo, vendasMes, topVendedoresMes, vendasDiarias, aniversariantes } = dashboardData;
 
+  console.log('=== DADOS DO DASHBOARD ===');
+  console.log('Vendas diárias recebidas:', vendasDiarias);
+  console.log('Total de dias com vendas:', vendasDiarias?.length || 0);
+  console.log('Total de vendas diárias:', vendasDiarias?.reduce((sum, v) => sum + (v.total || 0), 0) || 0);
+
   // Gráfico de vendas do mês (comparativo com meta)
   const chartDataMes = vendasMes.map(v => ({
     name: v.nome,
@@ -446,11 +451,13 @@ const Dashboard = ({ setIsAuthenticated }) => {
   }));
 
   // Gráfico de vendas diárias
-  const chartDataDiarias = vendasDiarias.map(v => ({
+  const chartDataDiarias = (vendasDiarias || []).map(v => ({
     dia: v.dia,
-    total: v.total,
-    quantidade: v.quantidade
+    total: v.total || 0,
+    quantidade: v.quantidade || 0
   }));
+  
+  console.log('Dados do gráfico de vendas diárias:', chartDataDiarias);
 
   // Gráfico comparativo entre períodos
   const chartDataComparativo = compararPeriodo && dadosComparacao ? [
@@ -636,14 +643,18 @@ const Dashboard = ({ setIsAuthenticated }) => {
               <div>
                 <p className="text-blue-100 text-sm mb-1">Vendas Diárias</p>
                 <p className="text-3xl font-bold">
-                  R$ {chartDataDiarias.reduce((sum, v) => sum + v.total, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {chartDataDiarias && chartDataDiarias.length > 0 
+                    ? chartDataDiarias.reduce((sum, v) => sum + (v.total || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+                    : '0,00'}
                 </p>
                 <p className="text-sm mt-1">
-                  {chartDataDiarias.length} {chartDataDiarias.length === 1 ? 'dia' : 'dias'} com vendas
+                  {chartDataDiarias && chartDataDiarias.length > 0 
+                    ? `${chartDataDiarias.length} ${chartDataDiarias.length === 1 ? 'dia' : 'dias'} com vendas`
+                    : 'Nenhuma venda registrada'}
                 </p>
-                {chartDataDiarias.length > 0 && (
+                {chartDataDiarias && chartDataDiarias.length > 0 && (
                   <p className="text-xs mt-1 font-semibold">
-                    Média: R$ {(chartDataDiarias.reduce((sum, v) => sum + v.total, 0) / chartDataDiarias.length).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    Média: R$ {(chartDataDiarias.reduce((sum, v) => sum + (v.total || 0), 0) / chartDataDiarias.length).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </p>
                 )}
               </div>

@@ -340,9 +340,14 @@ router.get('/:id/vendas-diarias', async (req, res) => {
     const vendasPorData = {};
     
     // Vendas diretas da loja
-    console.log('Processando vendas diretas da loja...');
+    console.log('=== PROCESSANDO VENDAS DIRETAS DA LOJA ===');
+    console.log('Meta mês/ano:', `${mesMeta}/${anoMeta}`);
+    console.log('Meta tem vendas diárias:', meta.vendasDiarias ? 'Sim' : 'Não');
+    console.log('Total de vendas diárias:', meta.vendasDiarias?.length || 0);
+    
     if (meta.vendasDiarias && meta.vendasDiarias.length > 0) {
-      console.log(`Meta tem ${meta.vendasDiarias.length} vendas diárias`);
+      console.log(`Processando ${meta.vendasDiarias.length} vendas diárias da loja...`);
+      
       meta.vendasDiarias.forEach((venda, index) => {
         try {
           const vDate = new Date(venda.data);
@@ -355,9 +360,22 @@ router.get('/:id/vendas-diarias', async (req, res) => {
           const mes = vDate.getUTCMonth() + 1;
           const dia = vDate.getUTCDate();
           
+          console.log(`Venda ${index + 1}:`, {
+            dataOriginal: venda.data,
+            dataProcessada: vDate.toISOString(),
+            ano,
+            mes,
+            dia,
+            valor: venda.valor,
+            vendaId: venda._id ? venda._id.toString() : 'Sem ID',
+            corresponde: mes === mesMeta && ano === anoMeta
+          });
+          
           // Verificar se é do mês/ano da meta
           if (mes === mesMeta && ano === anoMeta) {
             const dataKey = `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+            console.log(`Venda ${index + 1} corresponde! Data key: ${dataKey}`);
+            
             if (!vendasPorData[dataKey]) {
               vendasPorData[dataKey] = {
                 data: new Date(Date.UTC(ano, mes - 1, dia, 12, 0, 0, 0)),
@@ -365,6 +383,7 @@ router.get('/:id/vendas-diarias', async (req, res) => {
                 vendasFuncionarios: [],
                 total: 0
               };
+              console.log(`Criando entrada para dia ${dataKey}`);
             }
             const valorVenda = parseFloat(venda.valor) || 0;
             vendasPorData[dataKey].vendasLoja.push({
@@ -374,11 +393,16 @@ router.get('/:id/vendas-diarias', async (req, res) => {
               observacao: (venda.observacao || '').toString()
             });
             vendasPorData[dataKey].total += valorVenda;
+            console.log(`Venda ${index + 1} adicionada ao dia ${dataKey}. Total do dia: R$ ${vendasPorData[dataKey].total}`);
+          } else {
+            console.log(`Venda ${index + 1} NÃO corresponde (${mes}/${ano} vs ${mesMeta}/${anoMeta})`);
           }
         } catch (err) {
           console.error(`Erro ao processar venda ${index}:`, err);
         }
       });
+      
+      console.log(`Total de dias com vendas da loja: ${Object.keys(vendasPorData).length}`);
     } else {
       console.log('Meta não tem vendas diárias');
     }

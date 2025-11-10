@@ -79,31 +79,68 @@ router.get('/', async (req, res) => {
     });
 
     // Vendas da loja (se meta tiver vendas diárias)
+    console.log('=== PROCESSANDO VENDAS DA LOJA NO DASHBOARD ===');
+    console.log('Meta encontrada:', meta ? 'Sim' : 'Não');
+    console.log('Meta mês/ano:', meta ? `${meta.mes}/${meta.ano}` : 'N/A');
+    console.log('Mês/Ano atual:', `${mesAtual}/${anoAtual}`);
+    console.log('Vendas diárias da meta:', meta?.vendasDiarias?.length || 0);
+    
     if (meta && meta.vendasDiarias && meta.vendasDiarias.length > 0) {
-      meta.vendasDiarias.forEach(venda => {
-        // Normalizar data usando UTC para evitar problemas de timezone
-        const vendaDate = new Date(venda.data);
-        // Usar UTC para extrair os componentes (garante dia correto)
-        const mesVenda = vendaDate.getUTCMonth() + 1;
-        const anoVenda = vendaDate.getUTCFullYear();
-        const diaVenda = vendaDate.getUTCDate();
-        
-        if (mesVenda === mesAtual && anoVenda === anoAtual) {
-          const dataKey = `${anoVenda}-${String(mesVenda).padStart(2, '0')}-${String(diaVenda).padStart(2, '0')}`;
+      console.log(`Processando ${meta.vendasDiarias.length} vendas da loja...`);
+      
+      meta.vendasDiarias.forEach((venda, index) => {
+        try {
+          // Normalizar data usando UTC para evitar problemas de timezone
+          const vendaDate = new Date(venda.data);
           
-          if (!vendasDiariasMes[dataKey]) {
-            vendasDiariasMes[dataKey] = {
-              data: dataKey,
-              dia: diaVenda,
-              total: 0,
-              quantidade: 0
-            };
+          if (isNaN(vendaDate.getTime())) {
+            console.error(`Venda ${index} tem data inválida:`, venda.data);
+            return;
           }
-          vendasDiariasMes[dataKey].total += venda.valor;
-          vendasDiariasMes[dataKey].quantidade += 1;
+          
+          // Usar UTC para extrair os componentes (garante dia correto)
+          const mesVenda = vendaDate.getUTCMonth() + 1;
+          const anoVenda = vendaDate.getUTCFullYear();
+          const diaVenda = vendaDate.getUTCDate();
+          
+          console.log(`Venda ${index + 1}:`, {
+            dataOriginal: venda.data,
+            dataProcessada: vendaDate.toISOString(),
+            mesVenda,
+            anoVenda,
+            diaVenda,
+            valor: venda.valor,
+            corresponde: mesVenda === mesAtual && anoVenda === anoAtual
+          });
+          
+          if (mesVenda === mesAtual && anoVenda === anoAtual) {
+            const dataKey = `${anoVenda}-${String(mesVenda).padStart(2, '0')}-${String(diaVenda).padStart(2, '0')}`;
+            
+            if (!vendasDiariasMes[dataKey]) {
+              vendasDiariasMes[dataKey] = {
+                data: dataKey,
+                dia: diaVenda,
+                total: 0,
+                quantidade: 0
+              };
+            }
+            vendasDiariasMes[dataKey].total += parseFloat(venda.valor) || 0;
+            vendasDiariasMes[dataKey].quantidade += 1;
+            
+            console.log(`Venda adicionada ao dia ${diaVenda}. Total do dia: R$ ${vendasDiariasMes[dataKey].total}`);
+          } else {
+            console.log(`Venda ${index + 1} não corresponde ao mês/ano atual (${mesVenda}/${anoVenda} vs ${mesAtual}/${anoAtual})`);
+          }
+        } catch (err) {
+          console.error(`Erro ao processar venda ${index}:`, err);
         }
       });
+    } else {
+      console.log('Meta não tem vendas diárias ou meta não encontrada');
     }
+    
+    console.log('Total de dias com vendas:', Object.keys(vendasDiariasMes).length);
+    console.log('Vendas diárias processadas:', Object.values(vendasDiariasMes));
 
     // Converter para array e ordenar por data
     const vendasDiariasArray = Object.values(vendasDiariasMes)
