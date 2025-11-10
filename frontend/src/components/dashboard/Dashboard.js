@@ -15,7 +15,8 @@ import {
   FaCalendar,
   FaBell,
   FaArrowUp,
-  FaArrowDown
+  FaArrowDown,
+  FaDollarSign
 } from 'react-icons/fa';
 import {
   BarChart,
@@ -582,7 +583,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
         </div>
 
         {/* Cards de Resumo */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <div className="card bg-gradient-to-br from-red-500 to-red-600 text-white">
             <div className="flex items-center justify-between">
               <div>
@@ -627,6 +628,26 @@ const Dashboard = ({ setIsAuthenticated }) => {
                 )}
               </div>
               <FaChartLine className="text-4xl opacity-80" />
+            </div>
+          </div>
+
+          <div className="card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-100 text-sm mb-1">Vendas Diárias</p>
+                <p className="text-3xl font-bold">
+                  R$ {chartDataDiarias.reduce((sum, v) => sum + v.total, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+                <p className="text-sm mt-1">
+                  {chartDataDiarias.length} {chartDataDiarias.length === 1 ? 'dia' : 'dias'} com vendas
+                </p>
+                {chartDataDiarias.length > 0 && (
+                  <p className="text-xs mt-1 font-semibold">
+                    Média: R$ {(chartDataDiarias.reduce((sum, v) => sum + v.total, 0) / chartDataDiarias.length).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </p>
+                )}
+              </div>
+              <FaDollarSign className="text-4xl opacity-80" />
             </div>
           </div>
 

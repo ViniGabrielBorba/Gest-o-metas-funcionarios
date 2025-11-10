@@ -189,15 +189,38 @@ const Metas = ({ setIsAuthenticated }) => {
       if (historicoAberto) {
         console.log('=== RECARREGANDO HISTÓRICO ===');
         // Aguardar um pouco para garantir que o backend processou completamente
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Usar a meta da resposta do servidor (que já contém a venda salva)
+        // Recarregar histórico buscando dados atualizados diretamente do servidor
+        // Usar a meta atualizada da resposta
         const metaAtualizada = response.data;
         console.log('Meta atualizada da resposta:', metaAtualizada);
         console.log('Total de vendas na meta atualizada:', metaAtualizada.vendasDiarias?.length || 0);
         
-        // Recarregar histórico - isso buscará os dados atualizados diretamente do servidor
-        await handleVerHistorico(metaAtualizada);
+        // Buscar histórico atualizado diretamente do servidor
+        try {
+          const historicoResponse = await api.get(`/metas/${metaId}/vendas-diarias`);
+          console.log('Histórico recarregado:', historicoResponse.data);
+          
+          if (historicoResponse.data?.vendasAgrupadas) {
+            setVendasDiarias(historicoResponse.data.vendasAgrupadas);
+            setResumoVendas(historicoResponse.data.resumo || null);
+            
+            // Preparar dados para gráfico mensal
+            const vendasPorDia = historicoResponse.data.vendasAgrupadas.map(dia => ({
+              dia: new Date(dia.data).getUTCDate(),
+              total: dia.total
+            })).sort((a, b) => a.dia - b.dia);
+            setChartDataMensal(vendasPorDia);
+          }
+          
+          // Atualizar selectedMeta
+          setSelectedMeta(metaAtualizada);
+        } catch (error) {
+          console.error('Erro ao recarregar histórico:', error);
+          // Mesmo com erro, atualizar selectedMeta
+          setSelectedMeta(metaAtualizada);
+        }
       } else {
         // Atualizar selectedMeta mesmo se histórico não estava aberto
         const metaAtualizada = response.data;
