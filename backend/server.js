@@ -198,9 +198,12 @@ app.get('/health', (req, res) => {
 // Rotas (com tratamento de erro)
 const loadRoute = (path, routeName) => {
   try {
-    return require(path);
+    const route = require(path);
+    logger.info(`Rota ${routeName} carregada com sucesso`);
+    return route;
   } catch (error) {
     logger.error(`Erro ao carregar rota ${routeName}:`, error.message);
+    logger.error(`Stack trace:`, error.stack);
     // Retornar router vazio para não quebrar o servidor
     const express = require('express');
     const router = express.Router();
