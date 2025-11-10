@@ -3,7 +3,7 @@ import Navbar from '../layout/Navbar';
 import api from '../../utils/api';
 import { useToast } from '../../contexts/ToastContext';
 import { useDarkMode } from '../../contexts/DarkModeContext';
-import { FaPrint, FaChartLine, FaUsers, FaDollarSign, FaSearch, FaFilter } from 'react-icons/fa';
+import { FaPrint, FaChartLine, FaUsers, FaDollarSign, FaSearch } from 'react-icons/fa';
 import {
   LineChart,
   Line,
@@ -30,10 +30,10 @@ const Feedback = ({ setIsAuthenticated }) => {
   const [compararPeriodos, setCompararPeriodos] = useState(false);
   const [mesComparacao, setMesComparacao] = useState(new Date().getMonth() + 1);
   const [anoComparacao, setAnoComparacao] = useState(new Date().getFullYear());
-  const [dadosComparacao, setDadosComparacao] = useState(null);
 
   useEffect(() => {
     fetchFuncionarios();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -41,6 +41,7 @@ const Feedback = ({ setIsAuthenticated }) => {
       fetchVendasFuncionario();
       fetchObservacaoGerente();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFuncionario, mes, ano]);
 
   const fetchFuncionarios = async () => {

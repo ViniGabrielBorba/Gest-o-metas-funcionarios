@@ -11,8 +11,7 @@ import {
   FaDollarSign,
   FaCalendar,
   FaPrint,
-  FaSearch,
-  FaFilter
+  FaSearch
 } from 'react-icons/fa';
 
 const Funcionarios = ({ setIsAuthenticated }) => {
@@ -53,6 +52,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
 
   useEffect(() => {
     fetchFuncionarios();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchFuncionarios = async () => {
@@ -234,7 +234,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
         return;
       }
 
-      const response = await api.post(`/funcionarios/${selectedFuncionario._id}/vendas-diarias`, vendaData);
+      await api.post(`/funcionarios/${selectedFuncionario._id}/vendas-diarias`, vendaData);
       setShowVendaModal(false);
       fetchFuncionarios();
       toast.success('Venda registrada com sucesso! O total mensal foi atualizado automaticamente.');

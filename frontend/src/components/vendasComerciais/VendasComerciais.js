@@ -43,6 +43,7 @@ const VendasComerciais = ({ setIsAuthenticated }) => {
 
   useEffect(() => {
     fetchVendas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth, selectedYear]);
 
   const fetchVendas = async () => {

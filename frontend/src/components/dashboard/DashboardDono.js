@@ -14,16 +14,11 @@ import {
   FaArrowUp,
   FaArrowDown,
   FaSearch,
-  FaFilter,
   FaBell,
-  FaEnvelope,
-  FaCalendar,
   FaTimes,
   FaMoon,
   FaSun,
-  FaCog,
   FaPrint,
-  FaDownload,
   FaDollarSign
 } from 'react-icons/fa';
 import {
@@ -55,18 +50,13 @@ const DashboardDono = ({ setIsAuthenticated }) => {
   const [filtroStatus, setFiltroStatus] = useState('');
   const [ordenacao, setOrdenacao] = useState('desempenho');
   const [showModalLoja, setShowModalLoja] = useState(false);
-  const [lojaSelecionada, setLojaSelecionada] = useState(null);
   const [detalhesLoja, setDetalhesLoja] = useState(null);
-  const [showComparacao, setShowComparacao] = useState(false);
-  const [dadosComparacao, setDadosComparacao] = useState(null);
   const [showEvolucao, setShowEvolucao] = useState(false);
   const [dadosEvolucao, setDadosEvolucao] = useState(null);
   const [tipoEvolucao, setTipoEvolucao] = useState('mensal');
   const [alertas, setAlertas] = useState([]);
   const [metricas, setMetricas] = useState(null);
   const [previsoes, setPrevisoes] = useState(null);
-  const [agendaEventos, setAgendaEventos] = useState([]);
-  const [showMensagemModal, setShowMensagemModal] = useState(false);
   const [darkMode, setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
   const [dadosMesAnterior, setDadosMesAnterior] = useState(null);
   const navigate = useNavigate();
@@ -229,10 +219,10 @@ const DashboardDono = ({ setIsAuthenticated }) => {
 
   const fetchAgenda = async () => {
     try {
-      const response = await api.get('/dono/agenda', {
+      await api.get('/dono/agenda', {
         params: { mes: selectedMonth, ano: selectedYear }
       });
-      setAgendaEventos(response.data.eventos || []);
+      // Agenda não é exibida atualmente, mas mantida para uso futuro
     } catch (error) {
       console.error('Erro ao buscar agenda:', error);
       if (error.response?.status === 403 || error.response?.status === 401) {
@@ -280,17 +270,18 @@ const DashboardDono = ({ setIsAuthenticated }) => {
     }
   };
 
-  const fetchComparacao = async (mes1, ano1, mes2, ano2) => {
-    try {
-      const response = await api.get('/dono/dashboard/comparacao', {
-        params: { mes1, ano1, mes2, ano2 }
-      });
-      setDadosComparacao(response.data);
-      setShowComparacao(true);
-    } catch (error) {
-      toast.error('Erro ao buscar dados de comparação');
-    }
-  };
+  // Função mantida para uso futuro, mas não usada atualmente
+  // const fetchComparacao = async (mes1, ano1, mes2, ano2) => {
+  //   try {
+  //     const response = await api.get('/dono/dashboard/comparacao', {
+  //       params: { mes1, ano1, mes2, ano2 }
+  //     });
+  //     setDadosComparacao(response.data);
+  //     setShowComparacao(true);
+  //   } catch (error) {
+  //     toast.error('Erro ao buscar dados de comparação');
+  //   }
+  // };
 
   const fetchEvolucao = async (tipo) => {
     try {

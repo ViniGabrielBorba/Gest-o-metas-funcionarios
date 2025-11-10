@@ -11,7 +11,6 @@ import {
   FaBell,
   FaCheck,
   FaTimes,
-  FaFilter,
   FaSearch
 } from 'react-icons/fa';
 import { notify } from '../../utils/notifications';
@@ -23,10 +22,8 @@ const Agenda = ({ setIsAuthenticated }) => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingEvento, setEditingEvento] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
-  const [viewMode, setViewMode] = useState('mes'); // 'mes', 'semana', 'dia', 'lista'
   const [filtroTipo, setFiltroTipo] = useState('');
   const [filtroPrioridade, setFiltroPrioridade] = useState('');
   const [busca, setBusca] = useState('');
@@ -53,6 +50,7 @@ const Agenda = ({ setIsAuthenticated }) => {
     // Verificar lembretes a cada minuto
     const interval = setInterval(verificarLembretes, 60000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentMonth, currentYear]);
 
   const fetchEventos = async () => {

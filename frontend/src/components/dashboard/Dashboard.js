@@ -48,10 +48,6 @@ const Dashboard = ({ setIsAuthenticated }) => {
   const [anoComparacao, setAnoComparacao] = useState(new Date().getFullYear());
   const [dadosComparacao, setDadosComparacao] = useState(null);
   const [dadosMesAnterior, setDadosMesAnterior] = useState(null);
-  const [layoutWidgets, setLayoutWidgets] = useState(() => {
-    const saved = localStorage.getItem('dashboardLayout');
-    return saved ? JSON.parse(saved) : null;
-  });
   const [buscaFuncionario, setBuscaFuncionario] = useState('');
   const [eventosAgenda, setEventosAgenda] = useState([]);
   const [alertas, setAlertas] = useState([]);
@@ -66,6 +62,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
     fetchDadosMesAnterior(); // Comparação automática com mês anterior
     // Resetar flag quando mudar o mês/ano para mostrar notificações novamente
     setAlertasJaNotificados(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth, selectedYear]);
 
   // Mostrar notificações apenas uma vez quando o Dashboard carrega
@@ -90,6 +87,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
     if (compararPeriodo) {
       fetchDadosComparacao();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compararPeriodo, mesComparacao, anoComparacao]);
 
   const fetchDashboardData = async () => {

@@ -3,7 +3,7 @@ import Navbar from '../layout/Navbar';
 import api from '../../utils/api';
 import { useToast } from '../../contexts/ToastContext';
 import { useDarkMode } from '../../contexts/DarkModeContext';
-import { FaPlus, FaEdit, FaTrash, FaBullseye, FaChartBar, FaDollarSign, FaCalendar, FaPrint, FaFilter } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaBullseye, FaChartBar, FaPrint } from 'react-icons/fa';
 import { notifyMetaBatida } from '../../utils/notifications';
 import {
   LineChart,
@@ -320,8 +320,7 @@ const Metas = ({ setIsAuthenticated }) => {
     return { totalVendido, percentual, faltando, excedente, batida };
   };
 
-  // Verificar se alguma meta foi batida para mostrar animação
-  const temMetaBatida = metas.some(m => (m.totalVendido || 0) >= m.valor && m.valor > 0);
+  // Verificar se alguma meta foi batida para mostrar animação (usado no useEffect acima)
 
   // Preparar dados para gráfico de meses anteriores (ordenado por ano e mês)
   const metasOrdenadas = [...metas]

@@ -3,7 +3,7 @@ import Navbar from '../layout/Navbar';
 import api from '../../utils/api';
 import { useToast } from '../../contexts/ToastContext';
 import { useDarkMode } from '../../contexts/DarkModeContext';
-import { FaPlus, FaEdit, FaTrash, FaBox, FaPrint, FaSave, FaSearch, FaFilter } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaBox, FaPrint, FaSave } from 'react-icons/fa';
 
 const Estoque = ({ setIsAuthenticated }) => {
   const toast = useToast();
