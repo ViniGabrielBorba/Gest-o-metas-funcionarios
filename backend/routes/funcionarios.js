@@ -77,7 +77,7 @@ router.post('/', validate(funcionarioSchema), async (req, res) => {
     const funcionario = await Funcionario.create({
       gerenteId: req.user.id,
       nome,
-      sobrenome,
+      sobrenome: sobrenome || '',
       sexo,
       idade,
       funcao,

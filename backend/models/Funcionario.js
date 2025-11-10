@@ -13,8 +13,9 @@ const funcionarioSchema = new mongoose.Schema({
   },
   sobrenome: {
     type: String,
-    required: true,
-    trim: true
+    required: false,
+    trim: true,
+    default: ''
   },
   sexo: {
     type: String,
