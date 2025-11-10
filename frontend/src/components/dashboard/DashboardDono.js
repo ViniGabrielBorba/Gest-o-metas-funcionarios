@@ -22,7 +22,8 @@ import {
   FaSun,
   FaCog,
   FaPrint,
-  FaDownload
+  FaDownload,
+  FaDollarSign
 } from 'react-icons/fa';
 import {
   BarChart,
@@ -258,10 +259,12 @@ const DashboardDono = ({ setIsAuthenticated }) => {
       }
     });
 
-  // Dados para gráfico de lojas
+  // Dados para gráfico de lojas (com separação de vendas comerciais e funcionários)
   const dadosGraficoLojas = lojasFiltradas.map(loja => ({
     nome: loja.nomeLoja,
     vendido: loja.totalGeral,
+    vendasFuncionarios: loja.totalVendasFuncionarios || 0,
+    vendasComerciais: loja.totalVendasComerciais || 0,
     meta: loja.metaMes
   }));
 
@@ -444,7 +447,7 @@ const DashboardDono = ({ setIsAuthenticated }) => {
         )}
 
         {/* Cards de Resumo */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6 bg-gradient-to-br from-blue-500 to-cyan-600 text-white transition-colors`}>
             <div className="flex items-center justify-between">
               <div>
@@ -489,6 +492,23 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                 </p>
               </div>
               <FaChartLine className="text-4xl opacity-50" />
+            </div>
+          </div>
+
+          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6 bg-gradient-to-br from-teal-500 to-cyan-600 text-white transition-colors`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-teal-100 text-sm mb-1">Vendas Comerciais</p>
+                <p className="text-3xl font-bold">
+                  R$ {(resumo.totalVendasComerciais || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+                <p className="text-xs mt-1 opacity-90">
+                  {resumo.totalVendidoGeral > 0 
+                    ? `${((resumo.totalVendasComerciais || 0) / resumo.totalVendidoGeral * 100).toFixed(1)}% do total`
+                    : '0% do total'}
+                </p>
+              </div>
+              <FaDollarSign className="text-4xl opacity-50" />
             </div>
           </div>
         </div>
@@ -616,7 +636,8 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                 />
                 <Legend />
                 <Brush dataKey="nome" height={30} stroke={darkMode ? '#4b5563' : '#8884d8'} />
-                <Bar dataKey="vendido" fill="#169486" name="Vendido" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="vendasFuncionarios" fill="#10b981" name="Vendas Funcionários" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="vendasComerciais" fill="#3b82f6" name="Vendas Comerciais" radius={[8, 8, 0, 0]} />
                 <Bar dataKey="meta" fill="#94a3b8" name="Meta" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -864,6 +885,16 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                     <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Vendido:</span>
                     <span className="font-semibold">
                       R$ {loja.totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs mt-1">
+                    <span className={darkMode ? 'text-gray-500' : 'text-gray-500'}>
+                      Funcionários: R$ {(loja.totalVendasFuncionarios || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className={darkMode ? 'text-gray-500' : 'text-gray-500'}>
+                      Comerciais: R$ {(loja.totalVendasComerciais || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className={`flex justify-between items-center pt-2 ${darkMode ? 'border-gray-600' : 'border-gray-200'} border-t`}>

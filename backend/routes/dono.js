@@ -4,6 +4,7 @@ const Dono = require('../models/Dono');
 const Gerente = require('../models/Gerente');
 const Funcionario = require('../models/Funcionario');
 const Meta = require('../models/Meta');
+const VendaComercial = require('../models/VendaComercial');
 const AvaliacaoEstoque = require('../models/AvaliacaoEstoque');
 const Agenda = require('../models/Agenda');
 const MensagemDono = require('../models/MensagemDono');
@@ -170,10 +171,26 @@ router.get('/dashboard', authDono, async (req, res) => {
           };
         });
 
-        // O meta.totalVendido já inclui vendas diretas da loja + vendas dos funcionários
-        // Não precisamos somar novamente para evitar duplicação
-        const totalGeral = meta ? (meta.totalVendido || 0) : 0;
+        // Calcular vendas comerciais do mês
+        const inicioMes = new Date(Date.UTC(anoAtual, mesAtual - 1, 1, 0, 0, 0, 0));
+        const fimMes = new Date(Date.UTC(anoAtual, mesAtual, 0, 23, 59, 59, 999));
+        
+        const vendasComerciais = await VendaComercial.find({
+          gerenteId: gerente._id,
+          data: {
+            $gte: inicioMes,
+            $lte: fimMes
+          }
+        });
+        
+        const totalVendasComerciais = vendasComerciais.reduce((sum, v) => sum + (parseFloat(v.valor) || 0), 0);
+        
+        // Total de vendas dos funcionários
         const totalVendasFuncionarios = vendasFuncionarios.reduce((sum, v) => sum + v.valor, 0);
+        
+        // Total geral = vendas dos funcionários + vendas comerciais
+        // O meta.totalVendido inclui apenas vendas dos funcionários agora
+        const totalGeral = totalVendasFuncionarios + totalVendasComerciais;
 
         // Top vendedores
         const topVendedores = [...vendasFuncionarios]
@@ -189,8 +206,9 @@ router.get('/dashboard', authDono, async (req, res) => {
           totalFuncionarios: funcionarios.length,
           metaMes: meta ? meta.valor : 0,
           totalVendidoLoja: totalGeral, // Mantido para compatibilidade
-          totalVendasFuncionarios, // Apenas para referência (já incluído em totalGeral)
-          totalGeral,
+          totalVendasFuncionarios, // Vendas dos funcionários
+          totalVendasComerciais, // Vendas comerciais
+          totalGeral, // Total geral (funcionários + comerciais)
           metaBatida: meta ? totalGeral >= meta.valor : false,
           percentualAtingido: meta && meta.valor > 0 
             ? (totalGeral / meta.valor) * 100 
@@ -209,6 +227,8 @@ router.get('/dashboard', authDono, async (req, res) => {
 
     // Totais gerais
     const totalGeralLojas = dadosLojas.reduce((sum, loja) => sum + loja.totalGeral, 0);
+    const totalVendasFuncionariosGeral = dadosLojas.reduce((sum, loja) => sum + loja.totalVendasFuncionarios, 0);
+    const totalVendasComerciaisGeral = dadosLojas.reduce((sum, loja) => sum + loja.totalVendasComerciais, 0);
     const totalMetaGeral = dadosLojas.reduce((sum, loja) => sum + loja.metaMes, 0);
     const totalFuncionariosGeral = dadosLojas.reduce((sum, loja) => sum + loja.totalFuncionarios, 0);
     const lojasComMetaBatida = dadosLojas.filter(l => l.metaBatida).length;
@@ -227,6 +247,8 @@ router.get('/dashboard', authDono, async (req, res) => {
         totalFuncionarios: totalFuncionariosGeral,
         totalMetaGeral,
         totalVendidoGeral: totalGeralLojas,
+        totalVendasFuncionarios: totalVendasFuncionariosGeral,
+        totalVendasComerciais: totalVendasComerciaisGeral,
         lojasComMetaBatida,
         percentualGeral: totalMetaGeral > 0 
           ? (totalGeralLojas / totalMetaGeral) * 100 
