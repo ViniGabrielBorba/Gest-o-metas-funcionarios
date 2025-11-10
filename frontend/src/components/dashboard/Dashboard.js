@@ -625,17 +625,23 @@ const Dashboard = ({ setIsAuthenticated }) => {
           <div className={`card text-white ${
             resumo.metaBatida 
               ? 'bg-gradient-to-br from-green-500 to-green-600' 
-              : 'bg-gradient-to-br from-yellow-500 to-yellow-600'
+              : resumo.statusMeta === 'no_prazo'
+              ? 'bg-gradient-to-br from-blue-500 to-blue-600'
+              : resumo.statusMeta === 'no_ritmo'
+              ? 'bg-gradient-to-br from-yellow-500 to-yellow-600'
+              : 'bg-gradient-to-br from-red-500 to-red-600'
           }`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-yellow-100 text-sm mb-1">Vendas da Loja</p>
+                <p className="text-white text-opacity-90 text-sm mb-1">Vendas da Loja</p>
                 <p className="text-3xl font-bold">
                   R$ {resumo.totalVendidoLoja.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
                 <p className="text-sm mt-1">
                   {resumo.percentualAtingido.toFixed(1)}% da meta
-                  {resumo.metaBatida ? ' ✅' : ` ⚠️`}
+                  {resumo.metaBatida ? ' ✅' : 
+                   resumo.statusMeta === 'no_prazo' ? ' 📈' :
+                   resumo.statusMeta === 'no_ritmo' ? ' ➡️' : ' ⚠️'}
                 </p>
                 {resumo.metaBatida && (
                   <p className="text-xs mt-1 font-semibold">
@@ -690,14 +696,27 @@ const Dashboard = ({ setIsAuthenticated }) => {
               ? darkMode
                 ? 'border-2 border-green-600'
                 : 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300'
+              : resumo.statusMeta === 'no_prazo'
+              ? darkMode
+                ? 'border-2 border-blue-600'
+                : 'bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-300'
+              : resumo.statusMeta === 'no_ritmo'
+              ? darkMode
+                ? 'border-2 border-yellow-600'
+                : 'bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-300'
               : darkMode
-                ? 'border-2 border-orange-600'
-                : 'bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-300'
+                ? 'border-2 border-red-600'
+                : 'bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-300'
           } transition-colors`}>
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} flex items-center gap-2 transition-colors`}>
-                  <FaBullseye className={resumo.metaBatida ? 'text-green-600' : 'text-orange-600'} />
+                  <FaBullseye className={
+                    resumo.metaBatida ? 'text-green-600' :
+                    resumo.statusMeta === 'no_prazo' ? 'text-blue-600' :
+                    resumo.statusMeta === 'no_ritmo' ? 'text-yellow-600' :
+                    'text-red-600'
+                  } />
                   Status da Meta da Loja
                 </h2>
                 <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-1 transition-colors`}>
@@ -707,6 +726,21 @@ const Dashboard = ({ setIsAuthenticated }) => {
               {resumo.metaBatida && (
                 <div className="bg-green-500 text-white px-4 py-2 rounded-lg font-bold text-lg">
                   🎯 META BATIDA!
+                </div>
+              )}
+              {!resumo.metaBatida && resumo.statusMeta === 'no_prazo' && (
+                <div className="bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm">
+                  No Prazo
+                </div>
+              )}
+              {!resumo.metaBatida && resumo.statusMeta === 'no_ritmo' && (
+                <div className="bg-yellow-500 text-white px-4 py-2 rounded-lg font-bold text-sm">
+                  No Ritmo
+                </div>
+              )}
+              {!resumo.metaBatida && resumo.statusMeta === 'abaixo' && (
+                <div className="bg-red-500 text-white px-4 py-2 rounded-lg font-bold text-sm">
+                  Abaixo da Meta
                 </div>
               )}
             </div>
@@ -725,7 +759,10 @@ const Dashboard = ({ setIsAuthenticated }) => {
                   Total Vendido
                 </p>
                 <p className={`text-2xl font-bold ${
-                  resumo.metaBatida ? 'text-green-600' : 'text-orange-600'
+                  resumo.metaBatida ? 'text-green-600' :
+                  resumo.statusMeta === 'no_prazo' ? 'text-blue-600' :
+                  resumo.statusMeta === 'no_ritmo' ? 'text-yellow-600' :
+                  'text-red-600'
                 }`}>
                   R$ {resumo.totalVendidoLoja.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
@@ -744,20 +781,33 @@ const Dashboard = ({ setIsAuthenticated }) => {
             </div>
 
             <div className="space-y-2">
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between items-center text-sm">
                 <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} font-medium transition-colors`}>
                   Progresso
                 </span>
-                <span className={`font-bold ${
-                  resumo.metaBatida ? 'text-green-600' : 'text-orange-600'
-                }`}>
-                  {resumo.percentualAtingido.toFixed(1)}%
-                </span>
+                <div className="flex flex-col items-end">
+                  <span className={`font-bold ${
+                    resumo.metaBatida ? 'text-green-600' :
+                    resumo.statusMeta === 'no_prazo' ? 'text-blue-600' :
+                    resumo.statusMeta === 'no_ritmo' ? 'text-yellow-600' :
+                    'text-red-600'
+                  }`}>
+                    {resumo.percentualAtingido.toFixed(1)}%
+                  </span>
+                  {resumo.percentualEsperado && resumo.diasDecorridos && (
+                    <span className="text-xs text-gray-500 mt-0.5">
+                      Esperado: {resumo.percentualEsperado.toFixed(1)}% ({resumo.diasDecorridos}/{resumo.diasNoMes} dias)
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="bg-gray-200 rounded-full h-4 overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all ${
-                    resumo.metaBatida ? 'bg-green-500' : 'bg-orange-500'
+                    resumo.metaBatida ? 'bg-green-500' :
+                    resumo.statusMeta === 'no_prazo' ? 'bg-blue-500' :
+                    resumo.statusMeta === 'no_ritmo' ? 'bg-yellow-500' :
+                    'bg-red-500'
                   }`}
                   style={{
                     width: `${Math.min(100, resumo.percentualAtingido)}%`

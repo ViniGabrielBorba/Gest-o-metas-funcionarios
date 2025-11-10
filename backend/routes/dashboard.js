@@ -146,6 +146,52 @@ router.get('/', async (req, res) => {
     const faltandoParaMeta = meta ? Math.max(0, meta.valor - totalVendidoGeral) : 0;
     const excedenteMeta = meta ? Math.max(0, totalVendidoGeral - meta.valor) : 0;
     const metaBatida = meta && totalVendidoGeral >= meta.valor;
+    
+    // Calcular status da meta considerando o tempo decorrido
+    const hoje = new Date();
+    const mesAtualSistema = hoje.getMonth() + 1;
+    const anoAtualSistema = hoje.getFullYear();
+    const isMesAtual = mesAtual === mesAtualSistema && anoAtual === anoAtualSistema;
+    
+    // Calcular dias decorridos
+    const diasNoMes = new Date(anoAtual, mesAtual, 0).getDate();
+    let diasDecorridos = 0;
+    
+    if (isMesAtual) {
+      diasDecorridos = hoje.getDate();
+    } else if (anoAtual > anoAtualSistema || (anoAtual === anoAtualSistema && mesAtual > mesAtualSistema)) {
+      diasDecorridos = 0;
+    } else {
+      diasDecorridos = diasNoMes;
+    }
+    
+    const percentualEsperado = diasDecorridos > 0 ? (diasDecorridos / diasNoMes) * 100 : 0;
+    const percentualAtingido = meta && meta.valor > 0 ? (totalVendidoGeral / meta.valor) * 100 : 0;
+    const diferencaPercentual = percentualAtingido - percentualEsperado;
+    
+    // Determinar status da meta
+    let statusMeta = 'abaixo';
+    if (metaBatida) {
+      statusMeta = 'batida';
+    } else if (isMesAtual) {
+      if (diferencaPercentual >= 5) {
+        statusMeta = 'no_prazo';
+      } else if (diferencaPercentual >= -10) {
+        statusMeta = 'no_ritmo';
+      } else {
+        statusMeta = 'abaixo';
+      }
+    } else {
+      if (percentualAtingido >= 100) {
+        statusMeta = 'batida';
+      } else if (percentualAtingido >= 70) {
+        statusMeta = 'no_prazo';
+      } else if (percentualAtingido >= 50) {
+        statusMeta = 'no_ritmo';
+      } else {
+        statusMeta = 'abaixo';
+      }
+    }
 
     // Aniversariantes do mês
     const aniversariantes = funcionarios.filter(func => {
@@ -168,7 +214,11 @@ router.get('/', async (req, res) => {
         faltandoParaMeta,
         excedenteMeta,
         metaBatida,
-        percentualAtingido: meta ? (totalVendidoGeral / meta.valor * 100) : 0,
+        statusMeta, // Status detalhado considerando tempo
+        percentualAtingido, // Percentual total atingido
+        percentualEsperado: isMesAtual ? percentualEsperado : null, // Percentual esperado (apenas mês atual)
+        diasDecorridos: isMesAtual ? diasDecorridos : null, // Dias decorridos (apenas mês atual)
+        diasNoMes: isMesAtual ? diasNoMes : null, // Total de dias no mês (apenas mês atual)
         melhorVendedorMes: melhorMes
       },
       vendasMes,
@@ -197,36 +247,93 @@ router.get('/alertas', async (req, res) => {
 
     const alertas = [];
 
-    // O meta.totalVendido já inclui vendas diretas da loja + vendas dos funcionários
-    // Não precisamos somar novamente, pois isso causaria duplicação
-    const totalGeral = meta ? (meta.totalVendido || 0) : 0;
+    // Buscar vendas comerciais
+    const VendaComercial = require('../models/VendaComercial');
+    const inicioMes = new Date(Date.UTC(anoAtual, mesAtual - 1, 1, 0, 0, 0, 0));
+    const fimMes = new Date(Date.UTC(anoAtual, mesAtual, 0, 23, 59, 59, 999));
+    const vendasComerciais = await VendaComercial.find({
+      gerenteId: req.user.id,
+      data: { $gte: inicioMes, $lte: fimMes }
+    });
+    const totalVendasComerciais = vendasComerciais.reduce((sum, v) => sum + (parseFloat(v.valor) || 0), 0);
+    
+    // Calcular total geral (vendas funcionários + vendas comerciais)
+    const totalGeral = (meta && meta.totalVendido ? meta.totalVendido : 0) + totalVendasComerciais;
 
-    // Meta batida
-    if (meta && meta.valor > 0 && totalGeral >= meta.valor) {
-      const percentual = ((totalGeral / meta.valor) * 100).toFixed(1);
-      const excedente = totalGeral - meta.valor;
-      alertas.push({
-        tipo: 'sucesso',
-        icone: '🎯',
-        titulo: 'Meta Batida!',
-        mensagem: `Parabéns! A meta foi atingida com ${percentual}%. Excedente: R$ ${excedente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-        valor: totalGeral,
-        meta: meta.valor
-      });
-    }
-
-    // Meta abaixo (menos de 70%)
-    if (meta && meta.valor > 0 && (totalGeral / meta.valor) < 0.7) {
-      const percentual = ((totalGeral / meta.valor) * 100).toFixed(1);
-      const faltando = meta.valor - totalGeral;
-      alertas.push({
-        tipo: 'alerta',
-        icone: '⚠️',
-        titulo: 'Meta Abaixo do Esperado',
-        mensagem: `A meta está em ${percentual}%. Faltam R$ ${faltando.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} para atingir a meta.`,
-        valor: totalGeral,
-        meta: meta.valor
-      });
+    // Calcular status da meta considerando tempo decorrido (mesma lógica do dashboard)
+    if (meta && meta.valor > 0) {
+      const hoje = new Date();
+      const mesAtualSistema = hoje.getMonth() + 1;
+      const anoAtualSistema = hoje.getFullYear();
+      const isMesAtual = mesAtual === mesAtualSistema && anoAtual === anoAtualSistema;
+      
+      // Calcular dias decorridos
+      const diasNoMes = new Date(anoAtual, mesAtual, 0).getDate();
+      let diasDecorridos = 0;
+      
+      if (isMesAtual) {
+        diasDecorridos = hoje.getDate();
+      } else if (anoAtual > anoAtualSistema || (anoAtual === anoAtualSistema && mesAtual > mesAtualSistema)) {
+        diasDecorridos = 0;
+      } else {
+        diasDecorridos = diasNoMes;
+      }
+      
+      const percentualEsperado = diasDecorridos > 0 ? (diasDecorridos / diasNoMes) * 100 : 0;
+      const percentualAtingido = (totalGeral / meta.valor) * 100;
+      const diferencaPercentual = percentualAtingido - percentualEsperado;
+      
+      // Determinar status da meta
+      let statusMeta = 'abaixo';
+      if (totalGeral >= meta.valor) {
+        statusMeta = 'batida';
+      } else if (isMesAtual) {
+        if (diferencaPercentual >= 5) {
+          statusMeta = 'no_prazo';
+        } else if (diferencaPercentual >= -10) {
+          statusMeta = 'no_ritmo';
+        } else {
+          statusMeta = 'abaixo';
+        }
+      } else {
+        if (percentualAtingido >= 100) {
+          statusMeta = 'batida';
+        } else if (percentualAtingido >= 70) {
+          statusMeta = 'no_prazo';
+        } else if (percentualAtingido >= 50) {
+          statusMeta = 'no_ritmo';
+        } else {
+          statusMeta = 'abaixo';
+        }
+      }
+      
+      // Gerar alertas baseados no status
+      if (statusMeta === 'batida') {
+        const excedente = totalGeral - meta.valor;
+        alertas.push({
+          tipo: 'sucesso',
+          icone: '🎯',
+          titulo: 'Meta Batida!',
+          mensagem: `Parabéns! A meta foi atingida com ${percentualAtingido.toFixed(1)}%. Excedente: R$ ${excedente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+          valor: totalGeral,
+          meta: meta.valor
+        });
+      } else if (statusMeta === 'abaixo') {
+        // Apenas mostrar alerta quando realmente estiver abaixo do esperado
+        const mensagem = isMesAtual && diasDecorridos > 0
+          ? `A meta está em ${percentualAtingido.toFixed(1)}% (esperado: ${percentualEsperado.toFixed(1)}%). Faltam R$ ${(meta.valor - totalGeral).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} para atingir a meta.`
+          : `A meta está em ${percentualAtingido.toFixed(1)}%. Faltam R$ ${(meta.valor - totalGeral).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} para atingir a meta.`;
+        
+        alertas.push({
+          tipo: 'alerta',
+          icone: '⚠️',
+          titulo: 'Meta Abaixo do Esperado',
+          mensagem: mensagem,
+          valor: totalGeral,
+          meta: meta.valor
+        });
+      }
+      // Não mostrar alerta para "no_prazo" ou "no_ritmo" - são situações normais
     }
 
     // Funcionários sem vendas no mês
