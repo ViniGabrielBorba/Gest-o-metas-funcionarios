@@ -69,24 +69,21 @@ main
 
 1. Role a página até encontrar a seção **"Environment variables"**
 2. Clique em **"Add variable"**
-3. Adicione a seguinte variável:
+3. Adicione as seguintes variáveis:
 
-   **Key:**
-   ```
-   REACT_APP_API_URL
-   ```
+   **Variável 1:**
+   - **Key:** `REACT_APP_API_URL`
+   - **Value:** `https://gest-o-metas-funcionarios-3.onrender.com/api`
+   - Marque: ✅ Production, ✅ Deploy Preview, ✅ Branch Deploys
 
-   **Value:**
-   ```
-   https://gest-o-metas-funcionarios-3.onrender.com/api
-   ```
+   **Variável 2 (IMPORTANTE para Node 18):**
+   - **Key:** `NODE_VERSION`
+   - **Value:** `18`
+   - Marque: ✅ Production, ✅ Deploy Preview, ✅ Branch Deploys
 
-4. Marque as opções:
-   - ✅ **Production**
-   - ✅ **Deploy Preview**
-   - ✅ **Branch Deploys**
+4. Clique em **"Save"** para cada variável
 
-5. Clique em **"Save"**
+**⚠️ IMPORTANTE:** A variável `NODE_VERSION=18` é necessária porque o `react-scripts` não é compatível com Node 22. Sem isso, o build vai falhar!
 
 ---
 
@@ -141,10 +138,13 @@ Após o deploy, verifique:
 
 ## 🆘 Problemas Comuns
 
-### **Erro: "Build failed"**
-- Verifique se o **Base directory** está como `frontend`
-- Verifique se o **Publish directory** está como `build` (não `frontend/build`)
-- Verifique se a variável `REACT_APP_API_URL` está configurada
+### **Erro: "Build failed" ou "react-scripts failed"**
+- ✅ Verifique se o **Base directory** está como `frontend`
+- ✅ Verifique se o **Publish directory** está como `build` (não `frontend/build`)
+- ✅ Verifique se a variável `REACT_APP_API_URL` está configurada
+- ✅ **VERIFIQUE SE A VARIÁVEL `NODE_VERSION=18` ESTÁ CONFIGURADA!**
+  - Sem isso, o Netlify usa Node 22 por padrão, que não é compatível com `react-scripts`
+  - Adicione `NODE_VERSION=18` nas variáveis de ambiente
 
 ### **Erro: "Module not found"**
 - Verifique se todos os arquivos foram enviados para o GitHub
