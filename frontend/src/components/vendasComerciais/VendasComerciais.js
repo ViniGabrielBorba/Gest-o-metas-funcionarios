@@ -3,6 +3,8 @@ import Navbar from '../layout/Navbar';
 import api from '../../utils/api';
 import { useToast } from '../../contexts/ToastContext';
 import { useDarkMode } from '../../contexts/DarkModeContext';
+
+// Componente de Vendas Comerciais - Versão 1.0
 import { 
   FaPlus, 
   FaEdit, 
