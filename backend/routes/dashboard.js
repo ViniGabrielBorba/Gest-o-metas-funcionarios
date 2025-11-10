@@ -49,8 +49,34 @@ router.get('/', async (req, res) => {
     // Calcular vendas diárias do mês (agregado por dia) - Funcionários + Loja
     const vendasDiariasMes = {};
     
-    // Vendas dos funcionários (usar apenas vendas mensais - não há mais vendas diárias)
-    // As vendas mensais são agregadas, então não temos dados diários por funcionário
+    // Vendas dos funcionários
+    funcionarios.forEach(func => {
+      if (func.vendasDiarias && func.vendasDiarias.length > 0) {
+        func.vendasDiarias.forEach(venda => {
+          // Normalizar data usando UTC para evitar problemas de timezone
+          const vendaDate = new Date(venda.data);
+          // Usar UTC para extrair os componentes (garante dia correto)
+          const mesVenda = vendaDate.getUTCMonth() + 1;
+          const anoVenda = vendaDate.getUTCFullYear();
+          const diaVenda = vendaDate.getUTCDate();
+          
+          if (mesVenda === mesAtual && anoVenda === anoAtual) {
+            const dataKey = `${anoVenda}-${String(mesVenda).padStart(2, '0')}-${String(diaVenda).padStart(2, '0')}`;
+            
+            if (!vendasDiariasMes[dataKey]) {
+              vendasDiariasMes[dataKey] = {
+                data: dataKey,
+                dia: diaVenda,
+                total: 0,
+                quantidade: 0
+              };
+            }
+            vendasDiariasMes[dataKey].total += venda.valor;
+            vendasDiariasMes[dataKey].quantidade += 1;
+          }
+        });
+      }
+    });
 
     // Vendas da loja (se meta tiver vendas diárias)
     if (meta && meta.vendasDiarias && meta.vendasDiarias.length > 0) {

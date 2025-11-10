@@ -152,18 +152,19 @@ router.post('/:id/vendas-diarias', async (req, res) => {
     
     const totalVendasDiretasLoja = vendasDiretasLoja.reduce((sum, v) => sum + v.valor, 0);
 
-    // Calcular total de vendas dos funcionários no mesmo mês (usar vendas mensais)
+    // Calcular total de vendas dos funcionários no mesmo mês
     const funcionarios = await Funcionario.find({ gerenteId: req.user.id });
     let totalVendasFuncionarios = 0;
     
     funcionarios.forEach(funcionario => {
-      if (funcionario.vendas && funcionario.vendas.length > 0) {
-        const vendaMensal = funcionario.vendas.find(
-          v => v.mes === mesVenda && v.ano === anoVenda
-        );
-        if (vendaMensal) {
-          totalVendasFuncionarios += vendaMensal.valor || 0;
-        }
+      if (funcionario.vendasDiarias && funcionario.vendasDiarias.length > 0) {
+        funcionario.vendasDiarias.forEach(venda => {
+          const vDate = new Date(venda.data);
+          // Usar UTC para comparar corretamente
+          if (vDate.getUTCMonth() + 1 === mesVenda && vDate.getUTCFullYear() === anoVenda) {
+            totalVendasFuncionarios += venda.valor || 0;
+          }
+        });
       }
     });
 
@@ -361,9 +362,51 @@ router.get('/:id/vendas-diarias', async (req, res) => {
       console.log('Meta não tem vendas diárias');
     }
     
-    // Vendas dos funcionários (não há mais vendas diárias - apenas mensais)
-    // As vendas mensais são agregadas, então não temos dados diários por funcionário
-    console.log('Vendas diárias de funcionários removidas - usando apenas vendas mensais');
+    // Vendas dos funcionários
+    console.log('Processando vendas dos funcionários...');
+    funcionarios.forEach((funcionario, funcIndex) => {
+      if (funcionario.vendasDiarias && funcionario.vendasDiarias.length > 0) {
+        console.log(`Funcionário ${funcionario.nome} tem ${funcionario.vendasDiarias.length} vendas`);
+        funcionario.vendasDiarias.forEach((venda, vendaIndex) => {
+          try {
+            const vDate = new Date(venda.data);
+            if (isNaN(vDate.getTime())) {
+              console.error(`Venda ${vendaIndex} do funcionário ${funcionario.nome} tem data inválida:`, venda.data);
+              return;
+            }
+            // Usar UTC para extrair componentes corretamente
+            const ano = vDate.getUTCFullYear();
+            const mes = vDate.getUTCMonth() + 1;
+            const dia = vDate.getUTCDate();
+            
+            // Verificar se é do mês/ano da meta
+            if (mes === mesMeta && ano === anoMeta) {
+              const dataKey = `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+              if (!vendasPorData[dataKey]) {
+                vendasPorData[dataKey] = {
+                  data: new Date(Date.UTC(ano, mes - 1, dia, 12, 0, 0, 0)),
+                  vendasLoja: [],
+                  vendasFuncionarios: [],
+                  total: 0
+                };
+              }
+              const valorVendaFunc = parseFloat(venda.valor) || 0;
+              vendasPorData[dataKey].vendasFuncionarios.push({
+                tipo: 'funcionario',
+                funcionarioNome: funcionario.nome || 'Funcionário sem nome',
+                funcionarioId: funcionario._id ? funcionario._id.toString() : '',
+                vendaId: venda._id ? venda._id.toString() : '',
+                valor: valorVendaFunc,
+                observacao: (venda.observacao || '').toString()
+              });
+              vendasPorData[dataKey].total += valorVendaFunc;
+            }
+          } catch (err) {
+            console.error(`Erro ao processar venda ${vendaIndex} do funcionário ${funcionario.nome}:`, err);
+          }
+        });
+      }
+    });
 
     // Converter para array e ordenar por data (mais recente primeiro)
     // Garantir que as datas sejam serializadas corretamente
@@ -380,17 +423,22 @@ router.get('/:id/vendas-diarias', async (req, res) => {
         }
       });
 
-    // Calcular totais de forma segura (usar vendas mensais)
+    // Calcular totais de forma segura
     let totalVendasFuncionarios = 0;
     try {
       totalVendasFuncionarios = funcionarios.reduce((sum, func) => {
-        if (func.vendas && Array.isArray(func.vendas)) {
-          const vendaMensal = func.vendas.find(
-            v => v.mes === mesMeta && v.ano === anoMeta
-          );
-          if (vendaMensal) {
-            return sum + (parseFloat(vendaMensal.valor) || 0);
-          }
+        if (func.vendasDiarias && Array.isArray(func.vendasDiarias)) {
+          return sum + func.vendasDiarias.filter(v => {
+            try {
+              if (!v || !v.data) return false;
+              const vDate = new Date(v.data);
+              if (isNaN(vDate.getTime())) return false;
+              // Usar UTC para comparar corretamente
+              return vDate.getUTCMonth() + 1 === mesMeta && vDate.getUTCFullYear() === anoMeta;
+            } catch (e) {
+              return false;
+            }
+          }).reduce((s, v) => s + (parseFloat(v.valor) || 0), 0);
         }
         return sum;
       }, 0);
