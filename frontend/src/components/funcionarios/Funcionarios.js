@@ -960,16 +960,19 @@ const Funcionarios = ({ setIsAuthenticated }) => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                         Função
                       </label>
-                      <input
-                        type="text"
+                      <select
                         value={formData.funcao}
                         onChange={(e) => setFormData({ ...formData, funcao: e.target.value })}
-                        className="input-field"
+                        className={`input-field ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
                         required
-                      />
+                      >
+                        <option value="">Selecione...</option>
+                        <option value="Vendedor">Vendedor</option>
+                        <option value="Vendedora">Vendedora</option>
+                      </select>
                     </div>
                   </div>
 
