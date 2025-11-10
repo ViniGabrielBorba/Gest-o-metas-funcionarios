@@ -231,12 +231,28 @@ router.delete('/:id', async (req, res) => {
 // Obter vendas comerciais agrupadas por dia
 router.get('/agrupadas', async (req, res) => {
   try {
+    // Validar autenticação
+    if (!req.user || !req.user.id) {
+      console.error('Erro: req.user não está definido');
+      return res.status(401).json({ message: 'Usuário não autenticado' });
+    }
+
     const { mes, ano } = req.query;
     const mesAtual = mes ? parseInt(mes, 10) : new Date().getMonth() + 1;
     const anoAtual = ano ? parseInt(ano, 10) : new Date().getFullYear();
     
+    console.log(`Buscando vendas comerciais para mês ${mesAtual}/${anoAtual}, gerenteId: ${req.user.id}`);
+    
     const inicioMes = new Date(Date.UTC(anoAtual, mesAtual - 1, 1, 0, 0, 0, 0));
     const fimMes = new Date(Date.UTC(anoAtual, mesAtual, 0, 23, 59, 59, 999));
+    
+    console.log(`Período: ${inicioMes.toISOString()} até ${fimMes.toISOString()}`);
+    
+    // Verificar se o modelo está carregado
+    if (!VendaComercial) {
+      console.error('Erro: Modelo VendaComercial não está definido');
+      return res.status(500).json({ message: 'Modelo VendaComercial não encontrado' });
+    }
     
     const vendas = await VendaComercial.find({
       gerenteId: req.user.id,
@@ -246,48 +262,74 @@ router.get('/agrupadas', async (req, res) => {
       }
     }).sort({ data: 1 });
     
+    console.log(`Encontradas ${vendas.length} vendas comerciais`);
+    
     // Agrupar por dia
     const vendasPorDia = {};
     
     vendas.forEach(venda => {
-      const vendaDate = new Date(venda.data);
-      const ano = vendaDate.getUTCFullYear();
-      const mes = vendaDate.getUTCMonth() + 1;
-      const dia = vendaDate.getUTCDate();
-      const dataKey = `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
-      
-      if (!vendasPorDia[dataKey]) {
-        vendasPorDia[dataKey] = {
-          data: new Date(Date.UTC(ano, mes - 1, dia, 12, 0, 0, 0)),
-          vendas: [],
-          total: 0,
-          quantidade: 0
-        };
+      try {
+        if (!venda || !venda.data) {
+          console.warn('Venda inválida encontrada:', venda);
+          return;
+        }
+        
+        const vendaDate = new Date(venda.data);
+        if (isNaN(vendaDate.getTime())) {
+          console.warn('Data inválida na venda:', venda._id);
+          return;
+        }
+        
+        const ano = vendaDate.getUTCFullYear();
+        const mes = vendaDate.getUTCMonth() + 1;
+        const dia = vendaDate.getUTCDate();
+        const dataKey = `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+        
+        if (!vendasPorDia[dataKey]) {
+          vendasPorDia[dataKey] = {
+            data: new Date(Date.UTC(ano, mes - 1, dia, 12, 0, 0, 0)),
+            vendas: [],
+            total: 0,
+            quantidade: 0
+          };
+        }
+        
+        vendasPorDia[dataKey].vendas.push({
+          id: venda._id.toString(),
+          valor: parseFloat(venda.valor) || 0,
+          observacao: venda.observacao || '',
+          createdAt: venda.createdAt
+        });
+        
+        vendasPorDia[dataKey].total += parseFloat(venda.valor) || 0;
+        vendasPorDia[dataKey].quantidade += 1;
+      } catch (err) {
+        console.error('Erro ao processar venda:', err, venda);
       }
-      
-      vendasPorDia[dataKey].vendas.push({
-        id: venda._id,
-        valor: venda.valor,
-        observacao: venda.observacao || '',
-        createdAt: venda.createdAt
-      });
-      
-      vendasPorDia[dataKey].total += venda.valor;
-      vendasPorDia[dataKey].quantidade += 1;
     });
     
     // Converter para array e ordenar por data
     const vendasAgrupadas = Object.values(vendasPorDia)
-      .map(dia => ({
-        ...dia,
-        data: dia.data.toISOString()
-      }))
+      .map(dia => {
+        try {
+          return {
+            ...dia,
+            data: dia.data.toISOString()
+          };
+        } catch (err) {
+          console.error('Erro ao converter data:', err, dia);
+          return null;
+        }
+      })
+      .filter(dia => dia !== null)
       .sort((a, b) => new Date(b.data) - new Date(a.data));
     
     // Calcular resumo
-    const totalMes = vendas.reduce((sum, v) => sum + v.valor, 0);
+    const totalMes = vendas.reduce((sum, v) => sum + (parseFloat(v.valor) || 0), 0);
     const totalDias = vendasAgrupadas.length;
     const mediaDiaria = totalDias > 0 ? totalMes / totalDias : 0;
+    
+    console.log(`Resumo: Total R$ ${totalMes}, ${totalDias} dias, média R$ ${mediaDiaria}`);
     
     res.json({
       vendasAgrupadas,
@@ -299,11 +341,23 @@ router.get('/agrupadas', async (req, res) => {
       }
     });
   } catch (error) {
-    logger.error('Erro ao buscar vendas comerciais agrupadas', {
-      error: error.message,
-      userId: req.user.id
+    console.error('Erro completo ao buscar vendas comerciais agrupadas:', error);
+    console.error('Stack trace:', error.stack);
+    
+    try {
+      logger.error('Erro ao buscar vendas comerciais agrupadas', {
+        error: error.message,
+        stack: error.stack,
+        userId: req.user?.id
+      });
+    } catch (logError) {
+      console.error('Erro ao logar:', logError);
+    }
+    
+    res.status(500).json({ 
+      message: error.message || 'Erro ao buscar vendas comerciais',
+      error: process.env.NODE_ENV !== 'production' ? error.stack : undefined
     });
-    res.status(500).json({ message: error.message });
   }
 });
 
