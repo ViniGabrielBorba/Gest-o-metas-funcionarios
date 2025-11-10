@@ -26,6 +26,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
   const [selectedFuncionario, setSelectedFuncionario] = useState(null);
   const [formData, setFormData] = useState({
     nome: '',
+    sobrenome: '',
     sexo: 'Masculino',
     idade: '',
     funcao: '',
@@ -79,11 +80,39 @@ const Funcionarios = ({ setIsAuthenticated }) => {
     }
   };
 
+  // Função helper para obter nome completo (compatibilidade com dados antigos)
+  const getNomeCompleto = (funcionario) => {
+    if (funcionario.sobrenome) {
+      return `${funcionario.nome} ${funcionario.sobrenome}`;
+    }
+    // Se não tiver sobrenome, pode ser que o nome completo esteja no campo nome (dados antigos)
+    return funcionario.nome || '';
+  };
+
+  // Função helper para separar nome completo em nome e sobrenome (para compatibilidade)
+  const separarNomeSobrenome = (nomeCompleto) => {
+    if (!nomeCompleto) return { nome: '', sobrenome: '' };
+    const partes = nomeCompleto.trim().split(/\s+/);
+    if (partes.length === 1) {
+      return { nome: partes[0], sobrenome: '' };
+    }
+    const sobrenome = partes.slice(-1)[0];
+    const nome = partes.slice(0, -1).join(' ');
+    return { nome, sobrenome };
+  };
+
   const handleOpenModal = (funcionario = null) => {
     if (funcionario) {
       setEditingFuncionario(funcionario);
+      // Se já tiver sobrenome separado, usar diretamente
+      // Se não tiver, separar o nome completo (compatibilidade com dados antigos)
+      const nomeData = funcionario.sobrenome 
+        ? { nome: funcionario.nome, sobrenome: funcionario.sobrenome }
+        : separarNomeSobrenome(funcionario.nome);
+      
       setFormData({
-        nome: funcionario.nome,
+        nome: nomeData.nome,
+        sobrenome: nomeData.sobrenome,
         sexo: funcionario.sexo,
         idade: funcionario.idade,
         funcao: funcionario.funcao,
@@ -94,6 +123,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
       setEditingFuncionario(null);
       setFormData({
         nome: '',
+        sobrenome: '',
         sexo: 'Masculino',
         idade: '',
         funcao: '',
@@ -282,7 +312,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Relatório - ${selectedFuncionario.nome}</title>
+          <title>Relatório - ${getNomeCompleto(selectedFuncionario)}</title>
           <style>
             @media print {
               @page {
@@ -405,7 +435,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
         </head>
         <body>
           <div class="header">
-            <h1>Relatório de Vendas - ${selectedFuncionario.nome}</h1>
+            <h1>Relatório de Vendas - ${getNomeCompleto(selectedFuncionario)}</h1>
             <p><strong>Período:</strong> ${mesNome}</p>
             <p><strong>Gerado em:</strong> ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
           </div>
@@ -414,7 +444,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
             <h2>Dados do Funcionário</h2>
             <div class="info-grid">
               <div class="info-item">
-                <strong>Nome:</strong> ${selectedFuncionario.nome}
+                <strong>Nome:</strong> ${getNomeCompleto(selectedFuncionario)}
               </div>
               <div class="info-item">
                 <strong>Função:</strong> ${selectedFuncionario.funcao}
@@ -656,7 +686,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
               <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} />
               <input
                 type="text"
-                placeholder="Buscar por nome..."
+                placeholder="Buscar por nome ou sobrenome..."
                 value={buscaNome}
                 onChange={(e) => setBuscaNome(e.target.value)}
                 className={`input-field pl-10 ${darkMode ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400' : ''}`}
@@ -692,9 +722,12 @@ const Funcionarios = ({ setIsAuthenticated }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.isArray(funcionarios) && funcionarios
             .filter(funcionario => {
-              // Filtro por nome
-              if (buscaNome && !funcionario.nome.toLowerCase().includes(buscaNome.toLowerCase())) {
-                return false;
+              // Filtro por nome (buscar em nome e sobrenome)
+              if (buscaNome) {
+                const nomeCompleto = getNomeCompleto(funcionario).toLowerCase();
+                if (!nomeCompleto.includes(buscaNome.toLowerCase())) {
+                  return false;
+                }
               }
               // Filtro por função
               if (filtroFuncao && funcionario.funcao !== filtroFuncao) {
@@ -713,7 +746,9 @@ const Funcionarios = ({ setIsAuthenticated }) => {
             <div key={funcionario._id} className={`card ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>{funcionario.nome}</h3>
+                  <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                    {getNomeCompleto(funcionario)}
+                  </h3>
                   <p className={darkMode ? 'text-gray-300' : 'text-gray-600'}>{funcionario.funcao}</p>
                 </div>
                 <span className="badge bg-red-100 text-red-800">
@@ -823,17 +858,31 @@ const Funcionarios = ({ setIsAuthenticated }) => {
                   {editingFuncionario ? 'Editar Funcionário' : 'Novo Funcionário'}
                 </h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nome Completo
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.nome}
-                      onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                      className="input-field"
-                      required
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Nome
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.nome}
+                        onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                        className="input-field"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Sobrenome
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.sobrenome}
+                        onChange={(e) => setFormData({ ...formData, sobrenome: e.target.value })}
+                        className="input-field"
+                        required
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -937,7 +986,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
             <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
               <div className="p-6">
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                  Registrar Venda - {selectedFuncionario.nome}
+                  Registrar Venda - {getNomeCompleto(selectedFuncionario)}
                 </h2>
                 <form onSubmit={handleSubmitVenda} className="space-y-4">
                   <div>
@@ -1013,7 +1062,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
               <div className="p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-2xl font-bold text-gray-800">
-                    Histórico de Vendas - {selectedFuncionario.nome}
+                    Histórico de Vendas - {getNomeCompleto(selectedFuncionario)}
                   </h2>
                   <div className="flex gap-2">
                     {vendasDiarias.length > 0 && (
@@ -1143,7 +1192,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
             <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
               <div className="p-6">
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                  Editar Venda - {selectedFuncionario.nome}
+                  Editar Venda - {getNomeCompleto(selectedFuncionario)}
                 </h2>
                 <form onSubmit={handleSubmitEditarVenda} className="space-y-4">
                   <div>

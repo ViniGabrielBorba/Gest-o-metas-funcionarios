@@ -11,6 +11,11 @@ const funcionarioSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  sobrenome: {
+    type: String,
+    required: true,
+    trim: true
+  },
   sexo: {
     type: String,
     enum: ['Masculino', 'Feminino', 'Outro'],
@@ -96,6 +101,9 @@ const funcionarioSchema = new mongoose.Schema({
 // Índices para busca eficiente
 funcionarioSchema.index({ gerenteId: 1 });
 funcionarioSchema.index({ gerenteId: 1, nome: 1 }); // Para buscas por nome
+funcionarioSchema.index({ gerenteId: 1, sobrenome: 1 }); // Para buscas por sobrenome
+// Índice composto para busca por nome completo
+funcionarioSchema.index({ gerenteId: 1, nome: 1, sobrenome: 1 });
 funcionarioSchema.index({ gerenteId: 1, funcao: 1 }); // Para filtros por função
 funcionarioSchema.index({ 'vendasDiarias.data': 1 }); // Para buscas por data de venda
 funcionarioSchema.index({ dataAniversario: 1 }); // Para aniversariantes

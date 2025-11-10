@@ -153,11 +153,17 @@ const resetSenhaSchema = Joi.object({
 
 // Schema de validação para funcionário
 const funcionarioSchema = Joi.object({
-  nome: Joi.string().min(3).max(100).required().messages({
-    'string.min': 'Nome deve ter no mínimo 3 caracteres',
-    'string.max': 'Nome deve ter no máximo 100 caracteres',
+  nome: Joi.string().min(2).max(50).required().messages({
+    'string.min': 'Nome deve ter no mínimo 2 caracteres',
+    'string.max': 'Nome deve ter no máximo 50 caracteres',
     'string.empty': 'Nome é obrigatório',
     'any.required': 'Nome é obrigatório'
+  }),
+  sobrenome: Joi.string().min(2).max(50).required().messages({
+    'string.min': 'Sobrenome deve ter no mínimo 2 caracteres',
+    'string.max': 'Sobrenome deve ter no máximo 50 caracteres',
+    'string.empty': 'Sobrenome é obrigatório',
+    'any.required': 'Sobrenome é obrigatório'
   }),
   sexo: Joi.string().valid('Masculino', 'Feminino', 'Outro').required().messages({
     'any.only': 'Sexo deve ser Masculino, Feminino ou Outro',

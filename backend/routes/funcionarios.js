@@ -20,7 +20,11 @@ router.get('/', async (req, res) => {
     const query = { gerenteId: req.user.id };
     
     if (search) {
-      query.nome = { $regex: search, $options: 'i' };
+      // Buscar em nome e sobrenome
+      query.$or = [
+        { nome: { $regex: search, $options: 'i' } },
+        { sobrenome: { $regex: search, $options: 'i' } }
+      ];
     }
     
     if (funcao) {
@@ -32,7 +36,7 @@ router.get('/', async (req, res) => {
       Funcionario.find(query)
         .skip(pagination.skip)
         .limit(pagination.limit)
-        .sort({ nome: 1 }),
+        .sort({ nome: 1, sobrenome: 1 }),
       Funcionario.countDocuments(query)
     ]);
 
@@ -68,11 +72,12 @@ router.get('/:id', async (req, res) => {
 // Criar novo funcionário
 router.post('/', validate(funcionarioSchema), async (req, res) => {
   try {
-    const { nome, sexo, idade, funcao, dataAniversario, metaIndividual } = req.body;
+    const { nome, sobrenome, sexo, idade, funcao, dataAniversario, metaIndividual } = req.body;
 
     const funcionario = await Funcionario.create({
       gerenteId: req.user.id,
       nome,
+      sobrenome,
       sexo,
       idade,
       funcao,
