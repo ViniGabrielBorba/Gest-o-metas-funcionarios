@@ -10,7 +10,6 @@ import Dashboard from './components/dashboard/Dashboard';
 import DashboardDono from './components/dashboard/DashboardDono';
 import Funcionarios from './components/funcionarios/Funcionarios';
 import VendaComercial from './components/vendas-comerciais/VendaComercial';
-import Metas from './components/metas/Metas';
 import Feedback from './components/feedback/Feedback';
 import Estoque from './components/estoque/Estoque';
 import Agenda from './components/agenda/Agenda';
@@ -61,10 +60,6 @@ function App() {
           <Route 
             path="/vendas-comerciais" 
             element={isAuthenticated && isGerente ? <VendaComercial setIsAuthenticated={setIsAuthenticated} /> : <Navigate to={isDono ? "/dashboard-dono" : "/login"} />} 
-          />
-          <Route 
-            path="/metas" 
-            element={isAuthenticated && isGerente ? <Metas setIsAuthenticated={setIsAuthenticated} /> : <Navigate to={isDono ? "/dashboard-dono" : "/login"} />} 
           />
           <Route 
             path="/feedback" 

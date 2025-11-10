@@ -646,7 +646,7 @@ const Metas = ({ setIsAuthenticated }) => {
                       onClick={() => handleOpenVendaModal(meta)}
                       className="btn-secondary flex-1 flex items-center justify-center gap-2 text-sm py-2"
                     >
-                      <FaDollarSign /> Venda Diária
+                      <FaDollarSign /> Vendas Comercial Diária
                     </button>
                     <button
                       onClick={() => handleVerHistorico(meta)}
@@ -774,7 +774,7 @@ const Metas = ({ setIsAuthenticated }) => {
             <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
               <div className="p-6">
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                  Registrar Venda Diária da Loja
+                  Registrar Vendas Comercial Diária da Loja
                 </h2>
                 <p className="text-sm text-gray-600 mb-4">
                   {formatarMesAno(selectedMeta.mes, selectedMeta.ano)}
