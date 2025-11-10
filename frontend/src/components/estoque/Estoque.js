@@ -282,7 +282,7 @@ const Estoque = ({ setIsAuthenticated }) => {
               <label>${avaliacao.tipoValor === 'Variável' ? '☑' : '☐'} Variável</label>
             </div>
             <div style="margin-top: 15px;">
-              <strong>Valor mínimo sugerido:</strong> R$ ${avaliacao.valorMinimoSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (indicação de Dona Ruana)
+              <strong>Valor mínimo sugerido:</strong> R$ ${avaliacao.valorMinimoSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
           </div>
 
@@ -728,7 +728,6 @@ const Estoque = ({ setIsAuthenticated }) => {
                           min="0"
                           step="0.01"
                         />
-                        <p className="text-xs text-gray-500 mt-1">(indicação de Dona Ruana)</p>
                       </div>
                     </div>
                   </div>
