@@ -142,15 +142,27 @@ const Funcionarios = ({ setIsAuthenticated }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Garantir que sobrenome seja enviado (mesmo que vazio)
+      const dadosParaEnviar = {
+        ...formData,
+        sobrenome: formData.sobrenome || '' // Garantir que sempre tenha um valor (mesmo que vazio)
+      };
+      
+      console.log('Enviando dados do funcionário:', dadosParaEnviar);
+      
       if (editingFuncionario) {
-        await api.put(`/funcionarios/${editingFuncionario._id}`, formData);
+        const response = await api.put(`/funcionarios/${editingFuncionario._id}`, dadosParaEnviar);
+        console.log('Funcionário atualizado. Resposta:', response.data);
       } else {
-        await api.post('/funcionarios', formData);
+        const response = await api.post('/funcionarios', dadosParaEnviar);
+        console.log('Funcionário criado. Resposta:', response.data);
       }
       handleCloseModal();
       fetchFuncionarios();
       toast.success(editingFuncionario ? 'Funcionário atualizado com sucesso!' : 'Funcionário cadastrado com sucesso!');
     } catch (error) {
+      console.error('Erro ao salvar funcionário:', error);
+      console.error('Resposta do erro:', error.response?.data);
       toast.error(error.response?.data?.message || 'Erro ao salvar funcionário');
     }
   };

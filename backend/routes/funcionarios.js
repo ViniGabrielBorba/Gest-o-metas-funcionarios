@@ -102,11 +102,21 @@ router.post('/', validate(funcionarioSchema), async (req, res) => {
 });
 
 // Atualizar funcionário
-router.put('/:id', async (req, res) => {
+router.put('/:id', validate(funcionarioSchema), async (req, res) => {
   try {
+    const { nome, sobrenome, sexo, idade, funcao, dataAniversario, metaIndividual } = req.body;
+
     const funcionario = await Funcionario.findOneAndUpdate(
       { _id: req.params.id, gerenteId: req.user.id },
-      req.body,
+      {
+        nome,
+        sobrenome: sobrenome || '', // Garantir que sobrenome seja salvo (mesmo que vazio)
+        sexo,
+        idade,
+        funcao,
+        dataAniversario: new Date(dataAniversario),
+        metaIndividual
+      },
       { new: true, runValidators: true }
     );
 
@@ -114,8 +124,18 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Funcionário não encontrado' });
     }
 
+    logger.audit('Funcionário atualizado', req.user.id, {
+      funcionarioId: funcionario._id,
+      nome: funcionario.nome,
+      sobrenome: funcionario.sobrenome
+    });
+
     res.json(funcionario);
   } catch (error) {
+    logger.error('Erro ao atualizar funcionário', {
+      error: error.message,
+      userId: req.user.id
+    });
     res.status(500).json({ message: error.message });
   }
 });
