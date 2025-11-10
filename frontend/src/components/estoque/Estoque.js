@@ -117,15 +117,25 @@ const Estoque = ({ setIsAuthenticated }) => {
         const response = await api.post('/estoque', formData);
         avaliacaoSalva = response.data;
       }
+      
+      toast.success('Avaliação salva com sucesso!');
+      
+      // Perguntar se quer imprimir ANTES de fechar o modal
+      const querImprimir = window.confirm('Deseja imprimir agora?');
+      
       handleCloseModal();
       fetchAvaliacoes();
       
-      toast.success('Avaliação salva com sucesso!');
-      // Perguntar se quer imprimir
-      if (window.confirm('Deseja imprimir agora?')) {
-        handleImprimir(avaliacaoSalva);
+      // Se quiser imprimir, usar os dados salvos do servidor
+      if (querImprimir) {
+        // Aguardar um pouco para garantir que os dados foram salvos
+        setTimeout(() => {
+          handleImprimir(avaliacaoSalva);
+        }, 500);
       }
     } catch (error) {
+      console.error('Erro ao salvar avaliação:', error);
+      console.error('Dados enviados:', formData);
       toast.error(error.response?.data?.message || 'Erro ao salvar avaliação');
     }
   };
@@ -143,6 +153,18 @@ const Estoque = ({ setIsAuthenticated }) => {
   };
 
   const handleImprimir = (avaliacao) => {
+    // Garantir que temos os dados corretos
+    if (!avaliacao) {
+      toast.error('Erro: Dados da avaliação não encontrados');
+      return;
+    }
+    
+    // Log para debug
+    console.log('Imprimindo avaliação:', avaliacao);
+    console.log('Topicos:', avaliacao.topicos);
+    console.log('Gerentes:', avaliacao.gerentes);
+    console.log('Outros:', avaliacao.outros);
+    
     const janelaImpressao = window.open('', '_blank');
     janelaImpressao.document.write(`
       <!DOCTYPE html>
@@ -207,19 +229,13 @@ const Estoque = ({ setIsAuthenticated }) => {
             <h2>1. Definição da Forma de Avaliação</h2>
             <div class="checkbox-group">
               <strong>Frequência da avaliação:</strong>
-              <label>☐ Semanal</label>
-              <label>☐ Mensal</label>
-            </div>
-            <div style="margin-top: 10px;">
-              <strong>Frequência selecionada:</strong> ${avaliacao.frequenciaAvaliacao}
+              <label>${avaliacao.frequenciaAvaliacao === 'Semanal' ? '☑' : '☐'} Semanal</label>
+              <label>${avaliacao.frequenciaAvaliacao === 'Mensal' ? '☑' : '☐'} Mensal</label>
             </div>
             <div class="checkbox-group" style="margin-top: 15px;">
               <strong>Forma de pagamento:</strong>
-              <label>☐ Ganho</label>
-              <label>☐ Perda</label>
-            </div>
-            <div style="margin-top: 10px;">
-              <strong>Forma selecionada:</strong> ${avaliacao.formaPagamento}
+              <label>${avaliacao.formaPagamento === 'Ganho' ? '☑' : '☐'} Ganho</label>
+              <label>${avaliacao.formaPagamento === 'Perda' ? '☑' : '☐'} Perda</label>
             </div>
           </div>
 
@@ -227,13 +243,9 @@ const Estoque = ({ setIsAuthenticated }) => {
             <h2>2. Responsáveis pela Avaliação</h2>
             <p><strong>Responsáveis:</strong> ${avaliacao.responsaveis || ''}</p>
             <div class="checkbox-group">
-              <label>☐ Gerentes</label>
-              <label>☐ Outros (especifique)</label>
+              <label>${avaliacao.gerentes ? '☑' : '☐'} Gerentes</label>
+              <label>${avaliacao.outros ? '☑' : '☐'} Outros${avaliacao.outros && avaliacao.outrosEspecificacao ? ` (${avaliacao.outrosEspecificacao})` : ' (especifique)'}</label>
             </div>
-            <div style="margin-top: 10px;">
-              <strong>Gerentes:</strong> ${avaliacao.gerentes ? '☑ Sim' : '☐ Não'}
-            </div>
-            ${avaliacao.outros ? `<div style="margin-top: 10px;"><strong>Outros:</strong> ${avaliacao.outrosEspecificacao || ''}</div>` : ''}
           </div>
 
           <div class="section">
@@ -246,9 +258,9 @@ const Estoque = ({ setIsAuthenticated }) => {
                 </tr>
               </thead>
               <tbody>
-                ${avaliacao.topicos.map((t, i) => `
+                ${(avaliacao.topicos || []).map((t, i) => `
                   <tr>
-                    <td>${i + 1}. ${t.topico}</td>
+                    <td>${i + 1}. ${t.topico || ''}</td>
                     <td>${t.observacoesPontuacao || ''}</td>
                   </tr>
                 `).join('')}
@@ -259,18 +271,15 @@ const Estoque = ({ setIsAuthenticated }) => {
           <div class="section">
             <h2>4. Sugestões de Novos Tópicos</h2>
             <p><em>Espaço para incluir novos pontos a serem avaliados</em></p>
-            ${avaliacao.sugestoesNovosTopicos.filter(s => s.trim()).map((s, i) => `<p>${i + 1}. ${s}</p>`).join('') || '<p>Nenhuma sugestão adicionada.</p>'}
+            ${(avaliacao.sugestoesNovosTopicos || []).filter(s => s && s.trim()).map((s, i) => `<p>${i + 1}. ${s}</p>`).join('') || '<p>Nenhuma sugestão adicionada.</p>'}
           </div>
 
           <div class="section">
             <h2>5. Pontuação e Valores</h2>
             <div class="checkbox-group">
               <strong>Tipo de valor:</strong>
-              <label>☐ Fixo</label>
-              <label>☐ Variável</label>
-            </div>
-            <div style="margin-top: 10px;">
-              <strong>Tipo selecionado:</strong> ${avaliacao.tipoValor}
+              <label>${avaliacao.tipoValor === 'Fixo' ? '☑' : '☐'} Fixo</label>
+              <label>${avaliacao.tipoValor === 'Variável' ? '☑' : '☐'} Variável</label>
             </div>
             <div style="margin-top: 15px;">
               <strong>Valor mínimo sugerido:</strong> R$ ${avaliacao.valorMinimoSugerido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (indicação de Dona Ruana)
