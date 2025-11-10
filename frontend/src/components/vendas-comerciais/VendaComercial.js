@@ -96,7 +96,13 @@ const VendaComercial = ({ setIsAuthenticated }) => {
       handleCloseModal();
       fetchVendas();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Erro ao salvar venda comercial');
+      console.error('Erro ao salvar venda comercial:', error);
+      console.error('Resposta do servidor:', error.response?.data);
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.errors?.map(e => e.message).join(', ') ||
+                          error.message || 
+                          'Erro ao salvar venda comercial';
+      toast.error(errorMessage);
     }
   };
 

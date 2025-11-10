@@ -197,8 +197,8 @@ const vendaDiariaSchema = Joi.object({
     'number.base': 'Valor deve ser um número',
     'any.required': 'Valor é obrigatório'
   }),
-  observacoes: Joi.string().max(500).allow('', null).messages({
-    'string.max': 'Observações devem ter no máximo 500 caracteres'
+  observacao: Joi.string().max(500).allow('', null).messages({
+    'string.max': 'Observação deve ter no máximo 500 caracteres'
   })
 });
 
