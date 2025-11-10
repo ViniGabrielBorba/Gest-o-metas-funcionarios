@@ -242,8 +242,9 @@ const Dashboard = ({ setIsAuthenticated }) => {
     const vendasOrdenadas = [...dashboardData.vendasDiarias].sort((a, b) => a.dia - b.dia);
     const totalAteAgora = vendasOrdenadas.reduce((sum, v) => sum + v.total, 0);
     
-    // Método 1: Média Simples (método atual)
-    const mediaSimples = totalAteAgora / vendasOrdenadas.length;
+    // Método 1: Média Simples (CORRIGIDO: dividir pelo número de dias que já passaram, não pelo número de dias com vendas)
+    // Se dividirmos apenas pelos dias com vendas, a média fica inflada quando há dias sem vendas
+    const mediaSimples = totalAteAgora / diaAtual; // Média diária baseada nos dias que já passaram
     const previsaoSimples = totalAteAgora + (mediaSimples * diasRestantes);
 
     // Método 2: Média Móvel (últimos 7 dias, se houver)
