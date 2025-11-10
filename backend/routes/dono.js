@@ -192,6 +192,77 @@ router.get('/dashboard', authDono, async (req, res) => {
         // O meta.totalVendido inclui apenas vendas dos funcionários agora
         const totalGeral = totalVendasFuncionarios + totalVendasComerciais;
 
+        // Calcular percentual esperado baseado no tempo decorrido do mês
+        const hoje = new Date();
+        const mesAtualSistema = hoje.getMonth() + 1;
+        const anoAtualSistema = hoje.getFullYear();
+        const isMesAtual = mesAtual === mesAtualSistema && anoAtual === anoAtualSistema;
+        
+        // Calcular dias decorridos
+        // Se for o mês atual, usar o dia atual
+        // Se for mês futuro, usar 0 (ainda não começou)
+        // Se for mês passado, usar o último dia do mês (mês completo)
+        const diasNoMes = new Date(anoAtual, mesAtual, 0).getDate(); // Último dia do mês
+        let diasDecorridos = 0;
+        
+        if (isMesAtual) {
+          // Mês atual: usar dia atual
+          diasDecorridos = hoje.getDate();
+        } else if (anoAtual > anoAtualSistema || (anoAtual === anoAtualSistema && mesAtual > mesAtualSistema)) {
+          // Mês futuro: ainda não começou
+          diasDecorridos = 0;
+        } else {
+          // Mês passado: usar todos os dias do mês
+          diasDecorridos = diasNoMes;
+        }
+        
+        const percentualEsperado = (diasDecorridos / diasNoMes) * 100;
+        
+        // Percentual atingido
+        const percentualAtingido = meta && meta.valor > 0 
+          ? (totalGeral / meta.valor) * 100 
+          : 0;
+        
+        // Calcular status da meta considerando o tempo decorrido
+        // Se for o mês atual, considerar o percentual esperado
+        // Se for mês passado, considerar apenas o percentual total
+        
+        let statusMeta = 'abaixo'; // 'batida', 'no_prazo', 'em_risco', 'abaixo'
+        let metaBatida = false;
+        
+        if (meta && meta.valor > 0) {
+          metaBatida = totalGeral >= meta.valor;
+          
+          if (metaBatida) {
+            statusMeta = 'batida';
+          } else if (isMesAtual) {
+            // Para mês atual, considerar o percentual esperado
+            const diferencaPercentual = percentualAtingido - percentualEsperado;
+            
+            if (diferencaPercentual >= 5) {
+              // Está acima do esperado (mais de 5% acima)
+              statusMeta = 'no_prazo';
+            } else if (diferencaPercentual >= -10) {
+              // Está próximo do esperado (entre -10% e +5%)
+              statusMeta = 'em_risco';
+            } else {
+              // Está significativamente abaixo do esperado (mais de 10% abaixo)
+              statusMeta = 'abaixo';
+            }
+          } else {
+            // Para meses passados, usar classificação simples
+            if (percentualAtingido >= 100) {
+              statusMeta = 'batida';
+            } else if (percentualAtingido >= 70) {
+              statusMeta = 'no_prazo';
+            } else if (percentualAtingido >= 50) {
+              statusMeta = 'em_risco';
+            } else {
+              statusMeta = 'abaixo';
+            }
+          }
+        }
+
         // Top vendedores
         const topVendedores = [...vendasFuncionarios]
           .sort((a, b) => b.valor - a.valor)
@@ -209,10 +280,12 @@ router.get('/dashboard', authDono, async (req, res) => {
           totalVendasFuncionarios, // Vendas dos funcionários
           totalVendasComerciais, // Vendas comerciais
           totalGeral, // Total geral (funcionários + comerciais)
-          metaBatida: meta ? totalGeral >= meta.valor : false,
-          percentualAtingido: meta && meta.valor > 0 
-            ? (totalGeral / meta.valor) * 100 
-            : 0,
+          metaBatida, // Meta batida (100% ou mais)
+          statusMeta, // Status detalhado considerando tempo
+          percentualAtingido, // Percentual total atingido
+          percentualEsperado: isMesAtual ? percentualEsperado : null, // Percentual esperado (apenas mês atual)
+          diasDecorridos: isMesAtual ? diasDecorridos : null, // Dias decorridos (apenas mês atual)
+          diasNoMes: isMesAtual ? diasNoMes : null, // Total de dias no mês (apenas mês atual)
           topVendedores,
           funcionarios: funcionarios.map(f => ({
             id: f._id,
@@ -827,10 +900,8 @@ router.get('/previsao', authDono, async (req, res) => {
     const mesAtual = mes ? parseInt(mes) : new Date().getMonth() + 1;
     const anoAtual = ano ? parseInt(ano) : new Date().getFullYear();
 
-    const hoje = new Date();
-    const diaAtual = hoje.getDate();
-    const diasNoMes = new Date(anoAtual, mesAtual, 0).getDate();
-    const diasRestantes = diasNoMes - diaAtual;
+    // Nota: Os dias decorridos e restantes serão calculados por loja,
+    // considerando se estamos visualizando o mês atual ou um mês passado/futuro
 
     const gerentes = await Gerente.find();
     
@@ -894,11 +965,38 @@ router.get('/previsao', authDono, async (req, res) => {
           .map(dia => ({ dia: parseInt(dia), valor: vendasPorDia[dia] }))
           .sort((a, b) => a.dia - b.dia);
         
+        // Verificar se estamos no mês atual e calcular dias corretamente
+        const hoje = new Date();
+        const mesAtualSistema = hoje.getMonth() + 1;
+        const anoAtualSistema = hoje.getFullYear();
+        const isMesAtual = mesAtual === mesAtualSistema && anoAtual === anoAtualSistema;
+        
+        // Calcular total de dias no mês
+        const diasNoMes = new Date(anoAtual, mesAtual, 0).getDate();
+        
+        // Calcular dias decorridos corretamente
+        let diasDecorridos = 0;
+        if (isMesAtual) {
+          // Mês atual: usar dia atual
+          diasDecorridos = hoje.getDate();
+        } else if (anoAtual > anoAtualSistema || (anoAtual === anoAtualSistema && mesAtual > mesAtualSistema)) {
+          // Mês futuro: ainda não começou
+          diasDecorridos = 0;
+        } else {
+          // Mês passado: usar todos os dias do mês
+          diasDecorridos = diasNoMes;
+        }
+        
+        // Recalcular dias restantes baseado nos dias decorridos corretos
+        const diasRestantesCorretos = diasNoMes - diasDecorridos;
+        
         // Método 1: Média Simples
-        const mediaSimples = vendasOrdenadas.length > 0 
-          ? vendasOrdenadas.reduce((sum, v) => sum + v.valor, 0) / vendasOrdenadas.length 
-          : vendasAteHoje / diaAtual;
-        const previsaoSimples = vendasAteHoje + (mediaSimples * diasRestantes);
+        // IMPORTANTE: Dividir pelo número de dias decorridos no mês, NÃO pelo número de dias com vendas
+        // Isso evita inflacionar a média quando há poucos dias com vendas registradas
+        const mediaSimples = diasDecorridos > 0 
+          ? vendasAteHoje / diasDecorridos 
+          : 0;
+        const previsaoSimples = vendasAteHoje + (mediaSimples * diasRestantesCorretos);
         
         // Método 2: Média Móvel (últimos 7 dias)
         let mediaMovel = mediaSimples;
@@ -906,17 +1004,18 @@ router.get('/previsao', authDono, async (req, res) => {
           const ultimos7Dias = vendasOrdenadas.slice(-7);
           mediaMovel = ultimos7Dias.reduce((sum, v) => sum + v.valor, 0) / 7;
         }
-        const previsaoMediaMovel = vendasAteHoje + (mediaMovel * diasRestantes);
+        const previsaoMediaMovel = vendasAteHoje + (mediaMovel * diasRestantesCorretos);
         
         // Método 3: Regressão Linear
         let previsaoRegressao = previsaoSimples;
         let tendencia = 0;
         if (vendasOrdenadas.length >= 3) {
+          // Usar os dias reais (não índices) para regressão linear
           const n = vendasOrdenadas.length;
           let somaX = 0, somaY = 0, somaXY = 0, somaX2 = 0;
           
-          vendasOrdenadas.forEach((venda, index) => {
-            const x = index + 1;
+          vendasOrdenadas.forEach((venda) => {
+            const x = venda.dia; // Usar o dia real do mês, não o índice
             const y = venda.valor;
             somaX += x;
             somaY += y;
@@ -928,9 +1027,12 @@ router.get('/previsao', authDono, async (req, res) => {
           const a = (somaY - b * somaX) / n;
           tendencia = b;
           
+          // Calcular projeção para os dias restantes
           let projecaoRegressao = 0;
-          for (let i = 1; i <= diasRestantes; i++) {
-            const diaProjecao = n + i;
+          const ultimoDiaComVenda = Math.max(...vendasOrdenadas.map(v => v.dia));
+          
+          for (let i = 1; i <= diasRestantesCorretos; i++) {
+            const diaProjecao = ultimoDiaComVenda + i;
             const valorProjecao = a + b * diaProjecao;
             projecaoRegressao += Math.max(0, valorProjecao);
           }
@@ -975,7 +1077,8 @@ router.get('/previsao', authDono, async (req, res) => {
           loja: gerente.nomeLoja,
           vendasAteHoje,
           mediaDiaria: mediaMovel,
-          diasRestantes,
+          diasRestantes: diasRestantesCorretos,
+          diasDecorridos: diasDecorridos,
           projecaoTotal,
           meta: meta ? meta.valor : 0,
           percentualConfianca: Math.min(95, Math.max(30, confianca)),

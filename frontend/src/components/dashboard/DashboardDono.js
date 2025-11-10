@@ -856,12 +856,17 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                       <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold">
                         Meta Batida
                       </span>
+                    ) : loja.statusMeta === 'no_prazo' ? (
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">
+                        No Prazo
+                      </span>
+                    ) : loja.statusMeta === 'em_risco' ? (
+                      <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-semibold">
+                        Em Risco
+                      </span>
                     ) : (
-                      <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                        loja.percentualAtingido >= 70 ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {loja.percentualAtingido >= 70 ? 'Em andamento' : 'Abaixo da meta'}
+                      <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-semibold">
+                        Abaixo da Meta
                       </span>
                     )}
                     <FaEye className="text-gray-400 hover:text-gray-600" title="Ver detalhes" />
@@ -899,13 +904,21 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                   </div>
                   <div className={`flex justify-between items-center pt-2 ${darkMode ? 'border-gray-600' : 'border-gray-200'} border-t`}>
                     <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Atingido:</span>
-                    <span className={`font-bold ${
-                      loja.percentualAtingido >= 100 ? 'text-green-600' :
-                      loja.percentualAtingido >= 70 ? 'text-yellow-600' :
-                      'text-red-600'
-                    }`}>
-                      {loja.percentualAtingido.toFixed(1)}%
-                    </span>
+                    <div className="flex flex-col items-end">
+                      <span className={`font-bold ${
+                        loja.metaBatida ? 'text-green-600' :
+                        loja.statusMeta === 'no_prazo' ? 'text-blue-600' :
+                        loja.statusMeta === 'em_risco' ? 'text-yellow-600' :
+                        'text-red-600'
+                      }`}>
+                        {loja.percentualAtingido.toFixed(1)}%
+                      </span>
+                      {loja.percentualEsperado && loja.diasDecorridos && (
+                        <span className="text-xs text-gray-500 mt-0.5">
+                          Esperado: {loja.percentualEsperado.toFixed(1)}% ({loja.diasDecorridos}/{loja.diasNoMes} dias)
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 {loja.topVendedores && loja.topVendedores.length > 0 && (
