@@ -165,24 +165,49 @@ const Metas = ({ setIsAuthenticated }) => {
     e.preventDefault();
     try {
       // Salvar referência da meta atual antes de fechar o modal
-      const metaAtual = selectedMeta;
+      const metaId = selectedMeta._id;
       const historicoAberto = showHistoricoModal;
+      const mesAno = { mes: selectedMeta.mes, ano: selectedMeta.ano };
       
-      await api.post(`/metas/${selectedMeta._id}/vendas-diarias`, vendaData);
+      console.log('=== SALVANDO VENDA COMERCIAL ===');
+      console.log('Meta ID:', metaId);
+      console.log('Dados da venda:', vendaData);
+      console.log('Histórico estava aberto:', historicoAberto);
+      
+      // Salvar a venda (a resposta já retorna a meta atualizada)
+      const response = await api.post(`/metas/${metaId}/vendas-diarias`, vendaData);
+      console.log('Venda salva! Resposta do servidor:', response.data);
+      console.log('Total de vendas na resposta:', response.data.vendasDiarias?.length || 0);
+      
+      // Fechar modal de venda
       setShowVendaModal(false);
       
-      // Recarregar metas
+      // Recarregar lista de metas para atualizar totais na lista
       await fetchMetas();
       
-      // Se o histórico estava aberto, recarregá-lo com os dados atualizados
-      // O handleVerHistorico busca os dados diretamente do servidor, então sempre terá os dados mais recentes
-      if (historicoAberto && metaAtual) {
-        await handleVerHistorico(metaAtual);
+      // Se o histórico estava aberto, recarregá-lo
+      if (historicoAberto) {
+        console.log('=== RECARREGANDO HISTÓRICO ===');
+        // Aguardar um pouco para garantir que o backend processou completamente
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        // Buscar a meta atualizada da lista recém-carregada
+        const metaAtualizada = metas.find(m => m._id === metaId) || selectedMeta;
+        console.log('Meta atualizada encontrada:', metaAtualizada);
+        
+        // Recarregar histórico - isso buscará os dados atualizados diretamente do servidor
+        await handleVerHistorico(metaAtualizada);
+      } else {
+        // Atualizar selectedMeta mesmo se histórico não estava aberto
+        const metaAtualizada = response.data;
+        setSelectedMeta(metaAtualizada);
       }
       
       toast.success('Venda comercial registrada com sucesso!');
     } catch (error) {
-      console.error('Erro ao salvar venda comercial:', error);
+      console.error('=== ERRO AO SALVAR VENDA ===');
+      console.error('Erro completo:', error);
+      console.error('Resposta do erro:', error.response?.data);
       toast.error(error.response?.data?.message || 'Erro ao salvar venda');
     }
   };

@@ -140,17 +140,28 @@ router.post('/:id/vendas-diarias', async (req, res) => {
       observacao: observacao || ''
     });
 
+    console.log(`Venda adicionada à meta ${meta._id}. Total de vendas: ${meta.vendasDiarias.length}`);
+    console.log(`Data da venda: ${dataVenda.toISOString()}, Valor: ${valor}`);
+
     // Calcular total de vendas diretas da loja no mês
     const mesVenda = dataVenda.getUTCMonth() + 1;
     const anoVenda = dataVenda.getUTCFullYear();
     
+    console.log(`Mês/Ano da venda: ${mesVenda}/${anoVenda}`);
+    console.log(`Mês/Ano da meta: ${meta.mes}/${meta.ano}`);
+    
     const vendasDiretasLoja = meta.vendasDiarias.filter(v => {
       const vDate = new Date(v.data);
       // Usar UTC para comparar corretamente
-      return vDate.getUTCMonth() + 1 === mesVenda && vDate.getUTCFullYear() === anoVenda;
+      const mesV = vDate.getUTCMonth() + 1;
+      const anoV = vDate.getUTCFullYear();
+      return mesV === mesVenda && anoV === anoVenda;
     });
     
+    console.log(`Vendas diretas da loja no mês ${mesVenda}/${anoVenda}: ${vendasDiretasLoja.length}`);
+    
     const totalVendasDiretasLoja = vendasDiretasLoja.reduce((sum, v) => sum + v.valor, 0);
+    console.log(`Total vendas diretas da loja: R$ ${totalVendasDiretasLoja}`);
 
     // Calcular total de vendas dos funcionários no mesmo mês
     const funcionarios = await Funcionario.find({ gerenteId: req.user.id });
@@ -161,18 +172,28 @@ router.post('/:id/vendas-diarias', async (req, res) => {
         funcionario.vendasDiarias.forEach(venda => {
           const vDate = new Date(venda.data);
           // Usar UTC para comparar corretamente
-          if (vDate.getUTCMonth() + 1 === mesVenda && vDate.getUTCFullYear() === anoVenda) {
+          const mesV = vDate.getUTCMonth() + 1;
+          const anoV = vDate.getUTCFullYear();
+          if (mesV === mesVenda && anoV === anoVenda) {
             totalVendasFuncionarios += venda.valor || 0;
           }
         });
       }
     });
 
+    console.log(`Total vendas funcionários: R$ ${totalVendasFuncionarios}`);
+
     // Total vendido = vendas diretas da loja + vendas dos funcionários
     meta.totalVendido = totalVendasDiretasLoja + totalVendasFuncionarios;
+    console.log(`Total vendido atualizado: R$ ${meta.totalVendido}`);
 
     await meta.save();
-    res.json(meta);
+    
+    // Recarregar a meta do banco para garantir que temos os dados mais recentes
+    const metaAtualizada = await Meta.findById(meta._id);
+    console.log(`Meta recarregada. Total de vendas diárias: ${metaAtualizada.vendasDiarias.length}`);
+    
+    res.json(metaAtualizada);
   } catch (error) {
     console.error('Erro ao adicionar venda diária da loja:', error);
     res.status(500).json({ message: error.message });
