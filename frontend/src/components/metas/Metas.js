@@ -283,6 +283,11 @@ const Metas = ({ setIsAuthenticated }) => {
   };
 
   const handleVerHistorico = async (meta) => {
+    console.log('=== ABRINDO HISTÓRICO ===');
+    console.log('Meta:', meta);
+    console.log('Meta ID:', meta._id);
+    console.log('Mês/Ano:', meta.mes, meta.ano);
+    
     setSelectedMeta(meta);
     setLoadingHistorico(true);
     setShowHistoricoModal(true); // Abrir modal imediatamente para mostrar loading
@@ -292,7 +297,21 @@ const Metas = ({ setIsAuthenticated }) => {
       
       // Buscar histórico de vendas da meta
       const response = await api.get(`/metas/${meta._id}/vendas-diarias`);
-      console.log('Resposta recebida:', response.data);
+      console.log('=== RESPOSTA DO HISTÓRICO ===');
+      console.log('Resposta completa:', response.data);
+      console.log('Vendas agrupadas:', response.data?.vendasAgrupadas);
+      console.log('Total de dias com vendas:', response.data?.vendasAgrupadas?.length || 0);
+      
+      if (response.data?.vendasAgrupadas) {
+        response.data.vendasAgrupadas.forEach((dia, index) => {
+          console.log(`Dia ${index + 1}:`, {
+            data: dia.data,
+            vendasLoja: dia.vendasLoja?.length || 0,
+            vendasFuncionarios: dia.vendasFuncionarios?.length || 0,
+            total: dia.total
+          });
+        });
+      }
       
       // Buscar dados do dashboard para funcionários destacados
       const dashboardResponse = await api.get(`/dashboard?mes=${meta.mes}&ano=${meta.ano}`);
@@ -300,14 +319,17 @@ const Metas = ({ setIsAuthenticated }) => {
       
       // Verificar se a resposta tem o formato esperado
       if (response.data && response.data.vendasAgrupadas) {
+        console.log('Definindo vendas diárias:', response.data.vendasAgrupadas.length, 'dias');
         setVendasDiarias(response.data.vendasAgrupadas);
         setResumoVendas(response.data.resumo || null);
       } else if (Array.isArray(response.data)) {
         // Fallback: se vier array direto (formato antigo)
+        console.log('Formato antigo detectado, usando array direto');
         setVendasDiarias(response.data);
         setResumoVendas(null);
       } else {
         // Se não tiver dados, inicializar vazio
+        console.warn('Nenhum dado de vendas encontrado na resposta');
         setVendasDiarias([]);
         setResumoVendas(null);
       }
@@ -319,6 +341,7 @@ const Metas = ({ setIsAuthenticated }) => {
           total: dia.total
         })).sort((a, b) => a.dia - b.dia);
         
+        console.log('Dados do gráfico preparados:', vendasPorDia.length, 'pontos');
         setChartDataMensal(vendasPorDia);
       } else {
         setChartDataMensal(null);
@@ -331,8 +354,11 @@ const Metas = ({ setIsAuthenticated }) => {
         setTopFuncionarios([]);
       }
     } catch (error) {
-      console.error('Erro completo ao carregar histórico:', error);
+      console.error('=== ERRO AO CARREGAR HISTÓRICO ===');
+      console.error('Erro completo:', error);
       console.error('Resposta do erro:', error.response);
+      console.error('Status:', error.response?.status);
+      console.error('Dados do erro:', error.response?.data);
       
       // Mesmo com erro, mostrar o modal mas com dados vazios
       setVendasDiarias([]);
@@ -348,6 +374,7 @@ const Metas = ({ setIsAuthenticated }) => {
       }
     } finally {
       setLoadingHistorico(false);
+      console.log('=== HISTÓRICO CARREGADO ===');
     }
   };
   
