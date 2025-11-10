@@ -7,6 +7,7 @@ import {
   FaChartLine, 
   FaHome, 
   FaUsers, 
+  FaBullseye,
   FaComments,
   FaBox,
   FaCalendar,
@@ -14,8 +15,7 @@ import {
   FaBars,
   FaTimes,
   FaMoon,
-  FaSun,
-  FaDollarSign
+  FaSun
 } from 'react-icons/fa';
 
 const Navbar = ({ setIsAuthenticated }) => {
@@ -74,11 +74,11 @@ const Navbar = ({ setIsAuthenticated }) => {
               <FaUsers /> Funcionários
             </Link>
             <Link
-              to="/vendas-comerciais"
+              to="/metas"
               className="px-3 py-2 rounded-md text-sm font-medium hover:bg-opacity-80 transition-colors flex items-center gap-2"
               style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
             >
-              <FaDollarSign /> Vendas Comerciais
+              <FaBullseye /> Metas
             </Link>
             <Link
               to="/feedback"
@@ -157,12 +157,12 @@ const Navbar = ({ setIsAuthenticated }) => {
               <FaUsers /> Funcionários
             </Link>
             <Link
-              to="/vendas-comerciais"
+              to="/metas"
               className="block px-3 py-2 rounded-md text-base font-medium hover:bg-opacity-80 flex items-center gap-2"
               style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
               onClick={() => setMobileMenuOpen(false)}
             >
-              <FaDollarSign /> Vendas Comerciais
+              <FaBullseye /> Metas
             </Link>
             <Link
               to="/feedback"
