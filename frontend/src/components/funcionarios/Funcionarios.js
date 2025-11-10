@@ -146,23 +146,37 @@ const Funcionarios = ({ setIsAuthenticated }) => {
       // Garantir que sobrenome seja enviado (mesmo que vazio)
       const dadosParaEnviar = {
         ...formData,
-        sobrenome: formData.sobrenome || '' // Garantir que sempre tenha um valor (mesmo que vazio)
+        sobrenome: formData.sobrenome ? formData.sobrenome.trim() : '' // Garantir que sempre tenha um valor (mesmo que vazio)
       };
       
-      console.log('Enviando dados do funcionário:', dadosParaEnviar);
+      console.log('=== SALVANDO FUNCIONÁRIO ===');
+      console.log('Dados do formulário:', formData);
+      console.log('Dados para enviar:', dadosParaEnviar);
+      console.log('Sobrenome no formData:', formData.sobrenome);
+      console.log('Sobrenome após trim:', dadosParaEnviar.sobrenome);
       
+      let response;
       if (editingFuncionario) {
-        const response = await api.put(`/funcionarios/${editingFuncionario._id}`, dadosParaEnviar);
-        console.log('Funcionário atualizado. Resposta:', response.data);
+        console.log('Atualizando funcionário:', editingFuncionario._id);
+        response = await api.put(`/funcionarios/${editingFuncionario._id}`, dadosParaEnviar);
+        console.log('Funcionário atualizado. Resposta do servidor:', response.data);
+        console.log('Sobrenome na resposta:', response.data.sobrenome);
       } else {
-        const response = await api.post('/funcionarios', dadosParaEnviar);
-        console.log('Funcionário criado. Resposta:', response.data);
+        console.log('Criando novo funcionário');
+        response = await api.post('/funcionarios', dadosParaEnviar);
+        console.log('Funcionário criado. Resposta do servidor:', response.data);
+        console.log('Sobrenome na resposta:', response.data.sobrenome);
       }
+      
       handleCloseModal();
-      fetchFuncionarios();
+      
+      // Recarregar lista de funcionários para garantir que os dados atualizados sejam exibidos
+      await fetchFuncionarios();
+      
       toast.success(editingFuncionario ? 'Funcionário atualizado com sucesso!' : 'Funcionário cadastrado com sucesso!');
     } catch (error) {
-      console.error('Erro ao salvar funcionário:', error);
+      console.error('=== ERRO AO SALVAR FUNCIONÁRIO ===');
+      console.error('Erro completo:', error);
       console.error('Resposta do erro:', error.response?.data);
       toast.error(error.response?.data?.message || 'Erro ao salvar funcionário');
     }
