@@ -159,8 +159,14 @@ const funcionarioSchema = Joi.object({
     'string.empty': 'Nome é obrigatório',
     'any.required': 'Nome é obrigatório'
   }),
-  sobrenome: Joi.string().min(2).max(50).allow('').optional().messages({
-    'string.min': 'Sobrenome deve ter no mínimo 2 caracteres',
+  sobrenome: Joi.string().max(50).allow('', null).optional().custom((value, helpers) => {
+    // Se o valor foi fornecido e não está vazio, deve ter pelo menos 2 caracteres
+    if (value && value.trim().length > 0 && value.trim().length < 2) {
+      return helpers.error('string.min');
+    }
+    return value;
+  }).messages({
+    'string.min': 'Sobrenome deve ter no mínimo 2 caracteres se fornecido',
     'string.max': 'Sobrenome deve ter no máximo 50 caracteres'
   }),
   sexo: Joi.string().valid('Masculino', 'Feminino', 'Outro').required().messages({
