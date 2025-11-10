@@ -143,17 +143,29 @@ const Funcionarios = ({ setIsAuthenticated }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Garantir que sobrenome seja enviado (mesmo que vazio)
+      // Garantir que sobrenome seja sempre uma string (mesmo que vazia)
+      // Não usar operador ternário que pode retornar undefined
+      const sobrenomeProcessado = (formData.sobrenome !== undefined && formData.sobrenome !== null)
+        ? String(formData.sobrenome).trim()
+        : '';
+      
+      // Garantir que sobrenome seja enviado explicitamente (mesmo que vazio)
       const dadosParaEnviar = {
-        ...formData,
-        sobrenome: formData.sobrenome ? formData.sobrenome.trim() : '' // Garantir que sempre tenha um valor (mesmo que vazio)
+        nome: formData.nome,
+        sobrenome: sobrenomeProcessado, // Sempre enviar como string
+        sexo: formData.sexo,
+        idade: formData.idade,
+        funcao: formData.funcao,
+        dataAniversario: formData.dataAniversario,
+        metaIndividual: formData.metaIndividual
       };
       
       console.log('=== SALVANDO FUNCIONÁRIO ===');
       console.log('Dados do formulário:', formData);
       console.log('Dados para enviar:', dadosParaEnviar);
       console.log('Sobrenome no formData:', formData.sobrenome);
-      console.log('Sobrenome após trim:', dadosParaEnviar.sobrenome);
+      console.log('Sobrenome processado:', sobrenomeProcessado);
+      console.log('Tipo do sobrenome processado:', typeof sobrenomeProcessado);
       
       let response;
       if (editingFuncionario) {
@@ -161,11 +173,13 @@ const Funcionarios = ({ setIsAuthenticated }) => {
         response = await api.put(`/funcionarios/${editingFuncionario._id}`, dadosParaEnviar);
         console.log('Funcionário atualizado. Resposta do servidor:', response.data);
         console.log('Sobrenome na resposta:', response.data.sobrenome);
+        console.log('Tipo do sobrenome na resposta:', typeof response.data.sobrenome);
       } else {
         console.log('Criando novo funcionário');
         response = await api.post('/funcionarios', dadosParaEnviar);
         console.log('Funcionário criado. Resposta do servidor:', response.data);
         console.log('Sobrenome na resposta:', response.data.sobrenome);
+        console.log('Tipo do sobrenome na resposta:', typeof response.data.sobrenome);
       }
       
       handleCloseModal();
@@ -178,6 +192,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
       console.error('=== ERRO AO SALVAR FUNCIONÁRIO ===');
       console.error('Erro completo:', error);
       console.error('Resposta do erro:', error.response?.data);
+      console.error('Status do erro:', error.response?.status);
       toast.error(error.response?.data?.message || 'Erro ao salvar funcionário');
     }
   };
