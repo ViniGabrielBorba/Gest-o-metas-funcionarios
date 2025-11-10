@@ -144,18 +144,27 @@ router.post('/:id/vendas-diarias', async (req, res) => {
     console.log(`Data da venda: ${dataVenda.toISOString()}, Valor: ${valor}`);
 
     // Calcular total de vendas diretas da loja no mês
+    // IMPORTANTE: Usar o mês/ano da META, não da venda, para garantir consistência
+    const mesMeta = parseInt(meta.mes, 10);
+    const anoMeta = parseInt(meta.ano, 10);
+    
+    console.log(`Mês/Ano da meta: ${mesMeta}/${anoMeta}`);
+    console.log(`Data da venda salva: ${dataVenda.toISOString()}`);
+    
+    // Verificar se a venda está no mesmo mês/ano da meta
     const mesVenda = dataVenda.getUTCMonth() + 1;
     const anoVenda = dataVenda.getUTCFullYear();
+    console.log(`Mês/Ano extraído da venda: ${mesVenda}/${anoVenda}`);
     
-    console.log(`Mês/Ano da venda: ${mesVenda}/${anoVenda}`);
-    console.log(`Mês/Ano da meta: ${meta.mes}/${meta.ano}`);
-    
+    // Filtrar vendas do mês/ano da META (não da venda individual)
     const vendasDiretasLoja = meta.vendasDiarias.filter(v => {
       const vDate = new Date(v.data);
       // Usar UTC para comparar corretamente
       const mesV = vDate.getUTCMonth() + 1;
       const anoV = vDate.getUTCFullYear();
-      return mesV === mesVenda && anoV === anoVenda;
+      const corresponde = mesV === mesMeta && anoV === anoMeta;
+      console.log(`Venda: ${vDate.toISOString()} -> ${mesV}/${anoV} corresponde? ${corresponde}`);
+      return corresponde;
     });
     
     console.log(`Vendas diretas da loja no mês ${mesVenda}/${anoVenda}: ${vendasDiretasLoja.length}`);
@@ -163,7 +172,7 @@ router.post('/:id/vendas-diarias', async (req, res) => {
     const totalVendasDiretasLoja = vendasDiretasLoja.reduce((sum, v) => sum + v.valor, 0);
     console.log(`Total vendas diretas da loja: R$ ${totalVendasDiretasLoja}`);
 
-    // Calcular total de vendas dos funcionários no mesmo mês
+    // Calcular total de vendas dos funcionários no mesmo mês/ano da META
     const funcionarios = await Funcionario.find({ gerenteId: req.user.id });
     let totalVendasFuncionarios = 0;
     
@@ -174,7 +183,8 @@ router.post('/:id/vendas-diarias', async (req, res) => {
           // Usar UTC para comparar corretamente
           const mesV = vDate.getUTCMonth() + 1;
           const anoV = vDate.getUTCFullYear();
-          if (mesV === mesVenda && anoV === anoVenda) {
+          // Comparar com mês/ano da META, não da venda individual
+          if (mesV === mesMeta && anoV === anoMeta) {
             totalVendasFuncionarios += venda.valor || 0;
           }
         });
