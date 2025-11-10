@@ -693,26 +693,76 @@ router.get('/alertas', authDono, async (req, res) => {
       // Total geral = vendas funcionários + vendas comerciais
       const totalGeral = totalVendasFunc + totalVendasComerciais;
       
-      // Meta batida
-      if (meta && totalGeral >= meta.valor) {
-        alertas.push({
-          tipo: 'sucesso',
-          loja: gerente.nomeLoja,
-          mensagem: `Meta batida! ${((totalGeral / meta.valor) * 100).toFixed(1)}% atingido`,
-          valor: totalGeral,
-          meta: meta.valor
-        });
-      }
-      
-      // Meta abaixo (menos de 70%)
-      if (meta && meta.valor > 0 && (totalGeral / meta.valor) < 0.7) {
-        alertas.push({
-          tipo: 'alerta',
-          loja: gerente.nomeLoja,
-          mensagem: `Meta abaixo do esperado: ${((totalGeral / meta.valor) * 100).toFixed(1)}%`,
-          valor: totalGeral,
-          meta: meta.valor
-        });
+      // Calcular status da meta considerando o tempo decorrido (mesma lógica do dashboard)
+      if (meta && meta.valor > 0) {
+        const hoje = new Date();
+        const mesAtualSistema = hoje.getMonth() + 1;
+        const anoAtualSistema = hoje.getFullYear();
+        const isMesAtual = mesAtual === mesAtualSistema && anoAtual === anoAtualSistema;
+        
+        // Calcular dias decorridos
+        const diasNoMes = new Date(anoAtual, mesAtual, 0).getDate();
+        let diasDecorridos = 0;
+        
+        if (isMesAtual) {
+          diasDecorridos = hoje.getDate();
+        } else if (anoAtual > anoAtualSistema || (anoAtual === anoAtualSistema && mesAtual > mesAtualSistema)) {
+          diasDecorridos = 0;
+        } else {
+          diasDecorridos = diasNoMes;
+        }
+        
+        const percentualEsperado = diasDecorridos > 0 ? (diasDecorridos / diasNoMes) * 100 : 0;
+        const percentualAtingido = (totalGeral / meta.valor) * 100;
+        const diferencaPercentual = percentualAtingido - percentualEsperado;
+        
+        // Determinar status da meta
+        let statusMeta = 'abaixo';
+        if (totalGeral >= meta.valor) {
+          statusMeta = 'batida';
+        } else if (isMesAtual) {
+          if (diferencaPercentual >= 5) {
+            statusMeta = 'no_prazo';
+          } else if (diferencaPercentual >= -10) {
+            statusMeta = 'no_ritmo';
+          } else {
+            statusMeta = 'abaixo';
+          }
+        } else {
+          if (percentualAtingido >= 100) {
+            statusMeta = 'batida';
+          } else if (percentualAtingido >= 70) {
+            statusMeta = 'no_prazo';
+          } else if (percentualAtingido >= 50) {
+            statusMeta = 'no_ritmo';
+          } else {
+            statusMeta = 'abaixo';
+          }
+        }
+        
+        // Gerar alertas baseados no status
+        if (statusMeta === 'batida') {
+          alertas.push({
+            tipo: 'sucesso',
+            loja: gerente.nomeLoja,
+            mensagem: `Meta batida! ${percentualAtingido.toFixed(1)}% atingido`,
+            valor: totalGeral,
+            meta: meta.valor
+          });
+        } else if (statusMeta === 'abaixo') {
+          // Apenas mostrar alerta quando realmente estiver abaixo do esperado
+          const mensagem = isMesAtual && diasDecorridos > 0
+            ? `Meta abaixo do esperado: ${percentualAtingido.toFixed(1)}% (esperado: ${percentualEsperado.toFixed(1)}%)`
+            : `Meta abaixo do esperado: ${percentualAtingido.toFixed(1)}%`;
+          alertas.push({
+            tipo: 'alerta',
+            loja: gerente.nomeLoja,
+            mensagem: mensagem,
+            valor: totalGeral,
+            meta: meta.valor
+          });
+        }
+        // Não mostrar alerta para "no_prazo" ou "no_ritmo" - são situações normais
       }
       
       // Funcionários sem vendas
