@@ -336,9 +336,12 @@ const Dashboard = ({ setIsAuthenticated }) => {
       else if (coeficienteVariacao > 0.5) confianca -= 10;
     }
 
+    // Calcular média diária correta (total até agora dividido pelos dias que já passaram)
+    const mediaDiariaCorreta = totalAteAgora / diaAtual;
+
     return {
       totalAteAgora,
-      mediaDiaria: mediaMovel,
+      mediaDiaria: mediaDiariaCorreta, // Usar média correta baseada nos dias que já passaram
       diasRestantes,
       previsaoTotal: previsaoFinal,
       previsaoSimples,
@@ -349,7 +352,9 @@ const Dashboard = ({ setIsAuthenticated }) => {
       confianca: Math.min(95, Math.max(30, confianca)),
       percentualPrevisao: dashboardData.resumo.metaMes > 0 
         ? (previsaoFinal / dashboardData.resumo.metaMes) * 100 
-        : 0
+        : 0,
+      diasPassados: diaAtual, // Adicionar informação útil para debug
+      diasNoMes // Adicionar informação útil para debug
     };
   };
 
