@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
 import { removeAuthToken } from '../../utils/auth';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../../contexts/ToastContext';
 import {
   FaStore,
   FaUsers,
@@ -72,6 +73,43 @@ const DashboardDono = ({ setIsAuthenticated }) => {
   const navigate = useNavigate();
   const toast = useToast();
 
+  // Verificar se o usuário está autenticado como dono ao carregar
+  useEffect(() => {
+    const userType = localStorage.getItem('userType');
+    const token = localStorage.getItem('token');
+    
+    console.log('Verificando autenticação:', { userType, hasToken: !!token });
+    
+    // Se não houver token ou userType, redirecionar
+    if (!token || userType !== 'dono') {
+      console.warn('Usuário não autenticado como dono. Redirecionando...');
+      removeAuthToken();
+      navigate('/login-dono');
+      return;
+    }
+    
+    // Verificar se o token é realmente do tipo dono
+    try {
+      // Decodificar token sem verificar assinatura (apenas para ler o tipo)
+      const base64Url = token.split('.')[1];
+      if (base64Url) {
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = JSON.parse(atob(base64));
+        console.log('Tipo do token:', jsonPayload.tipo);
+        
+        if (jsonPayload.tipo !== 'dono') {
+          console.error('Token não é do tipo dono! Tipo encontrado:', jsonPayload.tipo);
+          toast.error('Erro de autenticação: token inválido para área do dono');
+          removeAuthToken();
+          navigate('/login-dono');
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar token:', error);
+      // Se não conseguir decodificar, deixar o backend verificar
+    }
+  }, [navigate, toast]);
+
   useEffect(() => {
     fetchDashboardData();
     fetchAlertas();
@@ -94,7 +132,33 @@ const DashboardDono = ({ setIsAuthenticated }) => {
       setDashboardData(response.data);
     } catch (error) {
       console.error('Erro ao buscar dados do dashboard:', error);
-      toast.error('Erro ao carregar dados do dashboard');
+      console.error('Detalhes:', {
+        status: error.response?.status,
+        message: error.response?.data?.message,
+        data: error.response?.data
+      });
+      
+      if (error.response?.status === 403) {
+        const errorMessage = error.response?.data?.message || 'Acesso negado';
+        toast.error(errorMessage);
+        // Se o token não for do tipo dono, redirecionar para login
+        if (errorMessage.includes('tipo') || errorMessage.includes('dono')) {
+          setTimeout(() => {
+            removeAuthToken();
+            localStorage.removeItem('userType');
+            navigate('/login-dono');
+          }, 2000);
+        }
+      } else if (error.response?.status === 401) {
+        toast.error('Sessão expirada. Por favor, faça login novamente.');
+        setTimeout(() => {
+          removeAuthToken();
+          localStorage.removeItem('userType');
+          navigate('/login-dono');
+        }, 2000);
+      } else {
+        toast.error(error.response?.data?.message || 'Erro ao carregar dados do dashboard');
+      }
     } finally {
       setLoading(false);
     }
@@ -119,6 +183,10 @@ const DashboardDono = ({ setIsAuthenticated }) => {
       setMetricas(response.data);
     } catch (error) {
       console.error('Erro ao buscar métricas:', error);
+      if (error.response?.status === 403 || error.response?.status === 401) {
+        // Erro de autenticação já será tratado pelo interceptor
+        return;
+      }
     }
   };
 
@@ -130,6 +198,10 @@ const DashboardDono = ({ setIsAuthenticated }) => {
       setPrevisoes(response.data);
     } catch (error) {
       console.error('Erro ao buscar previsões:', error);
+      if (error.response?.status === 403 || error.response?.status === 401) {
+        // Erro de autenticação já será tratado pelo interceptor
+        return;
+      }
     }
   };
 
@@ -141,6 +213,10 @@ const DashboardDono = ({ setIsAuthenticated }) => {
       setAgendaEventos(response.data.eventos || []);
     } catch (error) {
       console.error('Erro ao buscar agenda:', error);
+      if (error.response?.status === 403 || error.response?.status === 401) {
+        // Erro de autenticação já será tratado pelo interceptor
+        return;
+      }
     }
   };
 
@@ -161,6 +237,11 @@ const DashboardDono = ({ setIsAuthenticated }) => {
       setDadosMesAnterior(response.data);
     } catch (error) {
       console.error('Erro ao buscar dados do mês anterior:', error);
+      if (error.response?.status === 403 || error.response?.status === 401) {
+        // Erro de autenticação já será tratado pelo interceptor
+        setDadosMesAnterior(null);
+        return;
+      }
       setDadosMesAnterior(null);
     }
   };

@@ -37,10 +37,32 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Só redireciona para login se não estiver já na página de login
-    if (error.response?.status === 401 && !window.location.pathname.includes('/login')) {
-      removeAuthToken();
-      window.location.href = '/login';
+    // Tratar erros de autenticação
+    if (error.response?.status === 401) {
+      // Token inválido ou expirado
+      if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/login-dono')) {
+        removeAuthToken();
+        localStorage.removeItem('userType');
+        // Redirecionar para a página de login apropriada
+        if (window.location.pathname.includes('/dashboard-dono')) {
+          window.location.href = '/login-dono';
+        } else {
+          window.location.href = '/login';
+        }
+      }
+    } else if (error.response?.status === 403) {
+      // Acesso negado - tipo de usuário incorreto
+      const errorMessage = error.response?.data?.message || 'Acesso negado';
+      console.error('Erro 403 - Acesso negado:', errorMessage);
+      
+      // Se estiver tentando acessar área do dono mas o token é de gerente
+      if (window.location.pathname.includes('/dashboard-dono')) {
+        console.warn('Token não é do tipo dono. Redirecionando para login do dono...');
+        removeAuthToken();
+        localStorage.removeItem('userType');
+        // Não redirecionar automaticamente, apenas mostrar erro
+        // O componente pode tratar isso
+      }
     }
     return Promise.reject(error);
   }

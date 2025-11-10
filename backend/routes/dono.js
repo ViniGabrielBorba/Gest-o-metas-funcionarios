@@ -26,9 +26,14 @@ const generateToken = (id, tipo = 'gerente') => {
 // Middleware de autenticação para dono
 const authDono = async (req, res, next) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    const authHeader = req.header('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    
+    logger.info(`[authDono] Requisição para: ${req.method} ${req.path}`);
+    logger.info(`[authDono] Authorization header: ${authHeader ? 'Presente' : 'Ausente'}`);
     
     if (!token) {
+      logger.warn('[authDono] Token não fornecido');
       return res.status(401).json({ message: 'Token não fornecido' });
     }
 
@@ -38,17 +43,29 @@ const authDono = async (req, res, next) => {
         message: 'Erro de configuração do servidor. JWT_SECRET não está configurado.' 
       });
     }
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      logger.info(`[authDono] Token decodificado: tipo=${decoded.tipo}, id=${decoded.id}`);
+    } catch (jwtError) {
+      logger.error(`[authDono] Erro ao verificar token:`, jwtError.message);
+      return res.status(401).json({ message: 'Token inválido ou expirado' });
+    }
     
     // Verificar se é dono
     if (decoded.tipo !== 'dono') {
-      return res.status(403).json({ message: 'Acesso negado. Apenas donos podem acessar.' });
+      logger.warn(`[authDono] Acesso negado: tipo do token é '${decoded.tipo}', esperado 'dono'`);
+      return res.status(403).json({ 
+        message: `Acesso negado. Token do tipo '${decoded.tipo}', mas apenas donos podem acessar esta rota.` 
+      });
     }
 
     req.user = decoded;
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Token inválido' });
+    logger.error('[authDono] Erro inesperado:', error);
+    res.status(401).json({ message: 'Erro de autenticação: ' + error.message });
   }
 };
 

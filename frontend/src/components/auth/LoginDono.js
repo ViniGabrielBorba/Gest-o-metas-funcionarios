@@ -17,13 +17,38 @@ const LoginDono = ({ setIsAuthenticated }) => {
     setLoading(true);
 
     try {
-      const response = await api.post('/dono/login', { email, senha });
-      setAuthToken(response.data.token);
-      localStorage.setItem('userType', 'dono');
-      setIsAuthenticated(true);
-      toast.success('Login realizado com sucesso!');
-      navigate('/dashboard-dono');
+      console.log('Fazendo login como dono...');
+      const response = await api.post('/dono/login', { 
+        email: email.trim().toLowerCase(), 
+        senha 
+      });
+      
+      console.log('Resposta do login:', response.data);
+      
+      if (response.data && response.data.token) {
+        // Limpar qualquer token anterior
+        localStorage.removeItem('token');
+        localStorage.removeItem('userType');
+        
+        // Salvar novo token
+        setAuthToken(response.data.token);
+        localStorage.setItem('userType', 'dono');
+        
+        console.log('Token salvo, tipo:', response.data.dono?.tipo);
+        
+        setIsAuthenticated(true);
+        toast.success('Login realizado com sucesso!');
+        navigate('/dashboard-dono');
+      } else {
+        toast.error('Token não recebido do servidor');
+      }
     } catch (error) {
+      console.error('Erro no login:', error);
+      console.error('Detalhes:', {
+        status: error.response?.status,
+        message: error.response?.data?.message,
+        data: error.response?.data
+      });
       toast.error(error.response?.data?.message || 'Erro ao fazer login');
     } finally {
       setLoading(false);
