@@ -82,7 +82,8 @@ const Funcionarios = ({ setIsAuthenticated }) => {
 
   // Função helper para obter nome completo (compatibilidade com dados antigos)
   const getNomeCompleto = (funcionario) => {
-    if (funcionario.sobrenome) {
+    // Verificar se sobrenome existe e não está vazio
+    if (funcionario.sobrenome && funcionario.sobrenome.trim() !== '') {
       return `${funcionario.nome} ${funcionario.sobrenome}`;
     }
     // Se não tiver sobrenome, pode ser que o nome completo esteja no campo nome (dados antigos)
@@ -885,14 +886,14 @@ const Funcionarios = ({ setIsAuthenticated }) => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Sobrenome
+                        Sobrenome <span className="text-gray-400 text-xs">(opcional)</span>
                       </label>
                       <input
                         type="text"
                         value={formData.sobrenome}
                         onChange={(e) => setFormData({ ...formData, sobrenome: e.target.value })}
                         className="input-field"
-                        required
+                        placeholder="Sobrenome (opcional)"
                       />
                     </div>
                   </div>
