@@ -191,9 +191,10 @@ const Metas = ({ setIsAuthenticated }) => {
         // Aguardar um pouco para garantir que o backend processou completamente
         await new Promise(resolve => setTimeout(resolve, 800));
         
-        // Buscar a meta atualizada da lista recém-carregada
-        const metaAtualizada = metas.find(m => m._id === metaId) || selectedMeta;
-        console.log('Meta atualizada encontrada:', metaAtualizada);
+        // Usar a meta da resposta do servidor (que já contém a venda salva)
+        const metaAtualizada = response.data;
+        console.log('Meta atualizada da resposta:', metaAtualizada);
+        console.log('Total de vendas na meta atualizada:', metaAtualizada.vendasDiarias?.length || 0);
         
         // Recarregar histórico - isso buscará os dados atualizados diretamente do servidor
         await handleVerHistorico(metaAtualizada);
