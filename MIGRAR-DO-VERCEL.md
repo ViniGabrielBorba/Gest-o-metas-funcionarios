@@ -84,15 +84,17 @@ Branch to deploy: main
 Build settings:
   Base directory: frontend
   Build command: npm run build
-  Publish directory: frontend/build
+  Publish directory: build
   Functions directory: (DEIXE VAZIO)
 ```
 
 **IMPORTANTE:**
 - **Base directory:** `frontend` (isso faz o Netlify trabalhar dentro da pasta frontend)
 - **Build command:** `npm run build` (já está dentro do diretório frontend)
-- **Publish directory:** `frontend/build` (onde o React gera os arquivos)
+- **Publish directory:** `build` (NÃO coloque `frontend/build` - o Netlify já está dentro de `frontend` devido ao Base directory)
 - **Functions directory:** DEIXE VAZIO (não precisa de serverless functions para React estático)
+
+**⚠️ ERRO COMUM:** Se você colocar `frontend/build` no Publish directory, o Netlify vai procurar em `frontend/frontend/build` e não vai encontrar nada!
 
 ### **Passo 4: Configurar Variáveis de Ambiente**
 
