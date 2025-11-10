@@ -21,7 +21,6 @@ import {
 
 const Navbar = ({ setIsAuthenticated }) => {
   const [gerente, setGerente] = useState(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const { darkMode, toggleDarkMode } = useDarkMode();
 
