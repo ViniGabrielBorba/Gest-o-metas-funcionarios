@@ -10,8 +10,7 @@ import {
   FaDollarSign, 
   FaCalendar, 
   FaChartLine,
-  FaFilter,
-  FaPrint
+  FaFilter
 } from 'react-icons/fa';
 import {
   LineChart,
