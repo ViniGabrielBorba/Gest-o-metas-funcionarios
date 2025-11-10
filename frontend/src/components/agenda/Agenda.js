@@ -6,7 +6,6 @@ import { useDarkMode } from '../../contexts/DarkModeContext';
 import {
   FaPlus,
   FaEdit,
-  FaTrash,
   FaCalendar,
   FaBell,
   FaCheck,
@@ -142,17 +141,7 @@ const Agenda = ({ setIsAuthenticated }) => {
     }
   };
 
-  const handleDelete = async (eventoId) => {
-    if (window.confirm('Tem certeza que deseja excluir este evento?')) {
-      try {
-        await api.delete(`/agenda/eventos/${eventoId}`);
-        fetchEventos();
-        toast.success('Evento excluído com sucesso!');
-      } catch (error) {
-        toast.error(error.response?.data?.message || 'Erro ao excluir evento');
-      }
-    }
-  };
+  // Função handleDelete removida - não está sendo usada no componente
 
   const handleToggleConcluido = async (evento) => {
     try {

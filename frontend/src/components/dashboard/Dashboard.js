@@ -9,7 +9,6 @@ import {
   FaTrophy,
   FaChartLine,
   FaBirthdayCake,
-  FaStar,
   FaSearch,
   FaFilter,
   FaCalendar,
@@ -30,10 +29,7 @@ import {
   LineChart,
   Line,
   ComposedChart,
-  Area,
-  AreaChart,
-  Brush,
-  ReferenceLine
+  Brush
 } from 'recharts';
 import { notifyMetaBatida, notifyTarefasPendentes } from '../../utils/notifications';
 import { useToast } from '../../contexts/ToastContext';

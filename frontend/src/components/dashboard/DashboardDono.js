@@ -129,6 +129,7 @@ const DashboardDono = ({ setIsAuthenticated }) => {
     fetchPrevisoes();
     fetchAgenda();
     fetchDadosMesAnterior(); // Comparação automática com mês anterior
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth, selectedYear]);
 
   useEffect(() => {
