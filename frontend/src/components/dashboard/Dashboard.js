@@ -291,11 +291,12 @@ const Dashboard = ({ setIsAuthenticated }) => {
     let previsaoRegressao = previsaoSimples;
     if (vendasOrdenadas.length >= 3) {
       // Calcular tendência usando regressão linear simples
+      // IMPORTANTE: Usar os dias reais do mês, não índices
       const n = vendasOrdenadas.length;
       let somaX = 0, somaY = 0, somaXY = 0, somaX2 = 0;
       
-      vendasOrdenadas.forEach((venda, index) => {
-        const x = index + 1; // Dia sequencial
+      vendasOrdenadas.forEach((venda) => {
+        const x = venda.dia; // Usar o dia real do mês, não o índice
         const y = venda.total;
         somaX += x;
         somaY += y;
@@ -309,10 +310,12 @@ const Dashboard = ({ setIsAuthenticated }) => {
       
       tendencia = b; // Inclinação da reta
       
-      // Projetar para os próximos dias
+      // Projetar para os próximos dias usando o último dia com venda como referência
       let projecaoRegressao = 0;
+      const ultimoDiaComVenda = Math.max(...vendasOrdenadas.map(v => v.dia));
+      
       for (let i = 1; i <= diasRestantes; i++) {
-        const diaProjecao = n + i;
+        const diaProjecao = ultimoDiaComVenda + i;
         const valorProjecao = a + b * diaProjecao;
         projecaoRegressao += Math.max(0, valorProjecao); // Não permitir valores negativos
       }
