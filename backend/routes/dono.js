@@ -227,7 +227,7 @@ router.get('/dashboard', authDono, async (req, res) => {
         // Se for o mês atual, considerar o percentual esperado
         // Se for mês passado, considerar apenas o percentual total
         
-        let statusMeta = 'abaixo'; // 'batida', 'no_prazo', 'em_risco', 'abaixo'
+        let statusMeta = 'abaixo'; // 'batida', 'no_prazo', 'no_ritmo', 'abaixo'
         let metaBatida = false;
         
         if (meta && meta.valor > 0) {
@@ -243,8 +243,8 @@ router.get('/dashboard', authDono, async (req, res) => {
               // Está acima do esperado (mais de 5% acima)
               statusMeta = 'no_prazo';
             } else if (diferencaPercentual >= -10) {
-              // Está próximo do esperado (entre -10% e +5%)
-              statusMeta = 'em_risco';
+              // Está no ritmo esperado (entre -10% e +5%) - situação normal, na média
+              statusMeta = 'no_ritmo';
             } else {
               // Está significativamente abaixo do esperado (mais de 10% abaixo)
               statusMeta = 'abaixo';
@@ -256,7 +256,7 @@ router.get('/dashboard', authDono, async (req, res) => {
             } else if (percentualAtingido >= 70) {
               statusMeta = 'no_prazo';
             } else if (percentualAtingido >= 50) {
-              statusMeta = 'em_risco';
+              statusMeta = 'no_ritmo';
             } else {
               statusMeta = 'abaixo';
             }

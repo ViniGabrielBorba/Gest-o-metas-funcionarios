@@ -860,9 +860,9 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                       <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">
                         No Prazo
                       </span>
-                    ) : loja.statusMeta === 'em_risco' ? (
+                    ) : loja.statusMeta === 'no_ritmo' ? (
                       <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-semibold">
-                        Em Risco
+                        No Ritmo
                       </span>
                     ) : (
                       <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-semibold">
@@ -908,7 +908,7 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                       <span className={`font-bold ${
                         loja.metaBatida ? 'text-green-600' :
                         loja.statusMeta === 'no_prazo' ? 'text-blue-600' :
-                        loja.statusMeta === 'em_risco' ? 'text-yellow-600' :
+                        loja.statusMeta === 'no_ritmo' ? 'text-yellow-600' :
                         'text-red-600'
                       }`}>
                         {loja.percentualAtingido.toFixed(1)}%
