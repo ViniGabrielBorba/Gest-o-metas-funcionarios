@@ -439,14 +439,14 @@ const Dashboard = ({ setIsAuthenticated }) => {
 
   // Gráfico de vendas do mês (comparativo com meta)
   const chartDataMes = vendasMes.map(v => ({
-    name: v.nome,
+    name: v.nomeCompleto || v.nome,
     vendas: v.valor,
     meta: v.metaIndividual
   }));
 
   // Gráfico de Top Vendedores do Mês (ranking)
   const chartDataTopMes = topVendedoresMes.map(v => ({
-    name: v.nome,
+    name: v.nomeCompleto || v.nome,
     vendas: v.valor
   }));
 
@@ -473,9 +473,15 @@ const Dashboard = ({ setIsAuthenticated }) => {
     }
   ] : [];
 
-  // Filtrar funcionários por busca
+  // Filtrar funcionários por busca (buscar em nome e sobrenome)
   const funcionariosFiltrados = buscaFuncionario
-    ? vendasMes.filter(v => v.nome.toLowerCase().includes(buscaFuncionario.toLowerCase()))
+    ? vendasMes.filter(v => {
+        const nomeCompleto = (v.nomeCompleto || v.nome || '').toLowerCase();
+        const nome = (v.nome || '').toLowerCase();
+        const sobrenome = (v.sobrenome || '').toLowerCase();
+        const busca = buscaFuncionario.toLowerCase();
+        return nomeCompleto.includes(busca) || nome.includes(busca) || sobrenome.includes(busca);
+      })
     : vendasMes;
 
   return (
@@ -662,7 +668,9 @@ const Dashboard = ({ setIsAuthenticated }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-amber-100 text-sm mb-1">Destaque do Mês</p>
-                <p className="text-xl font-bold truncate">{resumo.melhorVendedorMes.nome}</p>
+                <p className="text-xl font-bold truncate">
+                  {resumo.melhorVendedorMes.nomeCompleto || resumo.melhorVendedorMes.nome}
+                </p>
                 <p className="text-sm mt-1">
                   R$ {resumo.melhorVendedorMes.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
@@ -1299,7 +1307,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
                             </span>
                           </td>
                           <td className={`px-4 py-2 font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                            {func.nome}
+                            {func.nomeCompleto || func.nome}
                           </td>
                           <td className="px-4 py-2 text-right font-bold text-green-600">
                             R$ {func.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}

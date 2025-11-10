@@ -29,9 +29,15 @@ router.get('/', async (req, res) => {
       const venda = func.vendas.find(
         v => v.mes === mesAtual && v.ano === anoAtual
       );
+      // Montar nome completo (nome + sobrenome)
+      const nomeCompleto = func.sobrenome && func.sobrenome.trim() !== ''
+        ? `${func.nome} ${func.sobrenome}`
+        : func.nome;
       return {
         funcionarioId: func._id,
         nome: func.nome,
+        sobrenome: func.sobrenome || '',
+        nomeCompleto: nomeCompleto,
         valor: venda ? venda.valor : 0,
         metaIndividual: func.metaIndividual
       };
