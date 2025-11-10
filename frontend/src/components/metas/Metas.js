@@ -164,11 +164,25 @@ const Metas = ({ setIsAuthenticated }) => {
   const handleSubmitVenda = async (e) => {
     e.preventDefault();
     try {
+      // Salvar referência da meta atual antes de fechar o modal
+      const metaAtual = selectedMeta;
+      const historicoAberto = showHistoricoModal;
+      
       await api.post(`/metas/${selectedMeta._id}/vendas-diarias`, vendaData);
       setShowVendaModal(false);
-      fetchMetas();
-      toast.success('Venda da loja registrada com sucesso!');
+      
+      // Recarregar metas
+      await fetchMetas();
+      
+      // Se o histórico estava aberto, recarregá-lo com os dados atualizados
+      // O handleVerHistorico busca os dados diretamente do servidor, então sempre terá os dados mais recentes
+      if (historicoAberto && metaAtual) {
+        await handleVerHistorico(metaAtual);
+      }
+      
+      toast.success('Venda comercial registrada com sucesso!');
     } catch (error) {
+      console.error('Erro ao salvar venda comercial:', error);
       toast.error(error.response?.data?.message || 'Erro ao salvar venda');
     }
   };
