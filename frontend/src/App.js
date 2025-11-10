@@ -77,6 +77,20 @@ function App() {
     checkAuth();
   }, []);
 
+  // Mostrar loading enquanto verifica autenticação
+  if (isCheckingAuth) {
+    return (
+      <DarkModeProvider>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Verificando autenticação...</p>
+          </div>
+        </div>
+      </DarkModeProvider>
+    );
+  }
+
   const isDono = userType === 'dono';
   const isGerente = userType === 'gerente';
 
