@@ -175,6 +175,10 @@ const funcionarioSchema = Joi.object({
     'string.empty': 'Função é obrigatória',
     'any.required': 'Função é obrigatória'
   }),
+  setor: Joi.string().valid('Vendas', 'Comercial', 'Administrativo', 'Outros').default('Vendas').messages({
+    'any.only': 'Setor deve ser: Vendas, Comercial, Administrativo ou Outros',
+    'any.required': 'Setor é obrigatório'
+  }),
   dataAniversario: Joi.date().required().messages({
     'date.base': 'Data de aniversário inválida',
     'any.required': 'Data de aniversário é obrigatória'
