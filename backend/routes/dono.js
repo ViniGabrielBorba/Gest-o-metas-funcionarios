@@ -109,21 +109,38 @@ router.post('/login', async (req, res) => {
   try {
     const { email, senha } = req.body;
 
+    logger.info(`[Login Dono] Tentativa de login: ${email}`);
+
     if (!email || !senha) {
       return res.status(400).json({ message: 'Email e senha são obrigatórios' });
     }
 
-    const dono = await Dono.findOne({ email: email.toLowerCase().trim() });
+    const emailNormalizado = email.toLowerCase().trim();
+    const dono = await Dono.findOne({ email: emailNormalizado });
+    
     if (!dono) {
+      logger.warn(`[Login Dono] Dono não encontrado: ${emailNormalizado}`);
       return res.status(401).json({ message: 'Email ou senha incorretos' });
     }
 
     const senhaValida = await dono.comparePassword(senha);
     if (!senhaValida) {
+      logger.warn(`[Login Dono] Senha inválida para: ${emailNormalizado}`);
       return res.status(401).json({ message: 'Email ou senha incorretos' });
     }
 
-    const token = generateToken(dono._id, 'dono');
+    // Gerar token com tipo 'dono' explicitamente
+    const token = generateToken(dono._id.toString(), 'dono');
+    
+    // Verificar se o token foi gerado corretamente (para debug)
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      logger.info(`[Login Dono] Token gerado com sucesso. Tipo: ${decoded.tipo}, ID: ${decoded.id}`);
+    } catch (verifyError) {
+      logger.error('[Login Dono] Erro ao verificar token gerado:', verifyError);
+    }
+    
+    logger.info(`[Login Dono] Login bem-sucedido para: ${emailNormalizado}`);
 
     res.json({
       token,
@@ -135,6 +152,7 @@ router.post('/login', async (req, res) => {
       }
     });
   } catch (error) {
+    logger.error('[Login Dono] Erro ao fazer login:', error);
     res.status(500).json({ message: error.message });
   }
 });
