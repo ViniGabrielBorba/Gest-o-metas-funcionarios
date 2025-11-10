@@ -18,20 +18,64 @@ import { getAuthToken } from './utils/auth';
 import { requestNotificationPermission } from './utils/notifications';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(!!getAuthToken());
-  const [userType, setUserType] = useState(localStorage.getItem('userType') || 'gerente');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userType, setUserType] = useState('gerente');
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
-    const token = getAuthToken();
-    setIsAuthenticated(!!token);
-    const storedUserType = localStorage.getItem('userType') || 'gerente';
-    setUserType(storedUserType);
-    
-    // Solicitar permissão para notificações quando o app carregar
-    if (token) {
-      requestNotificationPermission();
-    }
-  }, [isAuthenticated]);
+    const checkAuth = async () => {
+      const token = getAuthToken();
+      const storedUserType = localStorage.getItem('userType') || 'gerente';
+      
+      if (!token) {
+        // Sem token, não está autenticado
+        setIsAuthenticated(false);
+        setUserType('gerente');
+        setIsCheckingAuth(false);
+        return;
+      }
+
+      // Verificar se o token é válido fazendo uma requisição ao backend
+      try {
+        const api = (await import('./utils/api')).default;
+        const response = await api.get('/auth/me');
+        
+        if (response.data) {
+          // Token válido - verificar tipo do usuário do token
+          const tokenType = response.data.tipo || storedUserType;
+          setIsAuthenticated(true);
+          setUserType(tokenType);
+          localStorage.setItem('userType', tokenType);
+          requestNotificationPermission();
+        } else {
+          // Token inválido
+          setIsAuthenticated(false);
+          setUserType('gerente');
+          localStorage.removeItem('token');
+          localStorage.removeItem('userType');
+        }
+      } catch (error) {
+        // Token inválido ou erro na verificação
+        // Se for 401 (não autorizado) ou 403 (proibido), limpar token
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          console.log('Token inválido ou expirado. Limpando autenticação.');
+          setIsAuthenticated(false);
+          setUserType('gerente');
+          localStorage.removeItem('token');
+          localStorage.removeItem('userType');
+        } else {
+          // Outro erro (rede, etc) - assumir que não está autenticado para forçar login
+          console.log('Erro ao verificar token:', error.message);
+          setIsAuthenticated(false);
+          setUserType('gerente');
+        }
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
 
   const isDono = userType === 'dono';
   const isGerente = userType === 'gerente';
@@ -44,11 +88,11 @@ function App() {
           {/* Rotas do Gerente */}
           <Route 
             path="/login" 
-            element={!isAuthenticated || isDono ? <Login setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/dashboard" />} 
+            element={!isAuthenticated || isDono ? <Login setIsAuthenticated={setIsAuthenticated} setUserType={setUserType} /> : <Navigate to="/dashboard" />} 
           />
           <Route 
             path="/cadastro" 
-            element={!isAuthenticated || isDono ? <Cadastro setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/dashboard" />} 
+            element={!isAuthenticated || isDono ? <Cadastro setIsAuthenticated={setIsAuthenticated} setUserType={setUserType} /> : <Navigate to="/dashboard" />} 
           />
           <Route 
             path="/dashboard" 
@@ -82,18 +126,18 @@ function App() {
           {/* Rotas do Dono */}
           <Route 
             path="/login-dono" 
-            element={!isAuthenticated || isGerente ? <LoginDono setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/dashboard-dono" />} 
+            element={!isAuthenticated || isGerente ? <LoginDono setIsAuthenticated={setIsAuthenticated} setUserType={setUserType} /> : <Navigate to="/dashboard-dono" />} 
           />
           <Route 
             path="/cadastro-dono" 
-            element={!isAuthenticated || isGerente ? <CadastroDono setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/dashboard-dono" />} 
+            element={!isAuthenticated || isGerente ? <CadastroDono setIsAuthenticated={setIsAuthenticated} setUserType={setUserType} /> : <Navigate to="/dashboard-dono" />} 
           />
           <Route 
             path="/dashboard-dono" 
             element={isAuthenticated && isDono ? <DashboardDono setIsAuthenticated={setIsAuthenticated} /> : <Navigate to={isGerente ? "/dashboard" : "/login-dono"} />} 
           />
           
-          <Route path="/" element={<Navigate to={isDono ? "/dashboard-dono" : "/dashboard"} />} />
+          <Route path="/" element={<Navigate to={isAuthenticated ? (isDono ? "/dashboard-dono" : "/dashboard") : (isDono ? "/login-dono" : "/login")} />} />
         </Routes>
         </Router>
       </ToastProvider>

@@ -5,7 +5,7 @@ import api from '../../utils/api';
 import { setAuthToken } from '../../utils/auth';
 import { useToast } from '../../contexts/ToastContext';
 
-const CadastroDono = ({ setIsAuthenticated }) => {
+const CadastroDono = ({ setIsAuthenticated, setUserType }) => {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -32,8 +32,9 @@ const CadastroDono = ({ setIsAuthenticated }) => {
     try {
       const response = await api.post('/dono/cadastro', { nome, email, senha });
       setAuthToken(response.data.token);
-      localStorage.setItem('userType', 'dono');
-      setIsAuthenticated(true);
+        localStorage.setItem('userType', 'dono');
+        if (setUserType) setUserType('dono');
+        setIsAuthenticated(true);
       toast.success('Cadastro realizado com sucesso!');
       navigate('/dashboard-dono');
     } catch (error) {

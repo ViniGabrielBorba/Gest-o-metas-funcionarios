@@ -4,7 +4,7 @@ import api from '../../utils/api';
 import { setAuthToken } from '../../utils/auth';
 import { FaChartLine, FaSignInAlt } from 'react-icons/fa';
 
-const Login = ({ setIsAuthenticated }) => {
+const Login = ({ setIsAuthenticated, setUserType }) => {
   const [formData, setFormData] = useState({
     email: '',
     senha: ''
@@ -55,6 +55,8 @@ const Login = ({ setIsAuthenticated }) => {
       
       if (response.data && response.data.token) {
         setAuthToken(response.data.token);
+        localStorage.setItem('userType', 'gerente');
+        if (setUserType) setUserType('gerente');
         setIsAuthenticated(true);
         console.log('Login bem-sucedido! Redirecionando...');
         window.location.href = '/dashboard';

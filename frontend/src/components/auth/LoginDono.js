@@ -5,7 +5,7 @@ import api from '../../utils/api';
 import { setAuthToken } from '../../utils/auth';
 import { useToast } from '../../contexts/ToastContext';
 
-const LoginDono = ({ setIsAuthenticated }) => {
+const LoginDono = ({ setIsAuthenticated, setUserType }) => {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
@@ -36,6 +36,7 @@ const LoginDono = ({ setIsAuthenticated }) => {
         
         console.log('Token salvo, tipo:', response.data.dono?.tipo);
         
+        if (setUserType) setUserType('dono');
         setIsAuthenticated(true);
         toast.success('Login realizado com sucesso!');
         navigate('/dashboard-dono');

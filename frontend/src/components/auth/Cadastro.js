@@ -4,7 +4,7 @@ import api from '../../utils/api';
 import { setAuthToken } from '../../utils/auth';
 import { FaChartLine, FaUserPlus } from 'react-icons/fa';
 
-const Cadastro = ({ setIsAuthenticated }) => {
+const Cadastro = ({ setIsAuthenticated, setUserType }) => {
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
@@ -52,6 +52,8 @@ const Cadastro = ({ setIsAuthenticated }) => {
       
       if (response.data && response.data.token) {
         setAuthToken(response.data.token);
+        localStorage.setItem('userType', 'gerente');
+        if (setUserType) setUserType('gerente');
         setIsAuthenticated(true);
         window.location.href = '/dashboard';
       } else {

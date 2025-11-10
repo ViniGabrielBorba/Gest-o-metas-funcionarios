@@ -410,7 +410,11 @@ router.get('/me', auth, async (req, res) => {
     if (!gerente) {
       return res.status(404).json({ message: 'Gerente não encontrado' });
     }
-    res.json(gerente);
+    // Retornar dados do gerente junto com o tipo do token
+    res.json({
+      ...gerente.toObject(),
+      tipo: req.user.tipo || 'gerente' // Tipo do token JWT
+    });
   } catch (error) {
     logger.error('Erro ao buscar dados do gerente', { 
       error: error.message, 
