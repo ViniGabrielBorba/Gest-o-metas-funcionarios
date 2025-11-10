@@ -84,10 +84,10 @@ const getAllowedOrigins = () => {
   // Adicionar origens do Vercel (padrão)
   origins.push('https://gest-o-metas-funcionarios-89ed.vercel.app');
   
-  // Permitir todas as origens do Vercel (*.vercel.app)
-  // Em produção, você pode querer ser mais específico
+  // Em produção, permitir origens do Netlify e Vercel
   if (process.env.NODE_ENV === 'production') {
-    // Permitir todas as origens do Vercel
+    // Permitir todas as origens do Netlify (*.netlify.app)
+    // Permitir todas as origens do Vercel (*.vercel.app)
     return origins.length > 0 ? origins : '*';
   }
   
@@ -115,9 +115,9 @@ app.use(cors({
     if (Array.isArray(allowedOrigins) && allowedOrigins.includes(normalizedOrigin)) {
       logger.info(`CORS: Permitindo origem: ${normalizedOrigin}`);
       callback(null, true);
-    } else if (Array.isArray(allowedOrigins) && normalizedOrigin.includes('.vercel.app')) {
-      // Permitir qualquer subdomínio do Vercel
-      logger.info(`CORS: Permitindo origem Vercel: ${normalizedOrigin}`);
+    } else if (Array.isArray(allowedOrigins) && (normalizedOrigin.includes('.vercel.app') || normalizedOrigin.includes('.netlify.app'))) {
+      // Permitir qualquer subdomínio do Vercel ou Netlify
+      logger.info(`CORS: Permitindo origem (Vercel/Netlify): ${normalizedOrigin}`);
       callback(null, true);
     } else {
       logger.warn(`CORS: Origem bloqueada: ${normalizedOrigin}`);
