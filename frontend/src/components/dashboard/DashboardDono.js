@@ -191,13 +191,42 @@ const DashboardDono = ({ setIsAuthenticated }) => {
 
   const fetchEvolucao = async (tipo) => {
     try {
+      console.log('Buscando dados de evolução:', { tipo, ano: selectedYear });
       const response = await api.get('/dono/dashboard/evolucao', {
         params: { tipo, ano: selectedYear }
       });
-      setDadosEvolucao(response.data);
-      setShowEvolucao(true);
+      console.log('Resposta recebida:', response.data);
+      
+      if (response.data && response.data.evolucao) {
+        // Validar e filtrar dados inválidos
+        const evolucaoValida = response.data.evolucao
+          .map(loja => ({
+            ...loja,
+            dados: (loja.dados || []).map(d => ({
+              ...d,
+              vendas: parseFloat(d.vendas) || 0,
+              meta: parseFloat(d.meta) || 0,
+              periodo: d.periodo || ''
+            })).filter(d => d.periodo !== '')
+          }))
+          .filter(loja => loja.dados && loja.dados.length > 0);
+        
+        setDadosEvolucao({ evolucao: evolucaoValida });
+        setShowEvolucao(true);
+      } else {
+        console.warn('Resposta sem dados de evolução:', response.data);
+        toast.error('Nenhum dado de evolução encontrado');
+      }
     } catch (error) {
-      toast.error('Erro ao buscar dados de evolução');
+      console.error('Erro ao buscar dados de evolução:', error);
+      console.error('Detalhes do erro:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url
+      });
+      const errorMessage = error.response?.data?.message || error.message || 'Erro ao buscar dados de evolução';
+      toast.error(errorMessage);
     }
   };
 

@@ -564,99 +564,170 @@ router.get('/dashboard/comparacao', authDono, async (req, res) => {
 router.get('/dashboard/evolucao', authDono, async (req, res) => {
   try {
     const { tipo, ano } = req.query; // tipo: 'mensal' ou 'trimestral'
-    const anoAtual = ano ? parseInt(ano) : new Date().getFullYear();
+    const anoAtual = ano ? parseInt(ano, 10) : new Date().getFullYear();
+    
+    // Validar tipo
+    if (tipo && tipo !== 'mensal' && tipo !== 'trimestral') {
+      return res.status(400).json({ message: 'Tipo inválido. Use "mensal" ou "trimestral"' });
+    }
+    
+    // Validar ano
+    if (isNaN(anoAtual) || anoAtual < 2020 || anoAtual > 2100) {
+      return res.status(400).json({ message: 'Ano inválido' });
+    }
+    
+    const tipoEvolucao = tipo || 'mensal'; // Default para mensal
+    
+    logger.info(`Buscando evolução ${tipoEvolucao} para ano ${anoAtual}`);
     
     const gerentes = await Gerente.find().select('nome nomeLoja');
     
+    if (!gerentes || gerentes.length === 0) {
+      return res.json({ evolucao: [] });
+    }
+    
     const evolucao = await Promise.all(
       gerentes.map(async (gerente) => {
-        const dados = [];
-        
-        const funcionarios = await Funcionario.find({ gerenteId: gerente._id });
-        
-        if (tipo === 'mensal') {
-          for (let mes = 1; mes <= 12; mes++) {
-            const meta = await Meta.findOne({ gerenteId: gerente._id, mes, ano: anoAtual });
-            
-            // Calcular vendas comerciais
-            const inicioMes = new Date(Date.UTC(anoAtual, mes - 1, 1, 0, 0, 0, 0));
-            const fimMes = new Date(Date.UTC(anoAtual, mes, 0, 23, 59, 59, 999));
-            const vendasComerciais = await VendaComercial.find({
-              gerenteId: gerente._id,
-              data: { $gte: inicioMes, $lte: fimMes }
-            });
-            const totalVendasComerciais = vendasComerciais.reduce((sum, v) => sum + (parseFloat(v.valor) || 0), 0);
-            
-            // Vendas dos funcionários
-            const vendasFunc = funcionarios.map(func => {
-              const venda = func.vendas.find(v => v.mes === mes && v.ano === anoAtual);
-              return venda ? venda.valor : 0;
-            });
-            const totalVendasFunc = vendasFunc.reduce((sum, v) => sum + v, 0);
-            
-            // Total geral
-            const total = totalVendasFunc + totalVendasComerciais;
-            
-            dados.push({
-              periodo: `${mes}/${anoAtual}`,
-              mes,
-              vendas: total,
-              meta: meta ? meta.valor : 0
-            });
-          }
-        } else if (tipo === 'trimestral') {
-          for (let trimestre = 1; trimestre <= 4; trimestre++) {
-            let totalVendas = 0;
-            let totalMeta = 0;
-            const meses = [
-              (trimestre - 1) * 3 + 1,
-              (trimestre - 1) * 3 + 2,
-              (trimestre - 1) * 3 + 3
-            ];
-            
-            for (const mes of meses) {
-              const meta = await Meta.findOne({ gerenteId: gerente._id, mes, ano: anoAtual });
-              
-              // Calcular vendas comerciais
-              const inicioMes = new Date(Date.UTC(anoAtual, mes - 1, 1, 0, 0, 0, 0));
-              const fimMes = new Date(Date.UTC(anoAtual, mes, 0, 23, 59, 59, 999));
-              const vendasComerciais = await VendaComercial.find({
-                gerenteId: gerente._id,
-                data: { $gte: inicioMes, $lte: fimMes }
-              });
-              const totalVendasComerciais = vendasComerciais.reduce((sum, v) => sum + (parseFloat(v.valor) || 0), 0);
-              
-              // Vendas dos funcionários
-              const vendasFunc = funcionarios.map(func => {
-                const venda = func.vendas.find(v => v.mes === mes && v.ano === anoAtual);
-                return venda ? venda.valor : 0;
-              });
-              const totalVendasFunc = vendasFunc.reduce((sum, v) => sum + v, 0);
-              
-              // Total geral
-              totalVendas += totalVendasFunc + totalVendasComerciais;
-              totalMeta += meta ? meta.valor : 0;
+        try {
+          const dados = [];
+          
+          const funcionarios = await Funcionario.find({ gerenteId: gerente._id });
+          
+          if (tipoEvolucao === 'mensal') {
+            for (let mes = 1; mes <= 12; mes++) {
+              try {
+                const meta = await Meta.findOne({ gerenteId: gerente._id, mes, ano: anoAtual });
+                
+                // Calcular vendas comerciais
+                const inicioMes = new Date(Date.UTC(anoAtual, mes - 1, 1, 0, 0, 0, 0));
+                const fimMes = new Date(Date.UTC(anoAtual, mes, 0, 23, 59, 59, 999));
+                
+                let totalVendasComerciais = 0;
+                try {
+                  const vendasComerciais = await VendaComercial.find({
+                    gerenteId: gerente._id,
+                    data: { $gte: inicioMes, $lte: fimMes }
+                  });
+                  totalVendasComerciais = vendasComerciais.reduce((sum, v) => {
+                    const valor = parseFloat(v.valor);
+                    return sum + (isNaN(valor) ? 0 : valor);
+                  }, 0);
+                } catch (err) {
+                  logger.error(`Erro ao buscar vendas comerciais para loja ${gerente.nomeLoja}, mês ${mes}:`, err);
+                  totalVendasComerciais = 0;
+                }
+                
+                // Vendas dos funcionários
+                const vendasFunc = funcionarios.map(func => {
+                  if (!func.vendas || !Array.isArray(func.vendas)) return 0;
+                  const venda = func.vendas.find(v => v.mes === mes && v.ano === anoAtual);
+                  const valor = venda ? parseFloat(venda.valor) : 0;
+                  return isNaN(valor) ? 0 : valor;
+                });
+                const totalVendasFunc = vendasFunc.reduce((sum, v) => sum + (isNaN(v) ? 0 : v), 0);
+                
+                // Total geral
+                const total = totalVendasFunc + totalVendasComerciais;
+                
+                dados.push({
+                  periodo: `${mes}/${anoAtual}`,
+                  mes,
+                  vendas: isNaN(total) ? 0 : total,
+                  meta: meta && meta.valor ? (isNaN(parseFloat(meta.valor)) ? 0 : parseFloat(meta.valor)) : 0
+                });
+              } catch (err) {
+                logger.error(`Erro ao processar mês ${mes} para loja ${gerente.nomeLoja}:`, err);
+                // Continuar com os outros meses mesmo se um falhar
+              }
             }
-            
-            dados.push({
-              periodo: `T${trimestre}/${anoAtual}`,
-              trimestre,
-              vendas: totalVendas,
-              meta: totalMeta
-            });
+          } else if (tipoEvolucao === 'trimestral') {
+            for (let trimestre = 1; trimestre <= 4; trimestre++) {
+              try {
+                let totalVendas = 0;
+                let totalMeta = 0;
+                const meses = [
+                  (trimestre - 1) * 3 + 1,
+                  (trimestre - 1) * 3 + 2,
+                  (trimestre - 1) * 3 + 3
+                ];
+                
+                for (const mes of meses) {
+                  try {
+                    const meta = await Meta.findOne({ gerenteId: gerente._id, mes, ano: anoAtual });
+                    
+                    // Calcular vendas comerciais
+                    const inicioMes = new Date(Date.UTC(anoAtual, mes - 1, 1, 0, 0, 0, 0));
+                    const fimMes = new Date(Date.UTC(anoAtual, mes, 0, 23, 59, 59, 999));
+                    
+                    let totalVendasComerciais = 0;
+                    try {
+                      const vendasComerciais = await VendaComercial.find({
+                        gerenteId: gerente._id,
+                        data: { $gte: inicioMes, $lte: fimMes }
+                      });
+                      totalVendasComerciais = vendasComerciais.reduce((sum, v) => {
+                        const valor = parseFloat(v.valor);
+                        return sum + (isNaN(valor) ? 0 : valor);
+                      }, 0);
+                    } catch (err) {
+                      logger.error(`Erro ao buscar vendas comerciais para loja ${gerente.nomeLoja}, mês ${mes}:`, err);
+                    }
+                    
+                    // Vendas dos funcionários
+                    const vendasFunc = funcionarios.map(func => {
+                      if (!func.vendas || !Array.isArray(func.vendas)) return 0;
+                      const venda = func.vendas.find(v => v.mes === mes && v.ano === anoAtual);
+                      const valor = venda ? parseFloat(venda.valor) : 0;
+                      return isNaN(valor) ? 0 : valor;
+                    });
+                    const totalVendasFunc = vendasFunc.reduce((sum, v) => sum + (isNaN(v) ? 0 : v), 0);
+                    
+                    // Total geral
+                    totalVendas += totalVendasFunc + totalVendasComerciais;
+                    totalMeta += meta && meta.valor ? (isNaN(parseFloat(meta.valor)) ? 0 : parseFloat(meta.valor)) : 0;
+                  } catch (err) {
+                    logger.error(`Erro ao processar mês ${mes} do trimestre ${trimestre} para loja ${gerente.nomeLoja}:`, err);
+                  }
+                }
+                
+                dados.push({
+                  periodo: `T${trimestre}/${anoAtual}`,
+                  trimestre,
+                  vendas: isNaN(totalVendas) ? 0 : totalVendas,
+                  meta: isNaN(totalMeta) ? 0 : totalMeta
+                });
+              } catch (err) {
+                logger.error(`Erro ao processar trimestre ${trimestre} para loja ${gerente.nomeLoja}:`, err);
+              }
+            }
           }
+          
+          return {
+            loja: gerente.nomeLoja || 'Loja sem nome',
+            dados: dados.filter(d => d && d.periodo) // Filtrar dados inválidos
+          };
+        } catch (err) {
+          logger.error(`Erro ao processar loja ${gerente.nomeLoja}:`, err);
+          return {
+            loja: gerente.nomeLoja || 'Loja sem nome',
+            dados: []
+          };
         }
-        
-        return {
-          loja: gerente.nomeLoja,
-          dados
-        };
       })
     );
 
-    res.json({ evolucao });
+    // Filtrar lojas sem dados
+    const evolucaoFiltrada = evolucao.filter(loja => loja.dados && loja.dados.length > 0);
+
+    logger.info(`Evolução calculada: ${evolucaoFiltrada.length} lojas com dados`);
+    
+    res.json({ evolucao: evolucaoFiltrada });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    logger.error('Erro ao buscar dados de evolução:', error);
+    res.status(500).json({ 
+      message: error.message || 'Erro ao buscar dados de evolução',
+      error: process.env.NODE_ENV !== 'production' ? error.stack : undefined
+    });
   }
 });
 
