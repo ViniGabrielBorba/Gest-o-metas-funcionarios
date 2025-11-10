@@ -49,27 +49,45 @@ const VendasComerciais = ({ setIsAuthenticated }) => {
     try {
       setLoading(true);
       const response = await api.get(`/vendas-comerciais/agrupadas?mes=${selectedMonth}&ano=${selectedYear}`);
+      console.log('Resposta da API:', response.data);
       setVendas(response.data.vendasAgrupadas || []);
       setResumo(response.data.resumo || null);
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error('Erro ao buscar vendas comerciais:', error);
-      toast.error('Erro ao carregar vendas comerciais');
+      console.error('Detalhes do erro:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url
+      });
+      const errorMessage = error.response?.data?.message || error.message || 'Erro ao carregar vendas comerciais';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   const handleOpenModal = (venda = null) => {
-    if (venda) {
+    if (venda && venda.vendas && venda.vendas.length > 0) {
       // Editar venda específica
       const vendaData = venda.vendas[0]; // Pegar primeira venda do dia
-      setEditingVenda(venda);
-      setFormData({
-        data: new Date(venda.data).toISOString().split('T')[0],
-        valor: vendaData?.valor || '',
-        observacao: vendaData?.observacao || ''
-      });
+      try {
+        const dataVenda = new Date(venda.data);
+        setEditingVenda(venda);
+        setFormData({
+          data: dataVenda.toISOString().split('T')[0],
+          valor: vendaData?.valor || '',
+          observacao: vendaData?.observacao || ''
+        });
+      } catch (error) {
+        console.error('Erro ao processar data:', error);
+        setEditingVenda(null);
+        setFormData({
+          data: new Date().toISOString().split('T')[0],
+          valor: '',
+          observacao: ''
+        });
+      }
     } else {
       setEditingVenda(null);
       setFormData({
@@ -119,13 +137,16 @@ const VendasComerciais = ({ setIsAuthenticated }) => {
   const handleDelete = async (venda) => {
     if (window.confirm('Tem certeza que deseja excluir esta venda comercial?')) {
       try {
-        const vendaId = venda.vendas[0]?.id;
+        const vendaId = venda?.vendas?.[0]?.id;
         if (vendaId) {
           await api.delete(`/vendas-comerciais/${vendaId}`);
           toast.success('Venda comercial excluída com sucesso!');
           fetchVendas();
+        } else {
+          toast.error('ID da venda não encontrado');
         }
       } catch (error) {
+        console.error('Erro ao excluir venda:', error);
         toast.error(error.response?.data?.message || 'Erro ao excluir venda comercial');
       }
     }
@@ -147,12 +168,22 @@ const VendasComerciais = ({ setIsAuthenticated }) => {
   };
 
   // Preparar dados para gráfico
-  const chartData = vendas
-    .map(v => ({
-      dia: new Date(v.data).getUTCDate(),
-      total: v.total,
-      quantidade: v.quantidade
-    }))
+  const chartData = (vendas || [])
+    .filter(v => v && v.data) // Filtrar vendas inválidas
+    .map(v => {
+      try {
+        const dataObj = new Date(v.data);
+        return {
+          dia: dataObj.getUTCDate(),
+          total: v.total || 0,
+          quantidade: v.quantidade || 0
+        };
+      } catch (error) {
+        console.error('Erro ao processar data da venda:', error, v);
+        return null;
+      }
+    })
+    .filter(v => v !== null) // Remover entradas inválidas
     .sort((a, b) => a.dia - b.dia);
 
   if (loading) {
@@ -345,7 +376,7 @@ const VendasComerciais = ({ setIsAuthenticated }) => {
                         {venda.quantidade} {venda.quantidade === 1 ? 'venda' : 'vendas'}
                       </td>
                       <td className={`py-3 px-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {venda.vendas[0]?.observacao || '-'}
+                        {venda?.vendas?.[0]?.observacao || '-'}
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex justify-end gap-2">
