@@ -965,7 +965,15 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                   {detalhesLoja.meta && (
                     <>
                       <p className="text-sm text-gray-600">Meta: R$ {detalhesLoja.meta.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                      <p className="text-sm text-gray-600">Total Vendido: R$ {detalhesLoja.meta.totalVendido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                      <p className="text-sm text-gray-600 font-semibold">
+                        Total Vendido: R$ {(detalhesLoja.totalGeral || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Funcionários: R$ {(detalhesLoja.totalVendasFuncionarios || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Comerciais: R$ {(detalhesLoja.totalVendasComerciais || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
                     </>
                   )}
                 </div>
@@ -1003,19 +1011,48 @@ const DashboardDono = ({ setIsAuthenticated }) => {
               </div>
 
               {/* Gráfico de Vendas Diárias */}
-              {detalhesLoja.vendasDiariasLoja && detalhesLoja.vendasDiariasLoja.length > 0 && (
+              {((detalhesLoja.vendasDiariasComerciais && detalhesLoja.vendasDiariasComerciais.length > 0) || 
+                (detalhesLoja.vendasDiariasFuncionarios && detalhesLoja.vendasDiariasFuncionarios.length > 0)) && (
                 <div className="mb-6">
-                  <h3 className="text-lg font-bold text-gray-800 mb-3">Vendas Diárias da Loja</h3>
+                  <h3 className="text-lg font-bold text-gray-800 mb-3">Vendas Diárias</h3>
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={detalhesLoja.vendasDiariasLoja.map(v => ({
-                      data: new Date(v.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-                      valor: v.valor
-                    }))}>
+                    <LineChart data={(() => {
+                      // Combinar e agrupar vendas por dia
+                      const vendasPorDia = {};
+                      
+                      // Vendas comerciais
+                      if (detalhesLoja.vendasDiariasComerciais) {
+                        detalhesLoja.vendasDiariasComerciais.forEach(v => {
+                          const dataKey = new Date(v.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                          if (!vendasPorDia[dataKey]) {
+                            vendasPorDia[dataKey] = { data: dataKey, comercial: 0, funcionario: 0 };
+                          }
+                          vendasPorDia[dataKey].comercial += v.valor || 0;
+                        });
+                      }
+                      
+                      // Vendas funcionários
+                      if (detalhesLoja.vendasDiariasFuncionarios) {
+                        detalhesLoja.vendasDiariasFuncionarios.forEach(v => {
+                          const dataKey = new Date(v.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                          if (!vendasPorDia[dataKey]) {
+                            vendasPorDia[dataKey] = { data: dataKey, comercial: 0, funcionario: 0 };
+                          }
+                          vendasPorDia[dataKey].funcionario += v.valor || 0;
+                        });
+                      }
+                      
+                      return Object.values(vendasPorDia).sort((a, b) => 
+                        new Date(a.data.split('/').reverse().join('-')) - new Date(b.data.split('/').reverse().join('-'))
+                      );
+                    })()}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="data" />
                       <YAxis />
                       <Tooltip formatter={(value) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} />
-                      <Line type="monotone" dataKey="valor" stroke="#169486" strokeWidth={2} />
+                      <Legend />
+                      <Line type="monotone" dataKey="comercial" stroke="#3b82f6" strokeWidth={2} name="Vendas Comerciais" />
+                      <Line type="monotone" dataKey="funcionario" stroke="#10b981" strokeWidth={2} name="Vendas Funcionários" />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>

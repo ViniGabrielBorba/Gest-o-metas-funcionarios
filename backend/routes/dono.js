@@ -288,7 +288,41 @@ router.get('/lojas/:lojaId', authDono, async (req, res) => {
     const funcionarios = await Funcionario.find({ gerenteId: lojaId });
     const meta = await Meta.findOne({ gerenteId: lojaId, mes: mesAtual, ano: anoAtual });
     
-    // Vendas diárias da loja
+    // Calcular vendas comerciais do mês
+    const inicioMes = new Date(Date.UTC(anoAtual, mesAtual - 1, 1, 0, 0, 0, 0));
+    const fimMes = new Date(Date.UTC(anoAtual, mesAtual, 0, 23, 59, 59, 999));
+    
+    const vendasComerciais = await VendaComercial.find({
+      gerenteId: lojaId,
+      data: {
+        $gte: inicioMes,
+        $lte: fimMes
+      }
+    }).sort({ data: 1 });
+    
+    const totalVendasComerciais = vendasComerciais.reduce((sum, v) => sum + (parseFloat(v.valor) || 0), 0);
+    
+    // Vendas dos funcionários
+    const vendasFuncionarios = funcionarios.map(func => {
+      const venda = func.vendas.find(
+        v => v.mes === mesAtual && v.ano === anoAtual
+      );
+      return venda ? venda.valor : 0;
+    });
+    const totalVendasFuncionarios = vendasFuncionarios.reduce((sum, v) => sum + v, 0);
+    
+    // Total geral = vendas funcionários + vendas comerciais
+    const totalGeral = totalVendasFuncionarios + totalVendasComerciais;
+    
+    // Vendas diárias comerciais
+    const vendasDiariasComerciais = vendasComerciais.map(v => ({
+      data: v.data,
+      valor: parseFloat(v.valor) || 0,
+      observacao: v.observacao || '',
+      tipo: 'comercial'
+    }));
+    
+    // Vendas diárias da loja (legado - mantido para compatibilidade)
     const vendasDiariasLoja = meta && meta.vendasDiarias ? meta.vendasDiarias
       .filter(v => {
         const vDate = new Date(v.data);
@@ -365,7 +399,11 @@ router.get('/lojas/:lojaId', authDono, async (req, res) => {
         vendasMes: f.vendas.find(v => v.mes === mesAtual && v.ano === anoAtual)?.valor || 0
       })),
       meta,
+      totalVendasFuncionarios,
+      totalVendasComerciais,
+      totalGeral,
       vendasDiariasLoja,
+      vendasDiariasComerciais,
       vendasDiariasFuncionarios,
       avaliacoesEstoque,
       feedbacks,
@@ -395,12 +433,40 @@ router.get('/dashboard/comparacao', authDono, async (req, res) => {
         
         const funcionarios = await Funcionario.find({ gerenteId: gerente._id });
         
-        // O meta.totalVendido já inclui vendas diretas da loja + vendas dos funcionários
-        // Vendas período 1
-        const vendas1 = meta1 ? (meta1.totalVendido || 0) : 0;
+        // Calcular vendas comerciais para cada período
+        const inicioMes1 = new Date(Date.UTC(parseInt(ano1), parseInt(mes1) - 1, 1, 0, 0, 0, 0));
+        const fimMes1 = new Date(Date.UTC(parseInt(ano1), parseInt(mes1), 0, 23, 59, 59, 999));
+        const inicioMes2 = new Date(Date.UTC(parseInt(ano2), parseInt(mes2) - 1, 1, 0, 0, 0, 0));
+        const fimMes2 = new Date(Date.UTC(parseInt(ano2), parseInt(mes2), 0, 23, 59, 59, 999));
         
-        // Vendas período 2
-        const vendas2 = meta2 ? (meta2.totalVendido || 0) : 0;
+        const vendasComerciais1 = await VendaComercial.find({
+          gerenteId: gerente._id,
+          data: { $gte: inicioMes1, $lte: fimMes1 }
+        });
+        const vendasComerciais2 = await VendaComercial.find({
+          gerenteId: gerente._id,
+          data: { $gte: inicioMes2, $lte: fimMes2 }
+        });
+        
+        const totalVendasComerciais1 = vendasComerciais1.reduce((sum, v) => sum + (parseFloat(v.valor) || 0), 0);
+        const totalVendasComerciais2 = vendasComerciais2.reduce((sum, v) => sum + (parseFloat(v.valor) || 0), 0);
+        
+        // Vendas dos funcionários para cada período
+        const vendasFunc1 = funcionarios.map(func => {
+          const venda = func.vendas.find(v => v.mes === parseInt(mes1) && v.ano === parseInt(ano1));
+          return venda ? venda.valor : 0;
+        });
+        const vendasFunc2 = funcionarios.map(func => {
+          const venda = func.vendas.find(v => v.mes === parseInt(mes2) && v.ano === parseInt(ano2));
+          return venda ? venda.valor : 0;
+        });
+        
+        const totalVendasFunc1 = vendasFunc1.reduce((sum, v) => sum + v, 0);
+        const totalVendasFunc2 = vendasFunc2.reduce((sum, v) => sum + v, 0);
+        
+        // Total geral = vendas funcionários + vendas comerciais
+        const vendas1 = totalVendasFunc1 + totalVendasComerciais1;
+        const vendas2 = totalVendasFunc2 + totalVendasComerciais2;
         
         const diferenca = vendas2 - vendas1;
         const percentualVariacao = vendas1 > 0 ? ((diferenca / vendas1) * 100) : 0;
@@ -433,11 +499,30 @@ router.get('/dashboard/evolucao', authDono, async (req, res) => {
       gerentes.map(async (gerente) => {
         const dados = [];
         
+        const funcionarios = await Funcionario.find({ gerenteId: gerente._id });
+        
         if (tipo === 'mensal') {
           for (let mes = 1; mes <= 12; mes++) {
             const meta = await Meta.findOne({ gerenteId: gerente._id, mes, ano: anoAtual });
-            // O meta.totalVendido já inclui vendas diretas da loja + vendas dos funcionários
-            const total = meta ? (meta.totalVendido || 0) : 0;
+            
+            // Calcular vendas comerciais
+            const inicioMes = new Date(Date.UTC(anoAtual, mes - 1, 1, 0, 0, 0, 0));
+            const fimMes = new Date(Date.UTC(anoAtual, mes, 0, 23, 59, 59, 999));
+            const vendasComerciais = await VendaComercial.find({
+              gerenteId: gerente._id,
+              data: { $gte: inicioMes, $lte: fimMes }
+            });
+            const totalVendasComerciais = vendasComerciais.reduce((sum, v) => sum + (parseFloat(v.valor) || 0), 0);
+            
+            // Vendas dos funcionários
+            const vendasFunc = funcionarios.map(func => {
+              const venda = func.vendas.find(v => v.mes === mes && v.ano === anoAtual);
+              return venda ? venda.valor : 0;
+            });
+            const totalVendasFunc = vendasFunc.reduce((sum, v) => sum + v, 0);
+            
+            // Total geral
+            const total = totalVendasFunc + totalVendasComerciais;
             
             dados.push({
               periodo: `${mes}/${anoAtual}`,
@@ -458,8 +543,25 @@ router.get('/dashboard/evolucao', authDono, async (req, res) => {
             
             for (const mes of meses) {
               const meta = await Meta.findOne({ gerenteId: gerente._id, mes, ano: anoAtual });
-              // O meta.totalVendido já inclui vendas diretas da loja + vendas dos funcionários
-              totalVendas += meta ? (meta.totalVendido || 0) : 0;
+              
+              // Calcular vendas comerciais
+              const inicioMes = new Date(Date.UTC(anoAtual, mes - 1, 1, 0, 0, 0, 0));
+              const fimMes = new Date(Date.UTC(anoAtual, mes, 0, 23, 59, 59, 999));
+              const vendasComerciais = await VendaComercial.find({
+                gerenteId: gerente._id,
+                data: { $gte: inicioMes, $lte: fimMes }
+              });
+              const totalVendasComerciais = vendasComerciais.reduce((sum, v) => sum + (parseFloat(v.valor) || 0), 0);
+              
+              // Vendas dos funcionários
+              const vendasFunc = funcionarios.map(func => {
+                const venda = func.vendas.find(v => v.mes === mes && v.ano === anoAtual);
+                return venda ? venda.valor : 0;
+              });
+              const totalVendasFunc = vendasFunc.reduce((sum, v) => sum + v, 0);
+              
+              // Total geral
+              totalVendas += totalVendasFunc + totalVendasComerciais;
               totalMeta += meta ? meta.valor : 0;
             }
             
@@ -497,8 +599,26 @@ router.get('/alertas', authDono, async (req, res) => {
 
     for (const gerente of gerentes) {
       const meta = await Meta.findOne({ gerenteId: gerente._id, mes: mesAtual, ano: anoAtual });
-      // O meta.totalVendido já inclui vendas diretas da loja + vendas dos funcionários
-      const totalGeral = meta ? (meta.totalVendido || 0) : 0;
+      const funcionarios = await Funcionario.find({ gerenteId: gerente._id });
+      
+      // Calcular vendas comerciais
+      const inicioMes = new Date(Date.UTC(anoAtual, mesAtual - 1, 1, 0, 0, 0, 0));
+      const fimMes = new Date(Date.UTC(anoAtual, mesAtual, 0, 23, 59, 59, 999));
+      const vendasComerciais = await VendaComercial.find({
+        gerenteId: gerente._id,
+        data: { $gte: inicioMes, $lte: fimMes }
+      });
+      const totalVendasComerciais = vendasComerciais.reduce((sum, v) => sum + (parseFloat(v.valor) || 0), 0);
+      
+      // Vendas dos funcionários
+      const vendasFunc = funcionarios.map(func => {
+        const venda = func.vendas.find(v => v.mes === mesAtual && v.ano === anoAtual);
+        return venda ? venda.valor : 0;
+      });
+      const totalVendasFunc = vendasFunc.reduce((sum, v) => sum + v, 0);
+      
+      // Total geral = vendas funcionários + vendas comerciais
+      const totalGeral = totalVendasFunc + totalVendasComerciais;
       
       // Meta batida
       if (meta && totalGeral >= meta.valor) {
@@ -558,26 +678,37 @@ router.get('/metricas', authDono, async (req, res) => {
         const funcionarios = await Funcionario.find({ gerenteId: gerente._id });
         const meta = await Meta.findOne({ gerenteId: gerente._id, mes: mesAtual, ano: anoAtual });
         
-        // O meta.totalVendido já inclui vendas diretas da loja + vendas dos funcionários
-        const totalGeral = meta ? (meta.totalVendido || 0) : 0;
+        // Calcular vendas comerciais
+        const inicioMes = new Date(Date.UTC(anoAtual, mesAtual - 1, 1, 0, 0, 0, 0));
+        const fimMes = new Date(Date.UTC(anoAtual, mesAtual, 0, 23, 59, 59, 999));
+        const vendasComerciais = await VendaComercial.find({
+          gerenteId: gerente._id,
+          data: { $gte: inicioMes, $lte: fimMes }
+        });
+        const totalVendasComerciais = vendasComerciais.reduce((sum, v) => sum + (parseFloat(v.valor) || 0), 0);
+        
+        // Vendas dos funcionários
+        const vendasFunc = funcionarios.map(func => {
+          const venda = func.vendas.find(v => v.mes === mesAtual && v.ano === anoAtual);
+          return venda ? venda.valor : 0;
+        });
+        const totalVendasFunc = vendasFunc.reduce((sum, v) => sum + v, 0);
+        
+        // Total geral = vendas funcionários + vendas comerciais
+        const totalGeral = totalVendasFunc + totalVendasComerciais;
         
         // Contar vendas diárias para calcular ticket médio
         // Ticket médio = valor médio por transação (venda diária registrada)
         let quantidadeVendas = 0;
-        let totalVerificacao = 0; // Para validar que a soma bate com totalGeral
+        let totalVerificacao = 0;
         
-        // Vendas diretas da loja
-        if (meta && meta.vendasDiarias) {
-          meta.vendasDiarias.forEach(v => {
-            const vDate = new Date(v.data);
-            if (vDate.getUTCMonth() + 1 === mesAtual && vDate.getUTCFullYear() === anoAtual) {
-              quantidadeVendas++;
-              totalVerificacao += parseFloat(v.valor) || 0;
-            }
-          });
-        }
+        // Vendas comerciais (contar cada venda comercial como uma transação)
+        vendasComerciais.forEach(v => {
+          quantidadeVendas++;
+          totalVerificacao += parseFloat(v.valor) || 0;
+        });
         
-        // Vendas dos funcionários
+        // Vendas diárias dos funcionários
         funcionarios.forEach(f => {
           if (f.vendasDiarias) {
             f.vendasDiarias.forEach(v => {
@@ -590,14 +721,9 @@ router.get('/metricas', authDono, async (req, res) => {
           }
         });
         
-        // Validar se a soma das vendas diárias bate com o totalGeral (com pequena tolerância para arredondamentos)
-        // Se houver diferença significativa, usar a soma verificada
-        const diferenca = Math.abs(totalGeral - totalVerificacao);
-        const totalParaCalcular = diferenca > 0.01 ? totalVerificacao : totalGeral;
-        
         // Ticket médio = total de vendas / quantidade de transações
         // Se não houver vendas, retornar 0
-        const ticketMedio = quantidadeVendas > 0 ? totalParaCalcular / quantidadeVendas : 0;
+        const ticketMedio = quantidadeVendas > 0 ? totalGeral / quantidadeVendas : 0;
         const vendasPorFuncionario = funcionarios.length > 0 ? totalGeral / funcionarios.length : 0;
         const taxaConversao = meta && meta.valor > 0 ? (totalGeral / meta.valor) * 100 : 0;
         
@@ -711,22 +837,37 @@ router.get('/previsao', authDono, async (req, res) => {
     const previsoes = await Promise.all(
       gerentes.map(async (gerente) => {
         const meta = await Meta.findOne({ gerenteId: gerente._id, mes: mesAtual, ano: anoAtual });
-        // O meta.totalVendido já inclui vendas diretas da loja + vendas dos funcionários
-        const vendasAteHoje = meta ? (meta.totalVendido || 0) : 0;
+        const funcionarios = await Funcionario.find({ gerenteId: gerente._id });
+        
+        // Calcular vendas comerciais
+        const inicioMes = new Date(Date.UTC(anoAtual, mesAtual - 1, 1, 0, 0, 0, 0));
+        const fimMes = new Date(Date.UTC(anoAtual, mesAtual, 0, 23, 59, 59, 999));
+        const vendasComerciais = await VendaComercial.find({
+          gerenteId: gerente._id,
+          data: { $gte: inicioMes, $lte: fimMes }
+        });
+        const totalVendasComerciais = vendasComerciais.reduce((sum, v) => sum + (parseFloat(v.valor) || 0), 0);
+        
+        // Vendas dos funcionários
+        const vendasFunc = funcionarios.map(func => {
+          const venda = func.vendas.find(v => v.mes === mesAtual && v.ano === anoAtual);
+          return venda ? venda.valor : 0;
+        });
+        const totalVendasFunc = vendasFunc.reduce((sum, v) => sum + v, 0);
+        
+        // Total geral = vendas funcionários + vendas comerciais
+        const vendasAteHoje = totalVendasFunc + totalVendasComerciais;
         
         // Buscar vendas diárias para cálculo estatístico
-        const funcionarios = await Funcionario.find({ gerenteId: gerente._id });
         const vendasDiarias = [];
         
-        // Vendas diárias da loja
-        if (meta && meta.vendasDiarias) {
-          meta.vendasDiarias.forEach(v => {
-            const vDate = new Date(v.data);
-            if (vDate.getUTCMonth() + 1 === mesAtual && vDate.getUTCFullYear() === anoAtual) {
-              vendasDiarias.push({ dia: vDate.getUTCDate(), valor: v.valor });
-            }
-          });
-        }
+        // Vendas comerciais diárias
+        vendasComerciais.forEach(v => {
+          const vDate = new Date(v.data);
+          if (vDate.getUTCMonth() + 1 === mesAtual && vDate.getUTCFullYear() === anoAtual) {
+            vendasDiarias.push({ dia: vDate.getUTCDate(), valor: parseFloat(v.valor) || 0 });
+          }
+        });
         
         // Vendas diárias dos funcionários
         funcionarios.forEach(f => {
