@@ -369,9 +369,17 @@ const DashboardDono = ({ setIsAuthenticated }) => {
               </select>
             </div>
             <div className="flex gap-2 items-end">
+              <select
+                value={tipoEvolucao}
+                onChange={(e) => setTipoEvolucao(e.target.value)}
+                className={`input-field ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
+              >
+                <option value="mensal">Evolução Mensal</option>
+                <option value="trimestral">Evolução Trimestral</option>
+              </select>
               <button
                 onClick={() => fetchEvolucao(tipoEvolucao)}
-                className="btn-secondary flex-1 flex items-center justify-center gap-2"
+                className="btn-secondary flex items-center justify-center gap-2"
               >
                 <FaChartLine /> Evolução
               </button>
@@ -1120,6 +1128,146 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                       </tbody>
                     </table>
                   </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Evolução */}
+      {showEvolucao && dadosEvolucao && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto transition-colors`}>
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
+                  <FaChartLine className="inline mr-2" />
+                  Evolução {tipoEvolucao === 'mensal' ? 'Mensal' : 'Trimestral'} - {selectedYear}
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowEvolucao(false);
+                    setDadosEvolucao(null);
+                  }}
+                  className={`${darkMode ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} transition-colors`}
+                >
+                  <FaTimes className="text-2xl" />
+                </button>
+              </div>
+
+              {dadosEvolucao.evolucao && dadosEvolucao.evolucao.length > 0 ? (
+                <div className="space-y-6">
+                  {dadosEvolucao.evolucao.map((loja, idx) => (
+                    <div key={idx} className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} rounded-lg p-4 transition-colors`}>
+                      <h3 className={`text-lg font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
+                        {loja.loja}
+                      </h3>
+                      {loja.dados && loja.dados.length > 0 ? (
+                        <>
+                          <ResponsiveContainer width="100%" height={300}>
+                            <AreaChart data={loja.dados}>
+                              <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#4b5563' : '#e5e7eb'} />
+                              <XAxis 
+                                dataKey="periodo" 
+                                stroke={darkMode ? '#9ca3af' : '#6b7280'}
+                                tick={{ fill: darkMode ? '#9ca3af' : '#6b7280' }}
+                              />
+                              <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} />
+                              <Tooltip 
+                                formatter={(value) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                                contentStyle={{
+                                  backgroundColor: darkMode ? '#374151' : '#ffffff',
+                                  border: darkMode ? '1px solid #4b5563' : '1px solid #e5e7eb',
+                                  borderRadius: '8px'
+                                }}
+                              />
+                              <Legend />
+                              <Area 
+                                type="monotone" 
+                                dataKey="vendas" 
+                                stroke="#10b981" 
+                                fill="#10b981" 
+                                fillOpacity={0.6}
+                                name="Vendas"
+                              />
+                              <Area 
+                                type="monotone" 
+                                dataKey="meta" 
+                                stroke="#ef4444" 
+                                fill="#ef4444" 
+                                fillOpacity={0.3}
+                                name="Meta"
+                              />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                          
+                          <div className="mt-4 overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className={`border-b ${darkMode ? 'border-gray-600' : 'border-gray-300'}`}>
+                                  <th className={`text-left p-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                    Período
+                                  </th>
+                                  <th className={`text-right p-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                    Vendas
+                                  </th>
+                                  <th className={`text-right p-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                    Meta
+                                  </th>
+                                  <th className={`text-right p-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                    % Atingido
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {loja.dados.map((periodo, pIdx) => {
+                                  const percentual = periodo.meta > 0 
+                                    ? (periodo.vendas / periodo.meta) * 100 
+                                    : 0;
+                                  return (
+                                    <tr 
+                                      key={pIdx} 
+                                      className={`border-b ${darkMode ? 'border-gray-600 hover:bg-gray-600' : 'border-gray-200 hover:bg-gray-100'} transition-colors`}
+                                    >
+                                      <td className={`p-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                        {periodo.periodo}
+                                      </td>
+                                      <td className={`p-2 text-right font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                                        R$ {periodo.vendas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                      </td>
+                                      <td className={`p-2 text-right ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                        R$ {periodo.meta.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                      </td>
+                                      <td className="p-2 text-right">
+                                        <span className={`font-semibold ${
+                                          percentual >= 100 ? 'text-green-600' :
+                                          percentual >= 70 ? 'text-blue-600' :
+                                          percentual >= 50 ? 'text-yellow-600' :
+                                          'text-red-600'
+                                        }`}>
+                                          {percentual.toFixed(1)}%
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </>
+                      ) : (
+                        <p className={`text-center py-8 ${darkMode ? 'text-gray-400' : 'text-gray-500'} transition-colors`}>
+                          Nenhum dado de evolução disponível para esta loja
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className={`text-center py-12 ${darkMode ? 'text-gray-400' : 'text-gray-500'} transition-colors`}>
+                  <FaChartLine className="text-6xl mx-auto mb-4 opacity-50" />
+                  <p className="text-lg">Nenhum dado de evolução disponível</p>
                 </div>
               )}
             </div>
