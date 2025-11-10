@@ -229,8 +229,27 @@ const Dashboard = ({ setIsAuthenticated }) => {
       return null;
     }
 
+    // IMPORTANTE: Usar o mês/ano selecionado, não o mês/ano atual
+    // Se o usuário estiver visualizando um mês diferente do atual, precisamos calcular corretamente
     const hoje = new Date();
-    const diaAtual = hoje.getDate();
+    const mesAtual = hoje.getMonth() + 1;
+    const anoAtual = hoje.getFullYear();
+    
+    // Se estiver visualizando o mês atual, usar o dia de hoje
+    // Se estiver visualizando um mês passado, usar o último dia do mês
+    // Se estiver visualizando um mês futuro, retornar null (não há dados)
+    let diaAtual;
+    if (selectedMonth === mesAtual && selectedYear === anoAtual) {
+      // Mês atual: usar dia de hoje
+      diaAtual = hoje.getDate();
+    } else if (selectedYear < anoAtual || (selectedYear === anoAtual && selectedMonth < mesAtual)) {
+      // Mês passado: usar último dia do mês
+      diaAtual = new Date(selectedYear, selectedMonth, 0).getDate();
+    } else {
+      // Mês futuro: não há dados para previsão
+      return null;
+    }
+    
     const diasNoMes = new Date(selectedYear, selectedMonth, 0).getDate();
     const diasRestantes = diasNoMes - diaAtual;
 
@@ -242,9 +261,19 @@ const Dashboard = ({ setIsAuthenticated }) => {
     const vendasOrdenadas = [...dashboardData.vendasDiarias].sort((a, b) => a.dia - b.dia);
     const totalAteAgora = vendasOrdenadas.reduce((sum, v) => sum + v.total, 0);
     
+    console.log('=== CÁLCULO DE PREVISÃO ===');
+    console.log('Mês/Ano selecionado:', selectedMonth, selectedYear);
+    console.log('Mês/Ano atual:', mesAtual, anoAtual);
+    console.log('Dia atual calculado:', diaAtual);
+    console.log('Dias no mês:', diasNoMes);
+    console.log('Dias restantes:', diasRestantes);
+    console.log('Total até agora:', totalAteAgora);
+    console.log('Número de dias com vendas:', vendasOrdenadas.length);
+    
     // Método 1: Média Simples (CORRIGIDO: dividir pelo número de dias que já passaram, não pelo número de dias com vendas)
     // Se dividirmos apenas pelos dias com vendas, a média fica inflada quando há dias sem vendas
     const mediaSimples = totalAteAgora / diaAtual; // Média diária baseada nos dias que já passaram
+    console.log('Média simples (total / dias passados):', mediaSimples);
     const previsaoSimples = totalAteAgora + (mediaSimples * diasRestantes);
 
     // Método 2: Média Móvel (últimos 7 dias, se houver)
@@ -338,6 +367,12 @@ const Dashboard = ({ setIsAuthenticated }) => {
 
     // Calcular média diária correta (total até agora dividido pelos dias que já passaram)
     const mediaDiariaCorreta = totalAteAgora / diaAtual;
+    
+    console.log('Média diária correta:', mediaDiariaCorreta);
+    console.log('Previsão final:', previsaoFinal);
+    console.log('Percentual da meta:', dashboardData.resumo.metaMes > 0 
+      ? (previsaoFinal / dashboardData.resumo.metaMes) * 100 
+      : 0);
 
     return {
       totalAteAgora,
