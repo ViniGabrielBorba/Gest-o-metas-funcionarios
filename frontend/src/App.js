@@ -9,6 +9,7 @@ import CadastroDono from './components/auth/CadastroDono';
 import Dashboard from './components/dashboard/Dashboard';
 import DashboardDono from './components/dashboard/DashboardDono';
 import Funcionarios from './components/funcionarios/Funcionarios';
+import VendaComercial from './components/vendas-comerciais/VendaComercial';
 import Metas from './components/metas/Metas';
 import Feedback from './components/feedback/Feedback';
 import Estoque from './components/estoque/Estoque';
@@ -56,6 +57,10 @@ function App() {
           <Route 
             path="/funcionarios" 
             element={isAuthenticated && isGerente ? <Funcionarios setIsAuthenticated={setIsAuthenticated} /> : <Navigate to={isDono ? "/dashboard-dono" : "/login"} />} 
+          />
+          <Route 
+            path="/vendas-comerciais" 
+            element={isAuthenticated && isGerente ? <VendaComercial setIsAuthenticated={setIsAuthenticated} /> : <Navigate to={isDono ? "/dashboard-dono" : "/login"} />} 
           />
           <Route 
             path="/metas" 

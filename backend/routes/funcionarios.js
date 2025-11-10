@@ -14,7 +14,7 @@ router.use(auth);
 router.get('/', async (req, res) => {
   try {
     const pagination = getPaginationOptions(req.query, { defaultPageSize: 20, maxPageSize: 100 });
-    const { search, funcao, setor } = req.query;
+    const { search, funcao } = req.query;
 
     // Construir query
     const query = { gerenteId: req.user.id };
@@ -25,10 +25,6 @@ router.get('/', async (req, res) => {
     
     if (funcao) {
       query.funcao = funcao;
-    }
-    
-    if (setor) {
-      query.setor = setor;
     }
 
     // Buscar funcionários com paginação
@@ -72,7 +68,7 @@ router.get('/:id', async (req, res) => {
 // Criar novo funcionário
 router.post('/', validate(funcionarioSchema), async (req, res) => {
   try {
-    const { nome, sexo, idade, funcao, setor, dataAniversario, metaIndividual } = req.body;
+    const { nome, sexo, idade, funcao, dataAniversario, metaIndividual } = req.body;
 
     const funcionario = await Funcionario.create({
       gerenteId: req.user.id,
@@ -80,7 +76,6 @@ router.post('/', validate(funcionarioSchema), async (req, res) => {
       sexo,
       idade,
       funcao,
-      setor: setor || 'Vendas',
       dataAniversario: new Date(dataAniversario),
       metaIndividual,
       vendas: []

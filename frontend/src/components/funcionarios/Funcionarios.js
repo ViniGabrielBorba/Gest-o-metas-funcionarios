@@ -29,7 +29,6 @@ const Funcionarios = ({ setIsAuthenticated }) => {
     sexo: 'Masculino',
     idade: '',
     funcao: '',
-    setor: 'Vendas',
     dataAniversario: '',
     metaIndividual: ''
   });
@@ -49,7 +48,6 @@ const Funcionarios = ({ setIsAuthenticated }) => {
   });
   const [buscaNome, setBuscaNome] = useState('');
   const [filtroFuncao, setFiltroFuncao] = useState('');
-  const [filtroSetor, setFiltroSetor] = useState('');
   const [filtroMesVenda, setFiltroMesVenda] = useState('');
 
   useEffect(() => {
@@ -89,7 +87,6 @@ const Funcionarios = ({ setIsAuthenticated }) => {
         sexo: funcionario.sexo,
         idade: funcionario.idade,
         funcao: funcionario.funcao,
-        setor: funcionario.setor || 'Vendas',
         dataAniversario: funcionario.dataAniversario.split('T')[0],
         metaIndividual: funcionario.metaIndividual
       });
@@ -100,7 +97,6 @@ const Funcionarios = ({ setIsAuthenticated }) => {
         sexo: 'Masculino',
         idade: '',
         funcao: '',
-        setor: 'Vendas',
         dataAniversario: '',
         metaIndividual: ''
       });
@@ -653,103 +649,9 @@ const Funcionarios = ({ setIsAuthenticated }) => {
           </button>
         </div>
 
-        {/* Resumo do Setor Comercial */}
-        {Array.isArray(funcionarios) && funcionarios.some(f => (f.setor || 'Vendas') === 'Comercial') && (
-          <div className={`card mb-6 bg-gradient-to-r from-blue-500 to-indigo-600 text-white ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                <h2 className="text-2xl font-bold mb-2">📊 Setor Comercial</h2>
-                <p className="text-blue-100 text-sm">Vendas que não são feitas pelos vendedores individuais</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {funcionarios
-                .filter(f => (f.setor || 'Vendas') === 'Comercial')
-                .map(funcionario => {
-                  const vendaMes = getVendaMes(funcionario);
-                  return (
-                    <div key={funcionario._id} className="bg-white bg-opacity-20 rounded-lg p-4 backdrop-blur-sm">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h3 className="font-bold text-lg">{funcionario.nome}</h3>
-                          <p className="text-blue-100 text-sm">{funcionario.funcao}</p>
-                        </div>
-                        <span className="badge bg-white bg-opacity-30 text-white text-xs">
-                          Comercial
-                        </span>
-                      </div>
-                      <div className="mt-3 space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-blue-100">Meta:</span>
-                          <span className="font-bold">R$ {funcionario.metaIndividual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-blue-100">Vendas do mês:</span>
-                          <span className={`font-bold text-lg ${
-                            vendaMes >= funcionario.metaIndividual ? 'text-green-300' : 'text-yellow-300'
-                          }`}>
-                            R$ {vendaMes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                        <div className="mt-2">
-                          <div className="bg-white bg-opacity-20 rounded-full h-2">
-                            <div
-                              className={`h-2 rounded-full ${
-                                vendaMes >= funcionario.metaIndividual ? 'bg-green-300' : 'bg-yellow-300'
-                              }`}
-                              style={{
-                                width: `${Math.min(100, funcionario.metaIndividual > 0 
-                                  ? (vendaMes / funcionario.metaIndividual) * 100 
-                                  : 0)}%`
-                              }}
-                            />
-                          </div>
-                          <p className="text-xs text-blue-100 mt-1">
-                            {funcionario.metaIndividual > 0 
-                              ? `${((vendaMes / funcionario.metaIndividual) * 100).toFixed(1)}% da meta`
-                              : 'Sem meta definida'}
-                            {vendaMes >= funcionario.metaIndividual && ' ✅'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-3 flex gap-2">
-                        <button
-                          onClick={() => handleOpenVendaModal(funcionario)}
-                          className="flex-1 bg-white bg-opacity-30 hover:bg-opacity-40 text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2"
-                        >
-                          <FaDollarSign /> Registrar Venda
-                        </button>
-                        <button
-                          onClick={() => handleVerHistorico(funcionario)}
-                          className="bg-white bg-opacity-30 hover:bg-opacity-40 text-white px-3 py-2 rounded-lg text-sm font-semibold"
-                        >
-                          📊
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-            {funcionarios.filter(f => (f.setor || 'Vendas') === 'Comercial').length === 0 && (
-              <div className="text-center py-4">
-                <p className="text-blue-100">Nenhum funcionário do setor comercial cadastrado</p>
-                <button
-                  onClick={() => {
-                    setFormData(prev => ({ ...prev, setor: 'Comercial' }));
-                    handleOpenModal();
-                  }}
-                  className="mt-2 bg-white bg-opacity-30 hover:bg-opacity-40 text-white px-4 py-2 rounded-lg text-sm font-semibold"
-                >
-                  Cadastrar Funcionário do Setor Comercial
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Filtros e Busca */}
         <div className={`card mb-6 ${darkMode ? 'bg-gray-800 border-gray-700' : ''}`}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
               <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} />
               <input
@@ -759,19 +661,6 @@ const Funcionarios = ({ setIsAuthenticated }) => {
                 onChange={(e) => setBuscaNome(e.target.value)}
                 className={`input-field pl-10 ${darkMode ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400' : ''}`}
               />
-            </div>
-            <div>
-              <select
-                value={filtroSetor}
-                onChange={(e) => setFiltroSetor(e.target.value)}
-                className={`input-field ${darkMode ? 'bg-gray-700 text-white border-gray-600' : ''}`}
-              >
-                <option value="">Todos os setores</option>
-                <option value="Vendas">Vendas</option>
-                <option value="Comercial">Comercial</option>
-                <option value="Administrativo">Administrativo</option>
-                <option value="Outros">Outros</option>
-              </select>
             </div>
             <div>
               <select
@@ -807,10 +696,6 @@ const Funcionarios = ({ setIsAuthenticated }) => {
               if (buscaNome && !funcionario.nome.toLowerCase().includes(buscaNome.toLowerCase())) {
                 return false;
               }
-              // Filtro por setor
-              if (filtroSetor && (funcionario.setor || 'Vendas') !== filtroSetor) {
-                return false;
-              }
               // Filtro por função
               if (filtroFuncao && funcionario.funcao !== filtroFuncao) {
                 return false;
@@ -830,24 +715,10 @@ const Funcionarios = ({ setIsAuthenticated }) => {
                 <div>
                   <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>{funcionario.nome}</h3>
                   <p className={darkMode ? 'text-gray-300' : 'text-gray-600'}>{funcionario.funcao}</p>
-                  <p className={`text-sm mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Setor: <span className="font-semibold">{funcionario.setor || 'Vendas'}</span>
-                  </p>
                 </div>
-                <div className="flex flex-col gap-1 items-end">
-                  <span className={`badge ${
-                    (funcionario.setor || 'Vendas') === 'Comercial' 
-                      ? 'bg-blue-100 text-blue-800' 
-                      : (funcionario.setor || 'Vendas') === 'Vendas'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {funcionario.setor || 'Vendas'}
-                  </span>
-                  <span className="badge bg-red-100 text-red-800 text-xs">
-                    {funcionario.sexo}
-                  </span>
-                </div>
+                <span className="badge bg-red-100 text-red-800">
+                  {funcionario.sexo}
+                </span>
               </div>
 
               <div className="space-y-2 mb-4">
@@ -1009,26 +880,6 @@ const Funcionarios = ({ setIsAuthenticated }) => {
                         required
                       />
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Setor
-                    </label>
-                    <select
-                      value={formData.setor}
-                      onChange={(e) => setFormData({ ...formData, setor: e.target.value })}
-                      className="input-field"
-                      required
-                    >
-                      <option value="Vendas">Vendas</option>
-                      <option value="Comercial">Comercial</option>
-                      <option value="Administrativo">Administrativo</option>
-                      <option value="Outros">Outros</option>
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      💡 <strong>Comercial:</strong> Vendas que não são feitas pelos vendedores individuais
-                    </p>
                   </div>
 
                   <div>

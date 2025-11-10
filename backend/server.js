@@ -216,6 +216,7 @@ const loadRoute = (path, routeName) => {
 app.use('/api/auth', loadRoute('./routes/auth', 'auth'));
 app.use('/api/dono', loadRoute('./routes/dono', 'dono'));
 app.use('/api/funcionarios', loadRoute('./routes/funcionarios', 'funcionarios'));
+app.use('/api/vendas-comerciais', loadRoute('./routes/vendas-comerciais', 'vendas-comerciais'));
 app.use('/api/metas', loadRoute('./routes/metas', 'metas'));
 app.use('/api/dashboard', loadRoute('./routes/dashboard', 'dashboard'));
 app.use('/api/estoque', loadRoute('./routes/estoque', 'estoque'));

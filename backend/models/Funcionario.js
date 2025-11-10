@@ -27,12 +27,6 @@ const funcionarioSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  setor: {
-    type: String,
-    enum: ['Vendas', 'Comercial', 'Administrativo', 'Outros'],
-    default: 'Vendas',
-    required: true
-  },
   dataAniversario: {
     type: Date,
     required: true
@@ -103,7 +97,6 @@ const funcionarioSchema = new mongoose.Schema({
 funcionarioSchema.index({ gerenteId: 1 });
 funcionarioSchema.index({ gerenteId: 1, nome: 1 }); // Para buscas por nome
 funcionarioSchema.index({ gerenteId: 1, funcao: 1 }); // Para filtros por função
-funcionarioSchema.index({ gerenteId: 1, setor: 1 }); // Para filtros por setor
 funcionarioSchema.index({ 'vendasDiarias.data': 1 }); // Para buscas por data de venda
 funcionarioSchema.index({ dataAniversario: 1 }); // Para aniversariantes
 
