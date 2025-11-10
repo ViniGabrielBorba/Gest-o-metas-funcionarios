@@ -400,20 +400,6 @@ router.get('/:id/vendas-diarias', async (req, res) => {
 
     let totalVendasLoja = 0;
     try {
-      // Calcular total de vendas dos funcionários (usar vendas mensais)
-      const funcionarios = await Funcionario.find({ gerenteId: req.user.id });
-      let totalVendasFuncionarios = 0;
-      funcionarios.forEach(func => {
-        if (func.vendas && Array.isArray(func.vendas)) {
-          const vendaMensal = func.vendas.find(
-            v => v.mes === meta.mes && v.ano === meta.ano
-          );
-          if (vendaMensal) {
-            totalVendasFuncionarios += parseFloat(vendaMensal.valor) || 0;
-          }
-        }
-      });
-      
       if (meta.vendasDiarias && Array.isArray(meta.vendasDiarias)) {
         totalVendasLoja = meta.vendasDiarias.filter(v => {
           try {
