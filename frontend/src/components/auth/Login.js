@@ -25,22 +25,52 @@ const Login = ({ setIsAuthenticated }) => {
     setLoading(true);
     setError('');
 
+    // Validar campos antes de enviar
+    if (!formData.email || !formData.senha) {
+      setError('Por favor, preencha todos os campos');
+      setLoading(false);
+      return;
+    }
+
+    // Validar formato de email básico
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Por favor, insira um email válido');
+      setLoading(false);
+      return;
+    }
+
+    console.log('=== TENTANDO LOGIN ===');
+    console.log('Email:', formData.email);
+    console.log('Senha preenchida:', formData.senha ? 'Sim' : 'Não');
+    console.log('URL da API:', process.env.REACT_APP_API_URL || 'http://localhost:5000/api');
+
     try {
-      const response = await api.post('/auth/login', formData);
+      const response = await api.post('/auth/login', {
+        email: formData.email.trim(),
+        senha: formData.senha
+      });
+      
+      console.log('Resposta do servidor:', response.data);
       
       if (response.data && response.data.token) {
         setAuthToken(response.data.token);
         setIsAuthenticated(true);
+        console.log('Login bem-sucedido! Redirecionando...');
         window.location.href = '/dashboard';
       } else {
-        setError('Resposta inválida do servidor');
+        console.error('Resposta sem token:', response.data);
+        setError('Resposta inválida do servidor. Tente novamente.');
       }
     } catch (err) {
-      console.error('Erro no login:', err);
+      console.error('=== ERRO NO LOGIN ===');
+      console.error('Erro completo:', err);
       console.error('Detalhes do erro:', {
         message: err.message,
+        code: err.code,
         response: err.response?.data,
         status: err.response?.status,
+        statusText: err.response?.statusText,
         request: err.request
       });
       
@@ -49,27 +79,34 @@ const Login = ({ setIsAuthenticated }) => {
         const status = err.response.status;
         const errorData = err.response.data;
         
+        console.error('Status do erro:', status);
+        console.error('Dados do erro:', errorData);
+        
         if (status === 401) {
-          setError(errorData?.message || 'Email ou senha incorretos');
+          setError(errorData?.message || 'Email ou senha incorretos. Verifique suas credenciais.');
         } else if (status === 403) {
-          setError(errorData?.message || 'Acesso negado');
+          setError(errorData?.message || 'Acesso negado. Sua conta pode estar bloqueada temporariamente.');
         } else if (status === 400) {
-          setError(errorData?.message || 'Dados inválidos. Verifique os campos preenchidos.');
+          const errorMessage = errorData?.message || errorData?.errors?.map(e => e.message).join(', ') || 'Dados inválidos. Verifique os campos preenchidos.';
+          setError(errorMessage);
         } else if (status === 429) {
           setError('Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.');
+        } else if (status === 500) {
+          setError('Erro interno do servidor. Tente novamente mais tarde ou entre em contato com o suporte.');
         } else {
-          setError(errorData?.message || `Erro ${status}: ${err.response.statusText}`);
+          setError(errorData?.message || `Erro ${status}: ${err.response.statusText || 'Erro desconhecido'}`);
         }
       } else if (err.request) {
         // Requisição foi feita mas não houve resposta
         console.error('Não houve resposta do servidor:', err.request);
-        setError('Não foi possível conectar ao servidor. Verifique sua conexão e se o backend está online.');
-      } else if (err.code === 'ERR_NETWORK' || err.message.includes('Network Error')) {
-        setError('Erro de rede. Verifique sua conexão com a internet.');
+        setError('Não foi possível conectar ao servidor. Verifique se o backend está rodando e sua conexão com a internet.');
+      } else if (err.code === 'ERR_NETWORK' || err.message.includes('Network Error') || err.message.includes('Failed to fetch')) {
+        setError('Erro de rede. Verifique sua conexão com a internet e se o servidor está online.');
       } else if (err.code === 'ECONNABORTED' || err.message.includes('timeout')) {
         setError('Tempo de conexão esgotado. O servidor pode estar lento ou offline.');
       } else {
         // Erro ao configurar a requisição
+        console.error('Erro ao configurar requisição:', err);
         setError('Erro ao fazer login: ' + (err.message || 'Erro desconhecido'));
       }
     } finally {

@@ -95,12 +95,28 @@ router.post('/login', authLimiter, validate(loginSchema), async (req, res) => {
   try {
     const { email, senha } = req.body;
 
+    console.log('=== TENTATIVA DE LOGIN ===');
+    console.log('Email recebido:', email);
+    console.log('Senha recebida:', senha ? 'Sim (oculta)' : 'Não');
+    console.log('Email normalizado:', email ? email.toLowerCase().trim() : 'N/A');
+
+    // Validar se email e senha foram fornecidos
+    if (!email || !senha) {
+      logger.warn('Tentativa de login sem email ou senha');
+      return res.status(400).json({ message: 'Email e senha são obrigatórios' });
+    }
+
     // Buscar gerente (incluindo campos de bloqueio)
-    const gerente = await Gerente.findOne({ email: email.toLowerCase().trim() })
+    const emailNormalizado = email.toLowerCase().trim();
+    console.log('Buscando gerente com email:', emailNormalizado);
+    
+    const gerente = await Gerente.findOne({ email: emailNormalizado })
       .select('+tentativasLogin +bloqueadoAte');
     
+    console.log('Gerente encontrado:', gerente ? 'Sim' : 'Não');
+    
     if (!gerente) {
-      logger.warn('Tentativa de login com email inexistente', { email });
+      logger.warn('Tentativa de login com email inexistente', { email: emailNormalizado });
       return res.status(401).json({ message: 'Email ou senha incorretos' });
     }
 
@@ -117,7 +133,10 @@ router.post('/login', authLimiter, validate(loginSchema), async (req, res) => {
     }
 
     // Verificar senha
+    console.log('Verificando senha...');
     const senhaValida = await gerente.comparePassword(senha);
+    console.log('Senha válida:', senhaValida);
+    
     if (!senhaValida) {
       // Incrementar tentativas de login
       gerente.tentativasLogin = (gerente.tentativasLogin || 0) + 1;
@@ -144,13 +163,17 @@ router.post('/login', authLimiter, validate(loginSchema), async (req, res) => {
     gerente.ultimoLogin = new Date();
     await gerente.save();
 
+    console.log('Gerando token...');
     const token = generateToken(gerente._id, 'gerente');
+    console.log('Token gerado com sucesso');
 
     logger.audit('Login realizado com sucesso', gerente._id, {
       email: gerente.email,
       ultimoLogin: gerente.ultimoLogin
     });
 
+    console.log('Login bem-sucedido para:', gerente.email);
+    
     res.json({
       token,
       gerente: {
@@ -162,10 +185,21 @@ router.post('/login', authLimiter, validate(loginSchema), async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('=== ERRO NO LOGIN ===');
+    console.error('Erro:', error.message);
+    console.error('Stack:', error.stack);
+    console.error('Detalhes:', {
+      name: error.name,
+      code: error.code,
+      email: req.body?.email
+    });
+    
     logger.error('Erro no login', { 
       error: error.message, 
-      stack: error.stack 
+      stack: error.stack,
+      email: req.body?.email
     });
+    
     res.status(500).json({ 
       message: 'Erro interno do servidor',
       error: process.env.NODE_ENV !== 'production' ? error.message : undefined
