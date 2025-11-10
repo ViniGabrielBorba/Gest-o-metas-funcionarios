@@ -241,30 +241,56 @@ const metaSchema = Joi.object({
 // Middleware de validação
 const validate = (schema) => {
   return (req, res, next) => {
-    // Garantir que sobrenome sempre esteja presente no body (mesmo que vazio)
-    if (req.body && !('sobrenome' in req.body)) {
+    // Apenas adicionar sobrenome se o schema for de funcionário
+    // Não adicionar para login, recuperação de senha, etc.
+    const isFuncionarioSchema = schema === funcionarioSchema;
+    if (isFuncionarioSchema && req.body && !('sobrenome' in req.body)) {
       req.body.sobrenome = '';
     }
     
+    console.log('=== VALIDAÇÃO ===');
+    console.log('Schema:', schema.constructor.name || 'Desconhecido');
+    console.log('Body recebido:', { 
+      email: req.body?.email ? 'Presente' : 'Ausente',
+      senha: req.body?.senha ? 'Presente' : 'Ausente',
+      sobrenome: req.body?.sobrenome ? 'Presente' : 'Ausente'
+    });
+    
     const { error, value } = schema.validate(req.body, {
       abortEarly: false,
-      stripUnknown: false // Não remover campos desconhecidos para garantir que sobrenome seja preservado
+      stripUnknown: isFuncionarioSchema ? false : true // Remover campos desconhecidos apenas para schemas não-funcionário
     });
     
     if (error) {
+      console.error('=== ERRO DE VALIDAÇÃO ===');
+      console.error('Erros:', error.details);
+      
       const errors = error.details.map(detail => ({
         field: detail.path.join('.'),
         message: detail.message
       }));
       
+      // Se for erro de validação de email, mostrar mensagem mais clara
+      const emailError = errors.find(e => e.field === 'email');
+      const senhaError = errors.find(e => e.field === 'senha');
+      
+      let message = 'Dados inválidos';
+      if (emailError) {
+        message = emailError.message;
+      } else if (senhaError) {
+        message = senhaError.message;
+      } else if (errors.length > 0) {
+        message = errors[0].message;
+      }
+      
       return res.status(400).json({
-        message: 'Dados inválidos',
-        errors
+        message: message,
+        errors: errors
       });
     }
     
-    // Garantir que sobrenome sempre esteja presente no valor validado
-    if (!('sobrenome' in value)) {
+    // Garantir que sobrenome sempre esteja presente no valor validado (apenas para funcionário)
+    if (isFuncionarioSchema && !('sobrenome' in value)) {
       value.sobrenome = '';
     }
     

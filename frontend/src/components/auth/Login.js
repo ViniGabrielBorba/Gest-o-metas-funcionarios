@@ -87,7 +87,16 @@ const Login = ({ setIsAuthenticated }) => {
         } else if (status === 403) {
           setError(errorData?.message || 'Acesso negado. Sua conta pode estar bloqueada temporariamente.');
         } else if (status === 400) {
-          const errorMessage = errorData?.message || errorData?.errors?.map(e => e.message).join(', ') || 'Dados inválidos. Verifique os campos preenchidos.';
+          // Mostrar mensagem de erro mais clara
+          let errorMessage = 'Dados inválidos. Verifique os campos preenchidos.';
+          
+          if (errorData?.message) {
+            errorMessage = errorData.message;
+          } else if (errorData?.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+            // Pegar a primeira mensagem de erro
+            errorMessage = errorData.errors[0].message || errorData.errors[0];
+          }
+          
           setError(errorMessage);
         } else if (status === 429) {
           setError('Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.');
