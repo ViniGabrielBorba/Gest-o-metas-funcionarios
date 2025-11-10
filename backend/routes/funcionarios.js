@@ -74,10 +74,22 @@ router.post('/', validate(funcionarioSchema), async (req, res) => {
   try {
     const { nome, sobrenome, sexo, idade, funcao, dataAniversario, metaIndividual } = req.body;
 
+    console.log('=== CRIANDO FUNCIONÁRIO ===');
+    console.log('Dados recebidos no backend:', req.body);
+    console.log('Sobrenome recebido:', sobrenome);
+    console.log('Tipo do sobrenome:', typeof sobrenome);
+
+    // Garantir que sobrenome seja sempre uma string (mesmo que vazia)
+    const sobrenomeProcessado = (sobrenome !== undefined && sobrenome !== null) 
+      ? String(sobrenome).trim() 
+      : '';
+
+    console.log('Sobrenome processado:', sobrenomeProcessado);
+
     const funcionario = await Funcionario.create({
       gerenteId: req.user.id,
       nome,
-      sobrenome: sobrenome || '',
+      sobrenome: sobrenomeProcessado, // Sempre salvar, mesmo que vazio
       sexo,
       idade,
       funcao,
@@ -86,13 +98,17 @@ router.post('/', validate(funcionarioSchema), async (req, res) => {
       vendas: []
     });
 
+    console.log('Funcionário criado. Sobrenome salvo:', funcionario.sobrenome);
+
     logger.audit('Funcionário criado', req.user.id, {
       funcionarioId: funcionario._id,
-      nome: funcionario.nome
+      nome: funcionario.nome,
+      sobrenome: funcionario.sobrenome
     });
 
     res.status(201).json(funcionario);
   } catch (error) {
+    console.error('Erro ao criar funcionário:', error);
     logger.error('Erro ao criar funcionário', {
       error: error.message,
       userId: req.user.id
@@ -106,11 +122,22 @@ router.put('/:id', validate(funcionarioSchema), async (req, res) => {
   try {
     const { nome, sobrenome, sexo, idade, funcao, dataAniversario, metaIndividual } = req.body;
 
+    console.log('=== ATUALIZANDO FUNCIONÁRIO ===');
+    console.log('Dados recebidos no backend:', req.body);
+    console.log('Sobrenome recebido:', sobrenome);
+    console.log('Tipo do sobrenome:', typeof sobrenome);
+    console.log('Sobrenome após processamento:', sobrenome !== undefined && sobrenome !== null ? sobrenome : '');
+
+    // Garantir que sobrenome seja sempre uma string (mesmo que vazia)
+    const sobrenomeProcessado = (sobrenome !== undefined && sobrenome !== null) 
+      ? String(sobrenome).trim() 
+      : '';
+
     const funcionario = await Funcionario.findOneAndUpdate(
       { _id: req.params.id, gerenteId: req.user.id },
       {
         nome,
-        sobrenome: sobrenome || '', // Garantir que sobrenome seja salvo (mesmo que vazio)
+        sobrenome: sobrenomeProcessado, // Sempre salvar, mesmo que vazio
         sexo,
         idade,
         funcao,
@@ -124,6 +151,8 @@ router.put('/:id', validate(funcionarioSchema), async (req, res) => {
       return res.status(404).json({ message: 'Funcionário não encontrado' });
     }
 
+    console.log('Funcionário atualizado. Sobrenome salvo:', funcionario.sobrenome);
+
     logger.audit('Funcionário atualizado', req.user.id, {
       funcionarioId: funcionario._id,
       nome: funcionario.nome,
@@ -132,6 +161,7 @@ router.put('/:id', validate(funcionarioSchema), async (req, res) => {
 
     res.json(funcionario);
   } catch (error) {
+    console.error('Erro ao atualizar funcionário:', error);
     logger.error('Erro ao atualizar funcionário', {
       error: error.message,
       userId: req.user.id

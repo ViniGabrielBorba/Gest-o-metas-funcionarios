@@ -159,12 +159,17 @@ const funcionarioSchema = Joi.object({
     'string.empty': 'Nome é obrigatório',
     'any.required': 'Nome é obrigatório'
   }),
-  sobrenome: Joi.string().max(50).allow('', null).optional().custom((value, helpers) => {
+  sobrenome: Joi.string().max(50).allow('', null).default('').optional().custom((value, helpers) => {
     // Se o valor foi fornecido e não está vazio, deve ter pelo menos 2 caracteres
-    if (value && value.trim().length > 0 && value.trim().length < 2) {
+    // Se for null ou undefined, converter para string vazia
+    if (value === null || value === undefined) {
+      return '';
+    }
+    const valorString = String(value).trim();
+    if (valorString.length > 0 && valorString.length < 2) {
       return helpers.error('string.min');
     }
-    return value;
+    return valorString;
   }).messages({
     'string.min': 'Sobrenome deve ter no mínimo 2 caracteres se fornecido',
     'string.max': 'Sobrenome deve ter no máximo 50 caracteres'
@@ -236,9 +241,14 @@ const metaSchema = Joi.object({
 // Middleware de validação
 const validate = (schema) => {
   return (req, res, next) => {
+    // Garantir que sobrenome sempre esteja presente no body (mesmo que vazio)
+    if (req.body && !('sobrenome' in req.body)) {
+      req.body.sobrenome = '';
+    }
+    
     const { error, value } = schema.validate(req.body, {
       abortEarly: false,
-      stripUnknown: true
+      stripUnknown: false // Não remover campos desconhecidos para garantir que sobrenome seja preservado
     });
     
     if (error) {
@@ -251,6 +261,11 @@ const validate = (schema) => {
         message: 'Dados inválidos',
         errors
       });
+    }
+    
+    // Garantir que sobrenome sempre esteja presente no valor validado
+    if (!('sobrenome' in value)) {
+      value.sobrenome = '';
     }
     
     req.body = value;
