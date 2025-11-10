@@ -50,6 +50,7 @@ const VendasComerciais = ({ setIsAuthenticated }) => {
       setVendas(response.data.vendasAgrupadas || []);
       setResumo(response.data.resumo || null);
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Erro ao buscar vendas comerciais:', error);
       toast.error('Erro ao carregar vendas comerciais');
     } finally {
