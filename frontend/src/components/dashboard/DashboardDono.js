@@ -81,8 +81,15 @@ const DashboardDono = ({ setIsAuthenticated }) => {
     console.log('Verificando autenticação:', { userType, hasToken: !!token });
     
     // Se não houver token ou userType, redirecionar
-    if (!token || userType !== 'dono') {
-      console.warn('Usuário não autenticado como dono. Redirecionando...');
+    if (!token) {
+      console.warn('Token não encontrado. Redirecionando para login...');
+      removeAuthToken();
+      navigate('/login-dono');
+      return;
+    }
+    
+    if (userType !== 'dono') {
+      console.warn('userType não é dono. Limpando e redirecionando...');
       removeAuthToken();
       navigate('/login-dono');
       return;
@@ -95,19 +102,35 @@ const DashboardDono = ({ setIsAuthenticated }) => {
       if (base64Url) {
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
         const jsonPayload = JSON.parse(atob(base64));
-        console.log('Tipo do token:', jsonPayload.tipo);
+        console.log('Tipo do token decodificado:', jsonPayload.tipo);
+        console.log('ID do token:', jsonPayload.id);
         
         if (jsonPayload.tipo !== 'dono') {
           console.error('Token não é do tipo dono! Tipo encontrado:', jsonPayload.tipo);
-          toast.error('Erro de autenticação: token inválido para área do dono');
+          toast.error(`Token inválido. Tipo encontrado: ${jsonPayload.tipo}. Faça login novamente como dono.`);
           removeAuthToken();
-          navigate('/login-dono');
+          setTimeout(() => {
+            navigate('/login-dono');
+          }, 2000);
+          return;
         }
+      } else {
+        console.error('Token malformado - não tem payload');
+        toast.error('Token inválido. Faça login novamente.');
+        removeAuthToken();
+        navigate('/login-dono');
+        return;
       }
     } catch (error) {
       console.error('Erro ao verificar token:', error);
-      // Se não conseguir decodificar, deixar o backend verificar
+      toast.error('Erro ao verificar token. Faça login novamente.');
+      removeAuthToken();
+      navigate('/login-dono');
+      return;
     }
+    
+    // Se chegou até aqui, o token parece válido
+    console.log('Token verificado com sucesso. Tipo: dono');
   }, [navigate, toast]);
 
   useEffect(() => {
