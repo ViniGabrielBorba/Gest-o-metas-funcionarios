@@ -23,7 +23,6 @@ const Metas = ({ setIsAuthenticated }) => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingMeta, setEditingMeta] = useState(null);
-  const [showVendaModal, setShowVendaModal] = useState(false);
   const [showHistoricoModal, setShowHistoricoModal] = useState(false);
   const [selectedMeta, setSelectedMeta] = useState(null);
   const [vendasDiarias, setVendasDiarias] = useState([]);
@@ -36,11 +35,6 @@ const Metas = ({ setIsAuthenticated }) => {
     mes: new Date().getMonth() + 1,
     ano: new Date().getFullYear(),
     valor: ''
-  });
-  const [vendaData, setVendaData] = useState({
-    data: new Date().toISOString().split('T')[0],
-    valor: '',
-    observacao: ''
   });
   const [showEditVendaModal, setShowEditVendaModal] = useState(false);
   const [vendaEditando, setVendaEditando] = useState(null);
@@ -151,110 +145,10 @@ const Metas = ({ setIsAuthenticated }) => {
     }
   };
 
-  const handleOpenVendaModal = (meta) => {
-    setSelectedMeta(meta);
-    setShowVendaModal(true);
-    setVendaData({
-      data: new Date().toISOString().split('T')[0],
-      valor: '',
-      observacao: ''
-    });
-  };
-
-  const handleSubmitVenda = async (e) => {
-    e.preventDefault();
-    try {
-      // Salvar referência da meta atual antes de fechar o modal
-      const metaId = selectedMeta._id;
-      const historicoAberto = showHistoricoModal;
-      const mesAno = { mes: selectedMeta.mes, ano: selectedMeta.ano };
-      
-      console.log('=== SALVANDO VENDA COMERCIAL ===');
-      console.log('Meta ID:', metaId);
-      console.log('Dados da venda:', vendaData);
-      console.log('Histórico estava aberto:', historicoAberto);
-      
-      // Salvar a venda (a resposta já retorna a meta atualizada)
-      const response = await api.post(`/metas/${metaId}/vendas-diarias`, vendaData);
-      console.log('Venda salva! Resposta do servidor:', response.data);
-      console.log('Total de vendas na resposta:', response.data.vendasDiarias?.length || 0);
-      
-      // Fechar modal de venda
-      setShowVendaModal(false);
-      
-      // Recarregar lista de metas para atualizar totais na lista
-      await fetchMetas();
-      
-      // Se o histórico estava aberto, recarregá-lo
-      if (historicoAberto) {
-        console.log('=== RECARREGANDO HISTÓRICO ===');
-        // Aguardar um pouco para garantir que o backend processou completamente
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Recarregar histórico buscando dados atualizados diretamente do servidor
-        // Usar a meta atualizada da resposta
-        const metaAtualizada = response.data;
-        console.log('Meta atualizada da resposta:', metaAtualizada);
-        console.log('Total de vendas na meta atualizada:', metaAtualizada.vendasDiarias?.length || 0);
-        
-        // Buscar histórico atualizado diretamente do servidor
-        try {
-          const historicoResponse = await api.get(`/metas/${metaId}/vendas-diarias`);
-          console.log('Histórico recarregado:', historicoResponse.data);
-          
-          if (historicoResponse.data?.vendasAgrupadas) {
-            setVendasDiarias(historicoResponse.data.vendasAgrupadas);
-            setResumoVendas(historicoResponse.data.resumo || null);
-            
-            // Preparar dados para gráfico mensal
-            const vendasPorDia = historicoResponse.data.vendasAgrupadas.map(dia => ({
-              dia: new Date(dia.data).getUTCDate(),
-              total: dia.total
-            })).sort((a, b) => a.dia - b.dia);
-            setChartDataMensal(vendasPorDia);
-          }
-          
-          // Atualizar selectedMeta
-          setSelectedMeta(metaAtualizada);
-        } catch (error) {
-          console.error('Erro ao recarregar histórico:', error);
-          // Mesmo com erro, atualizar selectedMeta
-          setSelectedMeta(metaAtualizada);
-        }
-      } else {
-        // Atualizar selectedMeta mesmo se histórico não estava aberto
-        const metaAtualizada = response.data;
-        setSelectedMeta(metaAtualizada);
-      }
-      
-      toast.success('Venda comercial registrada com sucesso!');
-    } catch (error) {
-      console.error('=== ERRO AO SALVAR VENDA ===');
-      console.error('Erro completo:', error);
-      console.error('Resposta do erro:', error.response?.data);
-      toast.error(error.response?.data?.message || 'Erro ao salvar venda');
-    }
-  };
-
   const handleEditarVendaFuncionario = (venda, dataDia) => {
     setVendaEditando({
       ...venda,
       tipo: 'funcionario',
-      dataDia: dataDia
-    });
-    const dataFormatada = new Date(dataDia).toISOString().split('T')[0];
-    setVendaEditData({
-      data: dataFormatada,
-      valor: venda.valor.toString(),
-      observacao: venda.observacao || ''
-    });
-    setShowEditVendaModal(true);
-  };
-
-  const handleEditarVendaLoja = (venda, dataDia) => {
-    setVendaEditando({
-      ...venda,
-      tipo: 'loja',
       dataDia: dataDia
     });
     const dataFormatada = new Date(dataDia).toISOString().split('T')[0];
@@ -274,19 +168,11 @@ const Metas = ({ setIsAuthenticated }) => {
         return;
       }
 
-      if (vendaEditando.tipo === 'funcionario') {
-        // Editar venda de funcionário
-        await api.put(
-          `/funcionarios/${vendaEditando.funcionarioId}/vendas-diarias/${vendaEditando.vendaId}`,
-          vendaEditData
-        );
-      } else {
-        // Editar venda da loja
-        await api.put(
-          `/metas/${selectedMeta._id}/vendas-diarias/${vendaEditando.vendaId}`,
-          vendaEditData
-        );
-      }
+      // Editar venda de funcionário
+      await api.put(
+        `/funcionarios/${vendaEditando.funcionarioId}/vendas-diarias/${vendaEditando.vendaId}`,
+        vendaEditData
+      );
       
       setShowEditVendaModal(false);
       setVendaEditando(null);
@@ -731,20 +617,12 @@ const Metas = ({ setIsAuthenticated }) => {
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleOpenVendaModal(meta)}
-                      className="btn-secondary flex-1 flex items-center justify-center gap-2 text-sm py-2"
-                    >
-                      <FaDollarSign /> Venda Comercial
-                    </button>
-                    <button
-                      onClick={() => handleVerHistorico(meta)}
-                      className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm"
-                    >
-                      📊 Histórico
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => handleVerHistorico(meta)}
+                    className="w-full bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-sm"
+                  >
+                    📊 Histórico
+                  </button>
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleOpenModal(meta)}
@@ -858,85 +736,7 @@ const Metas = ({ setIsAuthenticated }) => {
           </div>
         )}
 
-        {/* Modal de Venda Diária da Loja */}
-        {showVendaModal && selectedMeta && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
-              <div className="p-6">
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                  Registrar Venda Comercial da Loja
-                </h2>
-                <p className="text-sm text-gray-600 mb-4">
-                  {formatarMesAno(selectedMeta.mes, selectedMeta.ano)}
-                </p>
-                <form onSubmit={handleSubmitVenda} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Data da Venda
-                    </label>
-                    <input
-                      type="date"
-                      value={vendaData.data}
-                      onChange={(e) => setVendaData({ ...vendaData, data: e.target.value })}
-                      className="input-field"
-                      required
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      O total do mês será calculado automaticamente
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Valor da Venda (R$)
-                    </label>
-                    <input
-                      type="number"
-                      value={vendaData.valor}
-                      onChange={(e) => setVendaData({ ...vendaData, valor: e.target.value })}
-                      className="input-field"
-                      min="0"
-                      step="0.01"
-                      required
-                      placeholder="0.00"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Observação (opcional)
-                    </label>
-                    <textarea
-                      value={vendaData.observacao}
-                      onChange={(e) => setVendaData({ ...vendaData, observacao: e.target.value })}
-                      className="input-field"
-                      rows="3"
-                      placeholder="Ex: Vendas gerais da loja, promoção especial..."
-                    />
-                  </div>
-
-                  <div className="flex gap-3 pt-4">
-                    <button
-                      type="button"
-                      onClick={() => setShowVendaModal(false)}
-                      className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      className="flex-1 btn-primary"
-                    >
-                      Salvar Venda
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Modal de Histórico de Vendas Diárias da Loja */}
+        {/* Modal de Histórico de Vendas dos Funcionários */}
         {showHistoricoModal && selectedMeta && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto print:max-h-none print:shadow-none print:rounded-none" id="relatorio-mensal">
@@ -1106,15 +906,9 @@ const Metas = ({ setIsAuthenticated }) => {
                             </span>
                           </div>
                           <div>
-                            <span className="text-gray-600">Vendas Loja:</span>
-                            <span className="font-bold text-purple-600 ml-2 block">
-                              R$ {resumoVendas.totalVendasLoja.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </span>
-                          </div>
-                          <div>
                             <span className="text-gray-600">Total Geral:</span>
                             <span className="font-bold text-green-600 ml-2 block text-lg">
-                              R$ {resumoVendas.totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              R$ {resumoVendas.totalVendasFuncionarios.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                             </span>
                           </div>
                         </div>
@@ -1172,38 +966,6 @@ const Metas = ({ setIsAuthenticated }) => {
                             </div>
                           )}
 
-                          {/* Vendas Diretas da Loja */}
-                          {dia.vendasLoja.length > 0 && (
-                            <div>
-                              <h5 className="text-sm font-semibold text-purple-600 mb-2">Vendas Diretas da Loja:</h5>
-                              <div className="space-y-1">
-                                {dia.vendasLoja.map((venda, vIndex) => (
-                                  <div key={vIndex} className="bg-white p-2 rounded border-l-4 border-purple-400">
-                                    <div className="flex justify-between items-center">
-                                      <div className="flex-1">
-                                        <span className="font-semibold text-gray-700">Venda Direta</span>
-                                        {venda.observacao && (
-                                          <span className="text-xs text-gray-500 ml-2">- {venda.observacao}</span>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        <span className="font-bold text-purple-600">
-                                          R$ {venda.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                        </span>
-                                        <button
-                                          onClick={() => handleEditarVendaLoja(venda, dia.data)}
-                                          className="text-purple-600 hover:text-purple-800 font-semibold text-sm"
-                                          title="Editar venda"
-                                        >
-                                          <FaEdit />
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
                         </div>
                       ))}
                     </div>
@@ -1220,7 +982,7 @@ const Metas = ({ setIsAuthenticated }) => {
             <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
               <div className="p-6">
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                  Editar Venda - {vendaEditando.tipo === 'funcionario' ? vendaEditando.funcionarioNome : 'Loja'}
+                  Editar Venda - {vendaEditando.funcionarioNome}
                 </h2>
                 <form onSubmit={handleSubmitEditarVenda} className="space-y-4">
                   <div>

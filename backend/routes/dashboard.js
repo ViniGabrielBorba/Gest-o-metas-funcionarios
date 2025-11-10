@@ -78,69 +78,51 @@ router.get('/', async (req, res) => {
       }
     });
 
-    // Vendas da loja (se meta tiver vendas diárias)
-    console.log('=== PROCESSANDO VENDAS DA LOJA NO DASHBOARD ===');
-    console.log('Meta encontrada:', meta ? 'Sim' : 'Não');
-    console.log('Meta mês/ano:', meta ? `${meta.mes}/${meta.ano}` : 'N/A');
-    console.log('Mês/Ano atual:', `${mesAtual}/${anoAtual}`);
-    console.log('Vendas diárias da meta:', meta?.vendasDiarias?.length || 0);
+    // Vendas comerciais (buscar do novo endpoint)
+    const VendaComercial = require('../models/VendaComercial');
+    const inicioMes = new Date(Date.UTC(anoAtual, mesAtual - 1, 1, 0, 0, 0, 0));
+    const fimMes = new Date(Date.UTC(anoAtual, mesAtual, 0, 23, 59, 59, 999));
     
-    if (meta && meta.vendasDiarias && meta.vendasDiarias.length > 0) {
-      console.log(`Processando ${meta.vendasDiarias.length} vendas da loja...`);
-      
-      meta.vendasDiarias.forEach((venda, index) => {
-        try {
-          // Normalizar data usando UTC para evitar problemas de timezone
-          const vendaDate = new Date(venda.data);
+    const vendasComerciais = await VendaComercial.find({
+      gerenteId: req.user.id,
+      data: {
+        $gte: inicioMes,
+        $lte: fimMes
+      }
+    });
+    
+    console.log(`Encontradas ${vendasComerciais.length} vendas comerciais no mês`);
+    
+    // Adicionar vendas comerciais ao agregado de vendas diárias
+    vendasComerciais.forEach(venda => {
+      try {
+        const vendaDate = new Date(venda.data);
+        const mesVenda = vendaDate.getUTCMonth() + 1;
+        const anoVenda = vendaDate.getUTCFullYear();
+        const diaVenda = vendaDate.getUTCDate();
+        
+        if (mesVenda === mesAtual && anoVenda === anoAtual) {
+          const dataKey = `${anoVenda}-${String(mesVenda).padStart(2, '0')}-${String(diaVenda).padStart(2, '0')}`;
           
-          if (isNaN(vendaDate.getTime())) {
-            console.error(`Venda ${index} tem data inválida:`, venda.data);
-            return;
+          if (!vendasDiariasMes[dataKey]) {
+            vendasDiariasMes[dataKey] = {
+              data: dataKey,
+              dia: diaVenda,
+              total: 0,
+              quantidade: 0
+            };
           }
-          
-          // Usar UTC para extrair os componentes (garante dia correto)
-          const mesVenda = vendaDate.getUTCMonth() + 1;
-          const anoVenda = vendaDate.getUTCFullYear();
-          const diaVenda = vendaDate.getUTCDate();
-          
-          console.log(`Venda ${index + 1}:`, {
-            dataOriginal: venda.data,
-            dataProcessada: vendaDate.toISOString(),
-            mesVenda,
-            anoVenda,
-            diaVenda,
-            valor: venda.valor,
-            corresponde: mesVenda === mesAtual && anoVenda === anoAtual
-          });
-          
-          if (mesVenda === mesAtual && anoVenda === anoAtual) {
-            const dataKey = `${anoVenda}-${String(mesVenda).padStart(2, '0')}-${String(diaVenda).padStart(2, '0')}`;
-            
-            if (!vendasDiariasMes[dataKey]) {
-              vendasDiariasMes[dataKey] = {
-                data: dataKey,
-                dia: diaVenda,
-                total: 0,
-                quantidade: 0
-              };
-            }
-            vendasDiariasMes[dataKey].total += parseFloat(venda.valor) || 0;
-            vendasDiariasMes[dataKey].quantidade += 1;
-            
-            console.log(`Venda adicionada ao dia ${diaVenda}. Total do dia: R$ ${vendasDiariasMes[dataKey].total}`);
-          } else {
-            console.log(`Venda ${index + 1} não corresponde ao mês/ano atual (${mesVenda}/${anoVenda} vs ${mesAtual}/${anoAtual})`);
-          }
-        } catch (err) {
-          console.error(`Erro ao processar venda ${index}:`, err);
+          vendasDiariasMes[dataKey].total += parseFloat(venda.valor) || 0;
+          vendasDiariasMes[dataKey].quantidade += 1;
         }
-      });
-    } else {
-      console.log('Meta não tem vendas diárias ou meta não encontrada');
-    }
+      } catch (err) {
+        console.error('Erro ao processar venda comercial:', err);
+      }
+    });
     
-    console.log('Total de dias com vendas:', Object.keys(vendasDiariasMes).length);
-    console.log('Vendas diárias processadas:', Object.values(vendasDiariasMes));
+    // Calcular total de vendas comerciais do mês
+    const totalVendasComerciais = vendasComerciais.reduce((sum, v) => sum + (v.valor || 0), 0);
+    console.log(`Total de vendas comerciais do mês: R$ ${totalVendasComerciais}`);
 
     // Converter para array e ordenar por data
     const vendasDiariasArray = Object.values(vendasDiariasMes)
@@ -152,9 +134,9 @@ router.get('/', async (req, res) => {
       { nome: 'Nenhum', valor: 0 }
     );
 
-    // Calcular total vendido (já inclui vendas dos funcionários + vendas diretas da loja)
-    // O meta.totalVendido já é calculado somando vendas diretas + vendas dos funcionários
-    const totalVendidoGeral = meta && meta.totalVendido ? meta.totalVendido : 0;
+    // Calcular total vendido (vendas dos funcionários + vendas comerciais)
+    // O meta.totalVendido inclui apenas vendas dos funcionários agora
+    const totalVendidoGeral = (meta && meta.totalVendido ? meta.totalVendido : 0) + totalVendasComerciais;
     const faltandoParaMeta = meta ? Math.max(0, meta.valor - totalVendidoGeral) : 0;
     const excedenteMeta = meta ? Math.max(0, totalVendidoGeral - meta.valor) : 0;
     const metaBatida = meta && totalVendidoGeral >= meta.valor;
@@ -174,8 +156,9 @@ router.get('/', async (req, res) => {
         totalFuncionarios: funcionarios.length,
         metaMes: meta ? meta.valor : 0,
         totalVendasMes,
-        totalVendidoLoja: totalVendidoGeral, // Mantido para compatibilidade, mas agora usa totalGeral
-        totalVendidoGeral, // Novo campo com nome mais claro
+        totalVendidoLoja: totalVendidoGeral, // Mantido para compatibilidade
+        totalVendidoGeral, // Total geral (funcionários + comerciais)
+        totalVendasComerciais, // Total de vendas comerciais do mês
         faltandoParaMeta,
         excedenteMeta,
         metaBatida,

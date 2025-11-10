@@ -228,6 +228,85 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Obter vendas comerciais agrupadas por dia
+router.get('/agrupadas', async (req, res) => {
+  try {
+    const { mes, ano } = req.query;
+    const mesAtual = mes ? parseInt(mes, 10) : new Date().getMonth() + 1;
+    const anoAtual = ano ? parseInt(ano, 10) : new Date().getFullYear();
+    
+    const inicioMes = new Date(Date.UTC(anoAtual, mesAtual - 1, 1, 0, 0, 0, 0));
+    const fimMes = new Date(Date.UTC(anoAtual, mesAtual, 0, 23, 59, 59, 999));
+    
+    const vendas = await VendaComercial.find({
+      gerenteId: req.user.id,
+      data: {
+        $gte: inicioMes,
+        $lte: fimMes
+      }
+    }).sort({ data: 1 });
+    
+    // Agrupar por dia
+    const vendasPorDia = {};
+    
+    vendas.forEach(venda => {
+      const vendaDate = new Date(venda.data);
+      const ano = vendaDate.getUTCFullYear();
+      const mes = vendaDate.getUTCMonth() + 1;
+      const dia = vendaDate.getUTCDate();
+      const dataKey = `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+      
+      if (!vendasPorDia[dataKey]) {
+        vendasPorDia[dataKey] = {
+          data: new Date(Date.UTC(ano, mes - 1, dia, 12, 0, 0, 0)),
+          vendas: [],
+          total: 0,
+          quantidade: 0
+        };
+      }
+      
+      vendasPorDia[dataKey].vendas.push({
+        id: venda._id,
+        valor: venda.valor,
+        observacao: venda.observacao || '',
+        createdAt: venda.createdAt
+      });
+      
+      vendasPorDia[dataKey].total += venda.valor;
+      vendasPorDia[dataKey].quantidade += 1;
+    });
+    
+    // Converter para array e ordenar por data
+    const vendasAgrupadas = Object.values(vendasPorDia)
+      .map(dia => ({
+        ...dia,
+        data: dia.data.toISOString()
+      }))
+      .sort((a, b) => new Date(b.data) - new Date(a.data));
+    
+    // Calcular resumo
+    const totalMes = vendas.reduce((sum, v) => sum + v.valor, 0);
+    const totalDias = vendasAgrupadas.length;
+    const mediaDiaria = totalDias > 0 ? totalMes / totalDias : 0;
+    
+    res.json({
+      vendasAgrupadas,
+      resumo: {
+        totalMes,
+        totalDias,
+        mediaDiaria,
+        totalVendas: vendas.length
+      }
+    });
+  } catch (error) {
+    logger.error('Erro ao buscar vendas comerciais agrupadas', {
+      error: error.message,
+      userId: req.user.id
+    });
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Obter resumo de vendas comerciais por mês/ano
 router.get('/resumo/:mes/:ano', async (req, res) => {
   try {

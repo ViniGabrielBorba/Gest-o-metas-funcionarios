@@ -641,20 +641,16 @@ const Dashboard = ({ setIsAuthenticated }) => {
           <div className="card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-sm mb-1">Vendas Diárias</p>
+                <p className="text-blue-100 text-sm mb-1">Vendas Comerciais</p>
                 <p className="text-3xl font-bold">
-                  R$ {chartDataDiarias && chartDataDiarias.length > 0 
-                    ? chartDataDiarias.reduce((sum, v) => sum + (v.total || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
-                    : '0,00'}
+                  R$ {(resumo?.totalVendasComerciais || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
                 <p className="text-sm mt-1">
-                  {chartDataDiarias && chartDataDiarias.length > 0 
-                    ? `${chartDataDiarias.length} ${chartDataDiarias.length === 1 ? 'dia' : 'dias'} com vendas`
-                    : 'Nenhuma venda registrada'}
+                  {resumo?.totalVendasComerciais > 0 ? 'Total do mês' : 'Nenhuma venda registrada'}
                 </p>
-                {chartDataDiarias && chartDataDiarias.length > 0 && (
+                {resumo?.totalVendasComerciais > 0 && (
                   <p className="text-xs mt-1 font-semibold">
-                    Média: R$ {(chartDataDiarias.reduce((sum, v) => sum + (v.total || 0), 0) / chartDataDiarias.length).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    Vendas do mês atual
                   </p>
                 )}
               </div>

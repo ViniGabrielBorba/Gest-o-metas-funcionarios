@@ -17,16 +17,16 @@ const vendaComercialSchema = new mongoose.Schema({
   },
   observacao: {
     type: String,
-    trim: true
+    trim: true,
+    default: ''
   }
 }, {
   timestamps: true
 });
 
 // Índices para busca eficiente
-vendaComercialSchema.index({ gerenteId: 1 });
-vendaComercialSchema.index({ gerenteId: 1, data: 1 }); // Para buscas por data
-vendaComercialSchema.index({ data: -1 }); // Para ordenação por data
+vendaComercialSchema.index({ gerenteId: 1, data: 1 });
+vendaComercialSchema.index({ gerenteId: 1, createdAt: -1 });
+vendaComercialSchema.index({ data: 1 });
 
 module.exports = mongoose.model('VendaComercial', vendaComercialSchema);
-
