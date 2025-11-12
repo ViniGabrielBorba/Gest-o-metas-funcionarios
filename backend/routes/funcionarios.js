@@ -580,6 +580,81 @@ router.get('/:id/observacoes-gerente', async (req, res) => {
   }
 });
 
+// Deletar venda diária de um funcionário
+router.delete('/:id/vendas-diarias/:vendaId', async (req, res) => {
+  try {
+    const funcionario = await Funcionario.findOne({
+      _id: req.params.id,
+      gerenteId: req.user.id
+    });
+
+    if (!funcionario) {
+      return res.status(404).json({ message: 'Funcionário não encontrado' });
+    }
+
+    if (!funcionario.vendasDiarias || funcionario.vendasDiarias.length === 0) {
+      return res.status(404).json({ message: 'Venda não encontrada' });
+    }
+
+    // Encontrar a venda pelo ID
+    const vendaIndex = funcionario.vendasDiarias.findIndex(
+      v => v._id.toString() === req.params.vendaId
+    );
+
+    if (vendaIndex === -1) {
+      return res.status(404).json({ message: 'Venda não encontrada' });
+    }
+
+    // Obter dados da venda antes de excluir (para recalcular total do mês)
+    const vendaExcluida = funcionario.vendasDiarias[vendaIndex];
+    const mesVenda = new Date(vendaExcluida.data).getUTCMonth() + 1;
+    const anoVenda = new Date(vendaExcluida.data).getUTCFullYear();
+
+    // Remover a venda
+    funcionario.vendasDiarias.splice(vendaIndex, 1);
+
+    // Recalcular total do mês após exclusão
+    const vendasDoMes = (funcionario.vendasDiarias || []).filter(v => {
+      const vDate = new Date(v.data);
+      return vDate.getUTCMonth() === mesVenda - 1 && 
+             vDate.getUTCFullYear() === anoVenda;
+    });
+    
+    const totalMes = vendasDoMes.reduce((sum, v) => sum + v.valor, 0);
+
+    // Atualizar registro mensal
+    const vendaMensalIndex = funcionario.vendas.findIndex(
+      v => v.mes === mesVenda && v.ano === anoVenda
+    );
+
+    if (vendaMensalIndex >= 0) {
+      if (totalMes > 0) {
+        funcionario.vendas[vendaMensalIndex].valor = totalMes;
+      } else {
+        // Se não há mais vendas no mês, remover o registro mensal
+        funcionario.vendas.splice(vendaMensalIndex, 1);
+      }
+    }
+
+    await funcionario.save();
+
+    // Atualizar meta da loja
+    await atualizarMetaLoja(req.user.id, mesVenda, anoVenda);
+
+    logger.audit('Venda diária excluída', req.user.id, {
+      funcionarioId: funcionario._id,
+      vendaId: req.params.vendaId,
+      valor: vendaExcluida.valor,
+      data: vendaExcluida.data
+    });
+
+    res.json({ message: 'Venda excluída com sucesso', funcionario });
+  } catch (error) {
+    console.error('Erro ao excluir venda diária:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Deletar funcionário
 router.delete('/:id', async (req, res) => {
   try {

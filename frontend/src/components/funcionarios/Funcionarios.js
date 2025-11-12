@@ -301,6 +301,30 @@ const Funcionarios = ({ setIsAuthenticated }) => {
     }
   };
 
+  const handleExcluirVenda = async (venda) => {
+    if (!window.confirm(`Tem certeza que deseja excluir a venda de R$ ${venda.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} do dia ${new Date(venda.data).toLocaleDateString('pt-BR')}?`)) {
+      return;
+    }
+
+    try {
+      await api.delete(`/funcionarios/${selectedFuncionario._id}/vendas-diarias/${venda._id}`);
+      
+      // Recarregar histórico
+      const mesAtual = new Date().getMonth() + 1;
+      const anoAtual = new Date().getFullYear();
+      const response = await api.get(`/funcionarios/${selectedFuncionario._id}/vendas-diarias?mes=${mesAtual}&ano=${anoAtual}`);
+      setVendasDiarias(response.data);
+      
+      // Recarregar lista de funcionários
+      fetchFuncionarios();
+      
+      toast.success('Venda excluída com sucesso!');
+    } catch (error) {
+      console.error('Erro ao excluir venda:', error);
+      toast.error(error.response?.data?.message || 'Erro ao excluir venda');
+    }
+  };
+
   const getVendaMes = (funcionario) => {
     const mesAtual = new Date().getMonth() + 1;
     const anoAtual = new Date().getFullYear();
@@ -1202,13 +1226,22 @@ const Funcionarios = ({ setIsAuthenticated }) => {
                                 {venda.observacao || '-'}
                               </td>
                               <td className="px-4 py-2 text-center">
-                                <button
-                                  onClick={() => handleEditarVenda(venda)}
-                                  className="text-blue-600 hover:text-blue-800 font-semibold text-sm"
-                                  title="Editar venda"
-                                >
-                                  <FaEdit />
-                                </button>
+                                <div className="flex items-center justify-center gap-3">
+                                  <button
+                                    onClick={() => handleEditarVenda(venda)}
+                                    className="text-blue-600 hover:text-blue-800 font-semibold text-sm transition-colors"
+                                    title="Editar venda"
+                                  >
+                                    <FaEdit />
+                                  </button>
+                                  <button
+                                    onClick={() => handleExcluirVenda(venda)}
+                                    className="text-red-600 hover:text-red-800 font-semibold text-sm transition-colors"
+                                    title="Excluir venda"
+                                  >
+                                    <FaTrash />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}
