@@ -76,14 +76,13 @@ main
    - **Value:** `https://gest-o-metas-funcionarios-3.onrender.com/api`
    - Marque: ✅ Production, ✅ Deploy Preview, ✅ Branch Deploys
 
-   **Variável 2 (IMPORTANTE para Node 18):**
+   **Variável 2 (Opcional - Node 22):**
    - **Key:** `NODE_VERSION`
-   - **Value:** `18`
+   - **Value:** `22`
    - Marque: ✅ Production, ✅ Deploy Preview, ✅ Branch Deploys
+   - **Nota:** Node 22.x é a versão LTS atual. Se não configurar, o Netlify usará a versão padrão.
 
 4. Clique em **"Save"** para cada variável
-
-**⚠️ IMPORTANTE:** A variável `NODE_VERSION=18` é necessária porque o `react-scripts` não é compatível com Node 22. Sem isso, o build vai falhar!
 
 ---
 
@@ -142,9 +141,9 @@ Após o deploy, verifique:
 - ✅ Verifique se o **Base directory** está como `frontend`
 - ✅ Verifique se o **Publish directory** está como `build` (não `frontend/build`)
 - ✅ Verifique se a variável `REACT_APP_API_URL` está configurada
-- ✅ **VERIFIQUE SE A VARIÁVEL `NODE_VERSION=18` ESTÁ CONFIGURADA!**
-  - Sem isso, o Netlify usa Node 22 por padrão, que não é compatível com `react-scripts`
-  - Adicione `NODE_VERSION=18` nas variáveis de ambiente
+- ✅ **VERIFIQUE SE A VARIÁVEL `NODE_VERSION=22` ESTÁ CONFIGURADA (opcional)**
+  - O projeto está configurado para Node 22.x (versão LTS atual)
+  - Se necessário, adicione `NODE_VERSION=22` nas variáveis de ambiente
 
 ### **Erro: "Module not found"**
 - Verifique se todos os arquivos foram enviados para o GitHub
