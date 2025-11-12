@@ -1341,6 +1341,39 @@ const Dashboard = ({ setIsAuthenticated }) => {
                         : 0;
                       const metaBatida = func.valor >= func.metaIndividual;
                       
+                      // Determinar status baseado no percentual
+                      let statusTexto = '';
+                      let statusCor = '';
+                      let statusBg = '';
+                      let statusIcone = '';
+                      
+                      if (metaBatida) {
+                        statusTexto = 'Meta Batida';
+                        statusCor = 'text-green-800';
+                        statusBg = 'bg-green-100';
+                        statusIcone = '✅';
+                      } else if (percentual >= 50) {
+                        statusTexto = 'No Caminho';
+                        statusCor = 'text-blue-800';
+                        statusBg = 'bg-blue-100';
+                        statusIcone = '📈';
+                      } else if (percentual >= 30) {
+                        statusTexto = 'Em Crescimento';
+                        statusCor = 'text-yellow-800';
+                        statusBg = 'bg-yellow-100';
+                        statusIcone = '📊';
+                      } else if (percentual > 0) {
+                        statusTexto = 'Precisa Acelerar';
+                        statusCor = 'text-orange-800';
+                        statusBg = 'bg-orange-100';
+                        statusIcone = '⚠️';
+                      } else {
+                        statusTexto = 'Sem Vendas';
+                        statusCor = 'text-red-800';
+                        statusBg = 'bg-red-100';
+                        statusIcone = '🔴';
+                      }
+                      
                       return (
                         <tr key={func.funcionarioId} className={`border-b ${darkMode ? 'border-gray-700 hover:bg-gray-700' : 'hover:bg-gray-50'} transition-colors`}>
                           <td className="px-4 py-2">
@@ -1364,21 +1397,18 @@ const Dashboard = ({ setIsAuthenticated }) => {
                           </td>
                           <td className="px-4 py-2 text-right">
                             <span className={`font-semibold ${
-                              metaBatida ? 'text-green-600' : 'text-orange-600'
+                              metaBatida ? 'text-green-600' : 
+                              percentual >= 50 ? 'text-blue-600' :
+                              percentual >= 30 ? 'text-yellow-600' :
+                              percentual > 0 ? 'text-orange-600' : 'text-red-600'
                             }`}>
                               {percentual.toFixed(1)}%
                             </span>
                           </td>
                           <td className="px-4 py-2 text-center">
-                            {metaBatida ? (
-                              <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-semibold">
-                                ✅ Meta Batida
-                              </span>
-                            ) : (
-                              <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-semibold">
-                                ⚠️ Em Andamento
-                              </span>
-                            )}
+                            <span className={`${statusBg} ${statusCor} px-2 py-1 rounded text-xs font-semibold`}>
+                              {statusIcone} {statusTexto}
+                            </span>
                           </td>
                         </tr>
                       );
