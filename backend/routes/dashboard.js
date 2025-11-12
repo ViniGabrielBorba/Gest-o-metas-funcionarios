@@ -197,11 +197,19 @@ router.get('/', async (req, res) => {
     const aniversariantes = funcionarios.filter(func => {
       const dataAniv = new Date(func.dataAniversario);
       return dataAniv.getMonth() + 1 === mesAtual;
-    }).map(func => ({
-      id: func._id,
-      nome: func.nome,
-      dia: new Date(func.dataAniversario).getDate()
-    }));
+    }).map(func => {
+      // Montar nome completo (nome + sobrenome)
+      const nomeCompleto = func.sobrenome && func.sobrenome.trim() !== ''
+        ? `${func.nome} ${func.sobrenome}`
+        : func.nome;
+      return {
+        id: func._id,
+        nome: func.nome,
+        sobrenome: func.sobrenome || '',
+        nomeCompleto: nomeCompleto,
+        dia: new Date(func.dataAniversario).getDate()
+      };
+    });
 
     res.json({
       resumo: {
@@ -348,7 +356,12 @@ router.get('/alertas', async (req, res) => {
         icone: '📋',
         titulo: 'Funcionários sem Vendas',
         mensagem: `${funcionariosSemVendas.length} funcionário(s) ainda não registraram vendas neste mês.`,
-        funcionarios: funcionariosSemVendas.map(f => f.nome)
+        funcionarios: funcionariosSemVendas.map(f => {
+          // Montar nome completo (nome + sobrenome)
+          return f.sobrenome && f.sobrenome.trim() !== ''
+            ? `${f.nome} ${f.sobrenome}`
+            : f.nome;
+        })
       });
     }
 
@@ -365,7 +378,12 @@ router.get('/alertas', async (req, res) => {
         icone: '📊',
         titulo: 'Funcionários Abaixo da Meta',
         mensagem: `${funcionariosAbaixoMeta.length} funcionário(s) estão abaixo da meta individual.`,
-        funcionarios: funcionariosAbaixoMeta.map(f => f.nome)
+        funcionarios: funcionariosAbaixoMeta.map(f => {
+          // Montar nome completo (nome + sobrenome)
+          return f.sobrenome && f.sobrenome.trim() !== ''
+            ? `${f.nome} ${f.sobrenome}`
+            : f.nome;
+        })
       });
     }
 

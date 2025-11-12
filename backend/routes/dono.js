@@ -198,9 +198,15 @@ router.get('/dashboard', authDono, async (req, res) => {
           const venda = func.vendas.find(
             v => v.mes === mesAtual && v.ano === anoAtual
           );
+          // Montar nome completo (nome + sobrenome)
+          const nomeCompleto = func.sobrenome && func.sobrenome.trim() !== ''
+            ? `${func.nome} ${func.sobrenome}`
+            : func.nome;
           return {
             funcionarioId: func._id,
             nome: func.nome,
+            sobrenome: func.sobrenome || '',
+            nomeCompleto: nomeCompleto,
             valor: venda ? venda.valor : 0,
             metaIndividual: func.metaIndividual
           };
@@ -450,9 +456,14 @@ router.get('/lojas/:lojaId', authDono, async (req, res) => {
         func.vendasDiarias.forEach(v => {
           const vDate = new Date(v.data);
           if (vDate.getUTCMonth() + 1 === mesAtual && vDate.getUTCFullYear() === anoAtual) {
+            // Montar nome completo (nome + sobrenome)
+            const nomeCompleto = func.sobrenome && func.sobrenome.trim() !== ''
+              ? `${func.nome} ${func.sobrenome}`
+              : func.nome;
             vendasDiariasFuncionarios.push({
               funcionarioId: func._id,
               funcionarioNome: func.nome,
+              funcionarioNomeCompleto: nomeCompleto,
               data: v.data,
               valor: v.valor,
               observacao: v.observacao
@@ -474,9 +485,14 @@ router.get('/lojas/:lojaId', authDono, async (req, res) => {
       if (func.observacoesGerente) {
         func.observacoesGerente.forEach(obs => {
           if (obs.mes === mesAtual && obs.ano === anoAtual) {
+            // Montar nome completo (nome + sobrenome)
+            const nomeCompleto = func.sobrenome && func.sobrenome.trim() !== ''
+              ? `${func.nome} ${func.sobrenome}`
+              : func.nome;
             feedbacks.push({
               funcionarioId: func._id,
               funcionarioNome: func.nome,
+              funcionarioNomeCompleto: nomeCompleto,
               observacao: obs.observacao,
               dataAtualizacao: obs.dataAtualizacao
             });
@@ -499,13 +515,21 @@ router.get('/lojas/:lojaId', authDono, async (req, res) => {
         cnpj: gerente.cnpj,
         telefone: gerente.telefone
       },
-      funcionarios: funcionarios.map(f => ({
-        id: f._id,
-        nome: f.nome,
-        funcao: f.funcao,
-        metaIndividual: f.metaIndividual,
-        vendasMes: f.vendas.find(v => v.mes === mesAtual && v.ano === anoAtual)?.valor || 0
-      })),
+      funcionarios: funcionarios.map(f => {
+        // Montar nome completo (nome + sobrenome)
+        const nomeCompleto = f.sobrenome && f.sobrenome.trim() !== ''
+          ? `${f.nome} ${f.sobrenome}`
+          : f.nome;
+        return {
+          id: f._id,
+          nome: f.nome,
+          sobrenome: f.sobrenome || '',
+          nomeCompleto: nomeCompleto,
+          funcao: f.funcao,
+          metaIndividual: f.metaIndividual,
+          vendasMes: f.vendas.find(v => v.mes === mesAtual && v.ano === anoAtual)?.valor || 0
+        };
+      }),
       meta,
       totalVendasFuncionarios,
       totalVendasComerciais,
@@ -882,7 +906,12 @@ router.get('/alertas', authDono, async (req, res) => {
           tipo: 'info',
           loja: gerente.nomeLoja,
           mensagem: `${funcionariosSemVendas.length} funcionário(s) sem vendas registradas`,
-          funcionarios: funcionariosSemVendas.map(f => f.nome)
+          funcionarios: funcionariosSemVendas.map(f => {
+            // Montar nome completo (nome + sobrenome)
+            return f.sobrenome && f.sobrenome.trim() !== ''
+              ? `${f.nome} ${f.sobrenome}`
+              : f.nome;
+          })
         });
       }
     }

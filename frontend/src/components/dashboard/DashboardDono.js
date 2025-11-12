@@ -848,7 +848,7 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                           {index + 1}
                         </span>
                       </td>
-                      <td className="p-3 font-medium">{vendedor.nome}</td>
+                      <td className="p-3 font-medium">{vendedor.nomeCompleto || vendedor.nome}</td>
                       <td className="p-3 text-gray-600">{vendedor.loja}</td>
                       <td className="p-3 text-right font-semibold">
                         R$ {vendedor.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -1070,7 +1070,7 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                     <div className="space-y-1">
                       {loja.topVendedores.slice(0, 3).map((v, idx) => (
                         <div key={idx} className="flex justify-between text-xs">
-                          <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>{v.nome}</span>
+                          <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>{v.nomeCompleto || v.nome}</span>
                           <span className="font-semibold">
                             R$ {v.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </span>
@@ -1149,7 +1149,7 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                     <tbody>
                       {detalhesLoja.funcionarios.map((func) => (
                         <tr key={func.id} className="border-b hover:bg-gray-50">
-                          <td className="p-2">{func.nome}</td>
+                          <td className="p-2">{func.nomeCompleto || func.nome}</td>
                           <td className="p-2 text-gray-600">{func.funcao}</td>
                           <td className="p-2 text-right">
                             R$ {func.metaIndividual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -1219,7 +1219,7 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                   <div className="space-y-3">
                     {detalhesLoja.feedbacks.map((feedback, idx) => (
                       <div key={idx} className="border rounded-lg p-3">
-                        <p className="font-semibold text-gray-800">{feedback.funcionarioNome}</p>
+                        <p className="font-semibold text-gray-800">{feedback.funcionarioNomeCompleto || feedback.funcionarioNome}</p>
                         <p className="text-sm text-gray-600 mt-1">{feedback.observacao}</p>
                       </div>
                     ))}

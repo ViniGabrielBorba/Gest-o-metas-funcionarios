@@ -780,14 +780,14 @@ const Dashboard = ({ setIsAuthenticated }) => {
                   Progresso
                 </span>
                 <div className="flex flex-col items-end">
-                  <span className={`font-bold ${
+                <span className={`font-bold ${
                     resumo.metaBatida ? 'text-green-600' :
                     resumo.statusMeta === 'no_prazo' ? 'text-blue-600' :
                     resumo.statusMeta === 'no_ritmo' ? 'text-yellow-600' :
                     'text-red-600'
-                  }`}>
-                    {resumo.percentualAtingido.toFixed(1)}%
-                  </span>
+                }`}>
+                  {resumo.percentualAtingido.toFixed(1)}%
+                </span>
                   {resumo.percentualEsperado && resumo.diasDecorridos && (
                     <span className="text-xs text-gray-500 mt-0.5">
                       Esperado: {resumo.percentualEsperado.toFixed(1)}% ({resumo.diasDecorridos}/{resumo.diasNoMes} dias)
@@ -911,7 +911,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
                 >
                   <FaBirthdayCake className="text-yellow-500" />
                   <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
-                    {aniv.nome}
+                    {aniv.nomeCompleto || aniv.nome}
                   </span>
                   <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>- Dia {aniv.dia}</span>
                 </div>

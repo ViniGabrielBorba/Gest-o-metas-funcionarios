@@ -59,29 +59,29 @@ const Navbar = ({ setIsAuthenticated }) => {
     <>
       {/* Navbar Principal - Compacta */}
       <nav className={`fixed top-0 left-0 right-0 z-50 text-white shadow-lg transition-all duration-300 ${darkMode ? 'bg-gray-900' : ''}`} style={{ backgroundColor: darkMode ? '#1f2937' : '#169486' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <div className="flex items-center flex-1 min-w-0">
               <Link to="/dashboard" className="flex items-center space-x-3 hover:opacity-80 transition-opacity min-w-0">
                 <FaChartLine className="text-3xl flex-shrink-0" />
                 <span className="font-bold text-2xl sm:text-3xl truncate">
-                  {gerente?.nomeLoja || 'FlowGest'}
-                </span>
-              </Link>
-            </div>
+                {gerente?.nomeLoja || 'FlowGest'}
+              </span>
+            </Link>
+          </div>
 
             {/* Botão do Menu e Informações do Usuário */}
             <div className="flex items-center space-x-4">
               <div className="hidden sm:flex items-center space-x-3">
-                <button
-                  onClick={toggleDarkMode}
+              <button
+                onClick={toggleDarkMode}
                   className="p-2 rounded-lg transition-all hover:scale-110"
                   style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)' }}
-                  title={darkMode ? 'Modo Claro' : 'Modo Escuro'}
-                >
+                title={darkMode ? 'Modo Claro' : 'Modo Escuro'}
+              >
                   {darkMode ? <FaSun className="text-lg" /> : <FaMoon className="text-lg" />}
-                </button>
+              </button>
                 <span className="text-sm font-medium">Olá, {gerente?.nome || 'Gerente'}</span>
               </div>
               
@@ -124,18 +124,18 @@ const Navbar = ({ setIsAuthenticated }) => {
               <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
                 Menu
               </h2>
-              <button
+          <button
                 onClick={() => setMenuOpen(false)}
                 className={`p-2 rounded-lg transition-colors ${darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-200 text-gray-600'}`}
-              >
+          >
                 <FaTimes className="text-lg" />
-              </button>
-            </div>
+          </button>
+        </div>
             <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
               <p className="font-semibold">{gerente?.nome || 'Gerente'}</p>
               <p>{gerente?.nomeLoja || 'FlowGest'}</p>
             </div>
-          </div>
+      </div>
 
           {/* Lista de Itens do Menu */}
           <div className="flex-1 overflow-y-auto py-4">
@@ -143,7 +143,7 @@ const Navbar = ({ setIsAuthenticated }) => {
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <Link
+            <Link
                     key={item.to}
                     to={item.to}
                     onClick={() => setMenuOpen(false)}
@@ -157,7 +157,7 @@ const Navbar = ({ setIsAuthenticated }) => {
                       darkMode ? 'text-gray-400 group-hover:text-white' : 'text-gray-500 group-hover:text-gray-900'
                     }`} />
                     <span className="font-medium text-base">{item.label}</span>
-                  </Link>
+            </Link>
                 );
               })}
             </nav>

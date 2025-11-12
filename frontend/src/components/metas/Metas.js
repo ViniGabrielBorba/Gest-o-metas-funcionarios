@@ -168,11 +168,11 @@ const Metas = ({ setIsAuthenticated }) => {
         return;
       }
 
-      // Editar venda de funcionário
-      await api.put(
-        `/funcionarios/${vendaEditando.funcionarioId}/vendas-diarias/${vendaEditando.vendaId}`,
-        vendaEditData
-      );
+        // Editar venda de funcionário
+        await api.put(
+          `/funcionarios/${vendaEditando.funcionarioId}/vendas-diarias/${vendaEditando.vendaId}`,
+          vendaEditData
+        );
       
       setShowEditVendaModal(false);
       setVendaEditando(null);
@@ -616,12 +616,12 @@ const Metas = ({ setIsAuthenticated }) => {
                 </div>
 
                 <div className="space-y-2">
-                  <button
-                    onClick={() => handleVerHistorico(meta)}
+                    <button
+                      onClick={() => handleVerHistorico(meta)}
                     className="w-full bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-sm"
-                  >
-                    📊 Histórico
-                  </button>
+                    >
+                      📊 Histórico
+                    </button>
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleOpenModal(meta)}

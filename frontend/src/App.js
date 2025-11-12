@@ -24,8 +24,8 @@ function App() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const token = getAuthToken();
-      const storedUserType = localStorage.getItem('userType') || 'gerente';
+    const token = getAuthToken();
+    const storedUserType = localStorage.getItem('userType') || 'gerente';
       
       if (!token) {
         // Sem token, não está autenticado
@@ -46,7 +46,7 @@ function App() {
           setIsAuthenticated(true);
           setUserType(tokenType);
           localStorage.setItem('userType', tokenType);
-          requestNotificationPermission();
+      requestNotificationPermission();
         } else {
           // Token inválido
           setIsAuthenticated(false);
