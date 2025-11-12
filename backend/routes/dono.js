@@ -350,7 +350,12 @@ router.get('/dashboard', authDono, async (req, res) => {
     // Top vendedores geral (todas as lojas)
     const todosVendedores = dadosLojas.flatMap(loja => 
       loja.topVendedores.map(v => ({
-        ...v,
+        funcionarioId: v.funcionarioId,
+        nome: v.nome,
+        sobrenome: v.sobrenome || '',
+        nomeCompleto: v.nomeCompleto || v.nome, // Garantir que nomeCompleto esteja presente
+        valor: v.valor,
+        metaIndividual: v.metaIndividual,
         loja: loja.nomeLoja
       }))
     ).sort((a, b) => b.valor - a.valor).slice(0, 10);
