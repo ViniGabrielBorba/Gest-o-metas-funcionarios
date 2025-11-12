@@ -365,11 +365,51 @@ router.get('/alertas', async (req, res) => {
       });
     }
 
-    // Funcionários abaixo da meta individual
+    // Funcionários abaixo da meta individual (considerando tempo decorrido)
+    const hoje = new Date();
+    const mesAtualSistema = hoje.getMonth() + 1;
+    const anoAtualSistema = hoje.getFullYear();
+    const isMesAtual = mesAtual === mesAtualSistema && anoAtual === anoAtualSistema;
+    
+    // Calcular dias decorridos
+    const diasNoMes = new Date(anoAtual, mesAtual, 0).getDate();
+    let diasDecorridos = 0;
+    
+    if (isMesAtual) {
+      diasDecorridos = hoje.getDate();
+    } else if (anoAtual > anoAtualSistema || (anoAtual === anoAtualSistema && mesAtual > mesAtualSistema)) {
+      diasDecorridos = 0;
+    } else {
+      diasDecorridos = diasNoMes;
+    }
+    
+    const percentualEsperado = diasDecorridos > 0 ? (diasDecorridos / diasNoMes) * 100 : 0;
+    
     const funcionariosAbaixoMeta = funcionarios.filter(f => {
       const v = f.vendas.find(v => v.mes === mesAtual && v.ano === anoAtual);
       const valorVendido = v ? v.valor : 0;
-      return f.metaIndividual > 0 && valorVendido < f.metaIndividual;
+      
+      if (f.metaIndividual <= 0) return false; // Ignorar funcionários sem meta
+      
+      // Se já bateu a meta, não está abaixo
+      if (valorVendido >= f.metaIndividual) return false;
+      
+      // Calcular percentual atingido
+      const percentualAtingido = (valorVendido / f.metaIndividual) * 100;
+      
+      // Se for o mês atual, considerar o tempo decorrido
+      if (isMesAtual && diasDecorridos > 0) {
+        const diferencaPercentual = percentualAtingido - percentualEsperado;
+        
+        // Apenas considerar "abaixo" se estiver significativamente abaixo do esperado (mais de 10% abaixo)
+        // Se estiver entre -10% e +5%, está "no ritmo" (não precisa alertar)
+        // Se estiver acima de +5%, está "no prazo" (não precisa alertar)
+        return diferencaPercentual < -10;
+      } else {
+        // Para meses passados, usar classificação simples
+        // Apenas alertar se estiver abaixo de 50% da meta
+        return percentualAtingido < 50;
+      }
     });
 
     if (funcionariosAbaixoMeta.length > 0) {
@@ -377,7 +417,7 @@ router.get('/alertas', async (req, res) => {
         tipo: 'warning',
         icone: '📊',
         titulo: 'Funcionários Abaixo da Meta',
-        mensagem: `${funcionariosAbaixoMeta.length} funcionário(s) estão abaixo da meta individual.`,
+        mensagem: `${funcionariosAbaixoMeta.length} funcionário(s) estão abaixo da meta individual${isMesAtual && diasDecorridos > 0 ? ` (esperado: ${percentualEsperado.toFixed(1)}% do mês)` : ''}.`,
         funcionarios: funcionariosAbaixoMeta.map(f => {
           // Montar nome completo (nome + sobrenome)
           return f.sobrenome && f.sobrenome.trim() !== ''
