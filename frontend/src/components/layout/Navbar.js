@@ -12,6 +12,7 @@ import {
   FaComments,
   FaBox,
   FaCalendar,
+  FaBroom,
   FaSignOutAlt,
   FaBars,
   FaTimes,
@@ -53,6 +54,7 @@ const Navbar = ({ setIsAuthenticated }) => {
     { to: '/feedback', icon: FaComments, label: 'Feedback' },
     { to: '/estoque', icon: FaBox, label: 'Estoque' },
     { to: '/agenda', icon: FaCalendar, label: 'Agenda' },
+    { to: '/limpeza', icon: FaBroom, label: 'Limpeza' },
   ];
 
   return (

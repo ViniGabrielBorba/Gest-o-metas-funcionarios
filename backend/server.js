@@ -224,6 +224,7 @@ app.use('/api/metas', loadRoute('./routes/metas', 'metas'));
 app.use('/api/dashboard', loadRoute('./routes/dashboard', 'dashboard'));
 app.use('/api/estoque', loadRoute('./routes/estoque', 'estoque'));
 app.use('/api/agenda', loadRoute('./routes/agenda', 'agenda'));
+app.use('/api/limpeza', loadRoute('./routes/limpeza', 'limpeza'));
 app.use('/api/backup', loadRoute('./routes/backup', 'backup'));
 app.use('/api/export', loadRoute('./routes/export', 'export'));
 
