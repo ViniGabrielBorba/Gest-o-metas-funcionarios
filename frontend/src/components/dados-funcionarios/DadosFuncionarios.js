@@ -121,8 +121,16 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
         await api.put(`/funcionarios/${editingFuncionario._id}`, formData);
         toast.success('Dados do funcionário atualizados com sucesso!');
       } else {
-        toast.error('Use a seção Funcionários para criar novos funcionários');
-        return;
+        // Criar novo funcionário com dados mínimos obrigatórios
+        const dadosCriacao = {
+          ...formData,
+          idade: 25, // Valor padrão, pode ser editado depois
+          funcao: 'Funcionário', // Valor padrão
+          dataAniversario: formData.dataNascimento || new Date().toISOString().split('T')[0],
+          metaIndividual: 0
+        };
+        await api.post('/funcionarios', dadosCriacao);
+        toast.success('Funcionário criado com sucesso!');
       }
       handleCloseModal();
       fetchFuncionarios();
@@ -293,6 +301,12 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
               <FaIdCard className="text-4xl" style={{ color: '#169486' }} />
               <h1 className="text-3xl font-bold">Dados Funcionários</h1>
             </div>
+            <button
+              onClick={() => handleOpenModal()}
+              className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+            >
+              <FaPlus /> Adicionar Funcionário
+            </button>
           </div>
           <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
             Gerencie os dados pessoais dos funcionários (CPF, data de nascimento, email, chave PIX)
@@ -418,11 +432,13 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
             <div className={`w-full max-w-2xl rounded-lg shadow-xl ${darkMode ? 'bg-gray-800' : 'bg-white'} max-h-[90vh] overflow-y-auto`}>
               <div className={`p-6 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                 <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                  Editar Dados do Funcionário
+                  {editingFuncionario ? 'Editar Dados do Funcionário' : 'Adicionar Funcionário'}
                 </h2>
-                <p className={`text-sm mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {editingFuncionario && getNomeCompleto(editingFuncionario)}
-                </p>
+                {editingFuncionario && (
+                  <p className={`text-sm mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {getNomeCompleto(editingFuncionario)}
+                  </p>
+                )}
               </div>
               <form onSubmit={handleSubmit} className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
