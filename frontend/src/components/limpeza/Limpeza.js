@@ -190,6 +190,24 @@ const Limpeza = ({ setIsAuthenticated }) => {
     }
   };
 
+  const handleExcluirEscala = async () => {
+    if (!escala || !escala._id) return;
+
+    const confirmar = window.confirm(
+      `Tem certeza que deseja excluir a escala de ${meses[mesSelecionado - 1]} de ${anoSelecionado}?\n\nEsta ação não pode ser desfeita.`
+    );
+
+    if (!confirmar) return;
+
+    try {
+      await api.delete(`/limpeza/${escala._id}`);
+      toast.success('Escala excluída com sucesso!');
+      setEscala(null);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erro ao excluir escala');
+    }
+  };
+
   const handleAddFuncionarioManual = () => {
     const nome = novoFuncionarioManual.trim();
     if (!nome) {
@@ -366,21 +384,28 @@ const Limpeza = ({ setIsAuthenticated }) => {
             </div>
             <div className="flex gap-2">
               {escala && (
-                <button
-                  onClick={handlePrint}
-                  className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
-                >
-                  <FaPrint /> Imprimir
-                </button>
+                <>
+                  <button
+                    onClick={handlePrint}
+                    className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+                  >
+                    <FaPrint /> Imprimir
+                  </button>
+                  <button
+                    onClick={handleEditarEscala}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <FaEdit /> Editar Escala
+                  </button>
+                  <button
+                    onClick={handleExcluirEscala}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    <FaTrash /> Excluir Escala
+                  </button>
+                </>
               )}
-              {escala ? (
-                <button
-                  onClick={handleEditarEscala}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <FaEdit /> Editar Escala
-                </button>
-              ) : (
+              {!escala && (
                 <button
                   onClick={handleCriarEscala}
                   className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
