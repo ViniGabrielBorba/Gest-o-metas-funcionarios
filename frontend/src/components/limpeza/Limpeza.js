@@ -600,6 +600,11 @@ const Limpeza = ({ setIsAuthenticated }) => {
             <p className={`text-lg ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
               Nenhuma escala criada para {meses[mesSelecionado - 1]} de {anoSelecionado}
             </p>
+            {isMesAtual && (
+              <p className={`text-sm mt-2 ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                A escala será criada apenas para os dias restantes do mês (a partir de hoje, dia {hojeDia})
+              </p>
+            )}
             <button
               onClick={handleCriarEscala}
               className="mt-4 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
