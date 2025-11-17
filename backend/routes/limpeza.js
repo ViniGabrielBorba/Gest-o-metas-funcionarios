@@ -9,64 +9,64 @@ const router = express.Router();
 // Todos os endpoints precisam de autenticação
 router.use(auth);
 
-// Listar todas as limpezas do gerente
+// Listar escalas do gerente (por mês/ano)
 router.get('/', async (req, res) => {
   try {
-    const { dataInicio, dataFim } = req.query;
+    const { mes, ano } = req.query;
     
-    // Construir query
     const query = { gerenteId: req.user.id };
     
-    // Filtro por data
-    if (dataInicio || dataFim) {
-      query.data = {};
-      if (dataInicio) {
-        query.data.$gte = new Date(dataInicio);
-      }
-      if (dataFim) {
-        // Adicionar 23:59:59 ao final do dia
-        const fim = new Date(dataFim);
-        fim.setHours(23, 59, 59, 999);
-        query.data.$lte = fim;
-      }
+    if (mes) {
+      query.mes = parseInt(mes);
+    }
+    if (ano) {
+      query.ano = parseInt(ano);
     }
 
     const limpezas = await Limpeza.find(query)
-      .sort({ data: -1, criadoEm: -1 });
+      .sort({ ano: -1, mes: -1 });
 
-    // Processar funcionários: popular os que são ObjectIds, manter os que são objetos
+    // Processar funcionários na escala
     const limpezasProcessadas = await Promise.all(limpezas.map(async (limpeza) => {
-      const funcionariosProcessados = await Promise.all(limpeza.funcionarios.map(async (func) => {
+      const escalaProcessada = await Promise.all(limpeza.escala.map(async (item) => {
+        let funcionarioProcessado = null;
+        
         // Se for ObjectId, popular
-        if (func instanceof mongoose.Types.ObjectId || mongoose.Types.ObjectId.isValid(func)) {
-          const funcionario = await Funcionario.findById(func).select('nome sobrenome');
+        if (item.funcionario instanceof mongoose.Types.ObjectId || mongoose.Types.ObjectId.isValid(item.funcionario)) {
+          const funcionario = await Funcionario.findById(item.funcionario).select('nome sobrenome');
           if (funcionario) {
-            return {
+            funcionarioProcessado = {
               _id: funcionario._id,
               nome: funcionario.nome,
               sobrenome: funcionario.sobrenome,
               tipo: 'cadastrado'
             };
           }
-        }
-        // Se já for objeto (adicionado manualmente), retornar como está
-        if (typeof func === 'object' && func.nome) {
-          return {
-            ...func,
+        } else if (typeof item.funcionario === 'object' && item.funcionario.nome) {
+          // Se já for objeto (adicionado manualmente)
+          funcionarioProcessado = {
+            ...item.funcionario,
             tipo: 'manual'
           };
         }
-        return func;
+
+        return {
+          _id: item._id,
+          data: item.data,
+          funcionario: funcionarioProcessado || item.funcionario,
+          tarefas: item.tarefas,
+          assinatura: item.assinatura
+        };
       }));
-      
+
       const limpezaObj = limpeza.toObject();
-      limpezaObj.funcionarios = funcionariosProcessados;
+      limpezaObj.escala = escalaProcessada;
       return limpezaObj;
     }));
 
     res.json(limpezasProcessadas);
   } catch (error) {
-    logger.error('Erro ao listar limpezas', {
+    logger.error('Erro ao listar escalas', {
       error: error.message,
       userId: req.user.id
     });
@@ -74,240 +74,279 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Obter uma limpeza específica
-router.get('/:id', async (req, res) => {
+// Obter escala específica por mês/ano
+router.get('/mes/:mes/ano/:ano', async (req, res) => {
   try {
-    const limpeza = await Limpeza.findOne({
-      _id: req.params.id,
-      gerenteId: req.user.id
+    const mes = parseInt(req.params.mes);
+    const ano = parseInt(req.params.ano);
+
+    let limpeza = await Limpeza.findOne({
+      gerenteId: req.user.id,
+      mes: mes,
+      ano: ano
     });
 
     if (!limpeza) {
-      return res.status(404).json({ message: 'Limpeza não encontrada' });
+      return res.status(404).json({ message: 'Escala não encontrada' });
     }
 
     // Processar funcionários
-    const funcionariosProcessados = await Promise.all(limpeza.funcionarios.map(async (func) => {
-      if (func instanceof mongoose.Types.ObjectId || mongoose.Types.ObjectId.isValid(func)) {
-        const funcionario = await Funcionario.findById(func).select('nome sobrenome');
+    const escalaProcessada = await Promise.all(limpeza.escala.map(async (item) => {
+      let funcionarioProcessado = null;
+      
+      if (item.funcionario instanceof mongoose.Types.ObjectId || mongoose.Types.ObjectId.isValid(item.funcionario)) {
+        const funcionario = await Funcionario.findById(item.funcionario).select('nome sobrenome');
         if (funcionario) {
-          return {
+          funcionarioProcessado = {
             _id: funcionario._id,
             nome: funcionario.nome,
             sobrenome: funcionario.sobrenome,
             tipo: 'cadastrado'
           };
         }
-      }
-      if (typeof func === 'object' && func.nome) {
-        return {
-          ...func,
+      } else if (typeof item.funcionario === 'object' && item.funcionario.nome) {
+        funcionarioProcessado = {
+          ...item.funcionario,
           tipo: 'manual'
         };
       }
-      return func;
+
+      return {
+        _id: item._id,
+        data: item.data,
+        funcionario: funcionarioProcessado || item.funcionario,
+        tarefas: item.tarefas,
+        assinatura: item.assinatura
+      };
     }));
 
     const limpezaObj = limpeza.toObject();
-    limpezaObj.funcionarios = funcionariosProcessados;
+    limpezaObj.escala = escalaProcessada;
     res.json(limpezaObj);
   } catch (error) {
-    logger.error('Erro ao buscar limpeza', {
+    logger.error('Erro ao buscar escala', {
       error: error.message,
-      limpezaId: req.params.id,
+      mes: req.params.mes,
+      ano: req.params.ano,
       userId: req.user.id
     });
     res.status(500).json({ message: error.message });
   }
 });
 
-// Criar nova limpeza
+// Criar ou atualizar escala mensal
 router.post('/', async (req, res) => {
   try {
-    const { data, funcionarios, observacoes } = req.body;
+    const { mes, ano, escala, observacoes } = req.body;
 
-    // Validações
-    if (!data) {
-      return res.status(400).json({ message: 'Data é obrigatória' });
+    if (!mes || !ano) {
+      return res.status(400).json({ message: 'Mês e ano são obrigatórios' });
     }
 
-    if (!funcionarios || !Array.isArray(funcionarios) || funcionarios.length === 0) {
-      return res.status(400).json({ message: 'É necessário adicionar pelo menos um funcionário' });
+    if (!escala || !Array.isArray(escala) || escala.length === 0) {
+      return res.status(400).json({ message: 'É necessário adicionar pelo menos um dia na escala' });
     }
 
-    // Processar funcionários: separar IDs de objetos
-    const funcionariosIds = funcionarios.filter(f => typeof f === 'string' || mongoose.Types.ObjectId.isValid(f));
-    const funcionariosManuais = funcionarios.filter(f => typeof f === 'object' && f.nome);
-
-    // Validar funcionários cadastrados
-    if (funcionariosIds.length > 0) {
-      const funcionariosValidos = await Funcionario.find({
-        _id: { $in: funcionariosIds },
-        gerenteId: req.user.id
-      });
-
-      if (funcionariosValidos.length !== funcionariosIds.length) {
-        return res.status(400).json({ message: 'Um ou mais funcionários cadastrados não foram encontrados' });
-      }
-    }
-
-    // Validar funcionários manuais (devem ter nome)
-    for (const func of funcionariosManuais) {
-      if (!func.nome || !func.nome.trim()) {
-        return res.status(400).json({ message: 'Funcionários adicionados manualmente devem ter um nome' });
-      }
-    }
-
-    // Combinar funcionários: IDs e objetos
-    const funcionariosProcessados = [...funcionariosIds, ...funcionariosManuais];
-
-    const limpeza = await Limpeza.create({
-      gerenteId: req.user.id,
-      data: new Date(data),
-      funcionarios: funcionariosProcessados,
-      observacoes: observacoes || ''
-    });
-
-    // Processar funcionários para retornar
-    const funcionariosRetorno = await Promise.all(limpeza.funcionarios.map(async (func) => {
-      if (func instanceof mongoose.Types.ObjectId || mongoose.Types.ObjectId.isValid(func)) {
-        const funcionario = await Funcionario.findById(func).select('nome sobrenome');
-        if (funcionario) {
-          return {
-            _id: funcionario._id,
-            nome: funcionario.nome,
-            sobrenome: funcionario.sobrenome,
-            tipo: 'cadastrado'
-          };
-        }
-      }
-      if (typeof func === 'object' && func.nome) {
-        return {
-          ...func,
-          tipo: 'manual'
-        };
-      }
-      return func;
-    }));
-
-    const limpezaObj = limpeza.toObject();
-    limpezaObj.funcionarios = funcionariosRetorno;
-
-    logger.audit('Limpeza criada', req.user.id, {
-      limpezaId: limpeza._id,
-      data: limpeza.data,
-      funcionarios: funcionariosProcessados.length
-    });
-
-    res.status(201).json(limpezaObj);
-  } catch (error) {
-    logger.error('Erro ao criar limpeza', {
-      error: error.message,
-      userId: req.user.id
-    });
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Atualizar limpeza
-router.put('/:id', async (req, res) => {
-  try {
-    const { data, funcionarios, observacoes } = req.body;
-
-    const limpeza = await Limpeza.findOne({
-      _id: req.params.id,
-      gerenteId: req.user.id
-    });
-
-    if (!limpeza) {
-      return res.status(404).json({ message: 'Limpeza não encontrada' });
-    }
-
-    // Validações
-    if (data) {
-      limpeza.data = new Date(data);
-    }
-
-    if (funcionarios !== undefined) {
-      if (!Array.isArray(funcionarios) || funcionarios.length === 0) {
-        return res.status(400).json({ message: 'É necessário adicionar pelo menos um funcionário' });
+    // Processar e validar escala
+    const escalaProcessada = [];
+    for (const item of escala) {
+      if (!item.data || !item.funcionario) {
+        return res.status(400).json({ message: 'Cada item da escala deve ter data e funcionário' });
       }
 
-      // Processar funcionários: separar IDs de objetos
-      const funcionariosIds = funcionarios.filter(f => typeof f === 'string' || mongoose.Types.ObjectId.isValid(f));
-      const funcionariosManuais = funcionarios.filter(f => typeof f === 'object' && f.nome);
+      let funcionarioProcessado = null;
 
-      // Validar funcionários cadastrados
-      if (funcionariosIds.length > 0) {
-        const funcionariosValidos = await Funcionario.find({
-          _id: { $in: funcionariosIds },
+      // Se for ID de funcionário cadastrado, validar
+      if (typeof item.funcionario === 'string' && mongoose.Types.ObjectId.isValid(item.funcionario)) {
+        const funcionario = await Funcionario.findOne({
+          _id: item.funcionario,
           gerenteId: req.user.id
         });
-
-        if (funcionariosValidos.length !== funcionariosIds.length) {
-          return res.status(400).json({ message: 'Um ou mais funcionários cadastrados não foram encontrados' });
+        if (!funcionario) {
+          return res.status(400).json({ message: `Funcionário ${item.funcionario} não encontrado` });
         }
+        funcionarioProcessado = item.funcionario;
+      } else if (typeof item.funcionario === 'object' && item.funcionario.nome) {
+        // Funcionário manual
+        if (!item.funcionario.nome.trim()) {
+          return res.status(400).json({ message: 'Nome do funcionário não pode estar vazio' });
+        }
+        funcionarioProcessado = { nome: item.funcionario.nome.trim() };
+      } else {
+        return res.status(400).json({ message: 'Funcionário inválido' });
       }
 
-      // Validar funcionários manuais
-      for (const func of funcionariosManuais) {
-        if (!func.nome || !func.nome.trim()) {
-          return res.status(400).json({ message: 'Funcionários adicionados manualmente devem ter um nome' });
-        }
-      }
-
-      // Combinar funcionários
-      limpeza.funcionarios = [...funcionariosIds, ...funcionariosManuais];
+      escalaProcessada.push({
+        data: new Date(item.data),
+        funcionario: funcionarioProcessado,
+        tarefas: {
+          mesa: item.tarefas?.mesa || false,
+          panos: item.tarefas?.panos || false,
+          microondas: item.tarefas?.microondas || false,
+          geladeira: item.tarefas?.geladeira || false
+        },
+        assinatura: item.assinatura || ''
+      });
     }
 
-    if (observacoes !== undefined) {
+    // Buscar ou criar escala
+    let limpeza = await Limpeza.findOne({
+      gerenteId: req.user.id,
+      mes: parseInt(mes),
+      ano: parseInt(ano)
+    });
+
+    if (limpeza) {
+      // Atualizar escala existente
+      limpeza.escala = escalaProcessada;
       limpeza.observacoes = observacoes || '';
+    } else {
+      // Criar nova escala
+      limpeza = await Limpeza.create({
+        gerenteId: req.user.id,
+        mes: parseInt(mes),
+        ano: parseInt(ano),
+        escala: escalaProcessada,
+        observacoes: observacoes || ''
+      });
     }
 
     await limpeza.save();
 
-    // Processar funcionários para retornar
-    const funcionariosProcessados = await Promise.all(limpeza.funcionarios.map(async (func) => {
-      if (func instanceof mongoose.Types.ObjectId || mongoose.Types.ObjectId.isValid(func)) {
-        const funcionario = await Funcionario.findById(func).select('nome sobrenome');
+    // Processar para retornar
+    const escalaRetorno = await Promise.all(limpeza.escala.map(async (item) => {
+      let funcionarioProcessado = null;
+      
+      if (item.funcionario instanceof mongoose.Types.ObjectId || mongoose.Types.ObjectId.isValid(item.funcionario)) {
+        const funcionario = await Funcionario.findById(item.funcionario).select('nome sobrenome');
         if (funcionario) {
-          return {
+          funcionarioProcessado = {
             _id: funcionario._id,
             nome: funcionario.nome,
             sobrenome: funcionario.sobrenome,
             tipo: 'cadastrado'
           };
         }
-      }
-      if (typeof func === 'object' && func.nome) {
-        return {
-          ...func,
+      } else if (typeof item.funcionario === 'object' && item.funcionario.nome) {
+        funcionarioProcessado = {
+          ...item.funcionario,
           tipo: 'manual'
         };
       }
-      return func;
+
+      return {
+        _id: item._id,
+        data: item.data,
+        funcionario: funcionarioProcessado || item.funcionario,
+        tarefas: item.tarefas,
+        assinatura: item.assinatura
+      };
     }));
 
     const limpezaObj = limpeza.toObject();
-    limpezaObj.funcionarios = funcionariosProcessados;
+    limpezaObj.escala = escalaRetorno;
 
-    logger.audit('Limpeza atualizada', req.user.id, {
+    logger.audit('Escala de limpeza criada/atualizada', req.user.id, {
       limpezaId: limpeza._id,
-      data: limpeza.data
+      mes: limpeza.mes,
+      ano: limpeza.ano,
+      dias: escalaProcessada.length
     });
 
-    res.json(limpezaObj);
+    res.status(201).json(limpezaObj);
   } catch (error) {
-    logger.error('Erro ao atualizar limpeza', {
+    logger.error('Erro ao criar/atualizar escala', {
       error: error.message,
-      limpezaId: req.params.id,
       userId: req.user.id
     });
     res.status(500).json({ message: error.message });
   }
 });
 
-// Excluir limpeza
+// Atualizar tarefas de um dia específico
+router.put('/:id/dia/:diaId', async (req, res) => {
+  try {
+    const { tarefas, assinatura } = req.body;
+
+    const limpeza = await Limpeza.findOne({
+      _id: req.params.id,
+      gerenteId: req.user.id
+    });
+
+    if (!limpeza) {
+      return res.status(404).json({ message: 'Escala não encontrada' });
+    }
+
+    const diaIndex = limpeza.escala.findIndex(
+      item => item._id.toString() === req.params.diaId
+    );
+
+    if (diaIndex === -1) {
+      return res.status(404).json({ message: 'Dia não encontrado na escala' });
+    }
+
+    if (tarefas !== undefined) {
+      limpeza.escala[diaIndex].tarefas = {
+        mesa: tarefas.mesa || false,
+        panos: tarefas.panos || false,
+        microondas: tarefas.microondas || false,
+        geladeira: tarefas.geladeira || false
+      };
+    }
+
+    if (assinatura !== undefined) {
+      limpeza.escala[diaIndex].assinatura = assinatura || '';
+    }
+
+    await limpeza.save();
+
+    // Processar para retornar
+    const item = limpeza.escala[diaIndex];
+    let funcionarioProcessado = null;
+    
+    if (item.funcionario instanceof mongoose.Types.ObjectId || mongoose.Types.ObjectId.isValid(item.funcionario)) {
+      const funcionario = await Funcionario.findById(item.funcionario).select('nome sobrenome');
+      if (funcionario) {
+        funcionarioProcessado = {
+          _id: funcionario._id,
+          nome: funcionario.nome,
+          sobrenome: funcionario.sobrenome,
+          tipo: 'cadastrado'
+        };
+      }
+    } else if (typeof item.funcionario === 'object' && item.funcionario.nome) {
+      funcionarioProcessado = {
+        ...item.funcionario,
+        tipo: 'manual'
+      };
+    }
+
+    const diaRetorno = {
+      _id: item._id,
+      data: item.data,
+      funcionario: funcionarioProcessado || item.funcionario,
+      tarefas: item.tarefas,
+      assinatura: item.assinatura
+    };
+
+    logger.audit('Tarefas de limpeza atualizadas', req.user.id, {
+      limpezaId: limpeza._id,
+      diaId: req.params.diaId
+    });
+
+    res.json(diaRetorno);
+  } catch (error) {
+    logger.error('Erro ao atualizar tarefas', {
+      error: error.message,
+      limpezaId: req.params.id,
+      diaId: req.params.diaId,
+      userId: req.user.id
+    });
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Excluir escala
 router.delete('/:id', async (req, res) => {
   try {
     const limpeza = await Limpeza.findOne({
@@ -316,19 +355,20 @@ router.delete('/:id', async (req, res) => {
     });
 
     if (!limpeza) {
-      return res.status(404).json({ message: 'Limpeza não encontrada' });
+      return res.status(404).json({ message: 'Escala não encontrada' });
     }
 
     await limpeza.deleteOne();
 
-    logger.audit('Limpeza excluída', req.user.id, {
+    logger.audit('Escala de limpeza excluída', req.user.id, {
       limpezaId: req.params.id,
-      data: limpeza.data
+      mes: limpeza.mes,
+      ano: limpeza.ano
     });
 
-    res.json({ message: 'Limpeza excluída com sucesso' });
+    res.json({ message: 'Escala excluída com sucesso' });
   } catch (error) {
-    logger.error('Erro ao excluir limpeza', {
+    logger.error('Erro ao excluir escala', {
       error: error.message,
       limpezaId: req.params.id,
       userId: req.user.id
@@ -338,4 +378,3 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
-

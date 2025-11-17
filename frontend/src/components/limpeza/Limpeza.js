@@ -10,57 +10,43 @@ import {
   FaPrint,
   FaBroom,
   FaCalendar,
-  FaUsers,
-  FaSearch,
-  FaFilter
+  FaCheck,
+  FaTimes,
+  FaSave
 } from 'react-icons/fa';
 
 const Limpeza = ({ setIsAuthenticated }) => {
   const toast = useToast();
   const { darkMode } = useDarkMode();
-  const [limpezas, setLimpezas] = useState([]);
+  const [escala, setEscala] = useState(null);
   const [funcionarios, setFuncionarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [editingLimpeza, setEditingLimpeza] = useState(null);
-  const [filtroDataInicio, setFiltroDataInicio] = useState('');
-  const [filtroDataFim, setFiltroDataFim] = useState('');
-  const [busca, setBusca] = useState('');
-  const [formData, setFormData] = useState({
-    data: new Date().toISOString().split('T')[0],
-    funcionarios: [],
-    observacoes: ''
-  });
+  const [mesSelecionado, setMesSelecionado] = useState(new Date().getMonth() + 1);
+  const [anoSelecionado, setAnoSelecionado] = useState(new Date().getFullYear());
+  const [editandoDia, setEditandoDia] = useState(null);
+  const [novaEscala, setNovaEscala] = useState([]);
   const [funcionariosManuais, setFuncionariosManuais] = useState([]);
   const [novoFuncionarioManual, setNovoFuncionarioManual] = useState('');
 
   useEffect(() => {
-    fetchLimpezas();
     fetchFuncionarios();
+    fetchEscala();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [mesSelecionado, anoSelecionado]);
 
-  const fetchLimpezas = async () => {
+  const fetchEscala = async () => {
     try {
-      let url = '/limpeza';
-      const params = [];
-      
-      if (filtroDataInicio) {
-        params.push(`dataInicio=${filtroDataInicio}`);
-      }
-      if (filtroDataFim) {
-        params.push(`dataFim=${filtroDataFim}`);
-      }
-      
-      if (params.length > 0) {
-        url += `?${params.join('&')}`;
-      }
-      
-      const response = await api.get(url);
-      setLimpezas(response.data || []);
+      setLoading(true);
+      const response = await api.get(`/limpeza/mes/${mesSelecionado}/ano/${anoSelecionado}`);
+      setEscala(response.data);
     } catch (error) {
-      console.error('Erro ao buscar limpezas:', error);
-      toast.error('Erro ao carregar limpezas');
+      if (error.response?.status === 404) {
+        setEscala(null);
+      } else {
+        console.error('Erro ao buscar escala:', error);
+        toast.error('Erro ao carregar escala');
+      }
     } finally {
       setLoading(false);
     }
@@ -80,58 +66,128 @@ const Limpeza = ({ setIsAuthenticated }) => {
       setFuncionarios(funcionariosArray);
     } catch (error) {
       console.error('Erro ao buscar funcionários:', error);
-      toast.error('Erro ao carregar funcionários');
     }
   };
 
-  useEffect(() => {
-    if (filtroDataInicio || filtroDataFim) {
-      fetchLimpezas();
+  const getNomeCompleto = (funcionario) => {
+    if (funcionario.tipo === 'manual' || (!funcionario._id && funcionario.nome)) {
+      return funcionario.nome || '';
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtroDataInicio, filtroDataFim]);
+    if (funcionario.sobrenome && funcionario.sobrenome.trim() !== '') {
+      return `${funcionario.nome} ${funcionario.sobrenome}`;
+    }
+    return funcionario.nome || '';
+  };
 
-  const handleOpenModal = (limpeza = null) => {
-    if (limpeza) {
-      setEditingLimpeza(limpeza);
-      const dataFormatada = new Date(limpeza.data).toISOString().split('T')[0];
-      
-      // Separar funcionários cadastrados dos manuais
-      const funcionariosIds = [];
-      const funcionariosManuaisList = [];
-      
-      limpeza.funcionarios.forEach(f => {
-        if (f.tipo === 'cadastrado' && f._id) {
-          funcionariosIds.push(f._id);
-        } else if (f.tipo === 'manual' || (!f._id && f.nome)) {
-          funcionariosManuaisList.push({ nome: f.nome || getNomeCompleto(f) });
-        }
-      });
-      
-      setFormData({
-        data: dataFormatada,
-        funcionarios: funcionariosIds,
-        observacoes: limpeza.observacoes || ''
-      });
-      setFuncionariosManuais(funcionariosManuaisList);
-    } else {
-      setEditingLimpeza(null);
-      setFormData({
-        data: new Date().toISOString().split('T')[0],
-        funcionarios: [],
-        observacoes: ''
-      });
-      setFuncionariosManuais([]);
+  const gerarDiasDoMes = () => {
+    const diasNoMes = new Date(anoSelecionado, mesSelecionado, 0).getDate();
+    const dias = [];
+    for (let i = 1; i <= diasNoMes; i++) {
+      const data = new Date(anoSelecionado, mesSelecionado - 1, i);
+      dias.push(data);
     }
-    setNovoFuncionarioManual('');
+    return dias;
+  };
+
+  const handleCriarEscala = () => {
+    const dias = gerarDiasDoMes();
+    const escalaInicial = dias.map(data => ({
+      data: data.toISOString().split('T')[0],
+      funcionario: null,
+      tarefas: {
+        mesa: false,
+        panos: false,
+        microondas: false,
+        geladeira: false
+      },
+      assinatura: ''
+    }));
+    setNovaEscala(escalaInicial);
+    setFuncionariosManuais([]);
     setShowModal(true);
   };
 
-  const handleCloseModal = () => {
-    setShowModal(false);
-    setEditingLimpeza(null);
-    setFuncionariosManuais([]);
-    setNovoFuncionarioManual('');
+  const handleEditarEscala = () => {
+    if (!escala) return;
+    
+    // Separar funcionários manuais existentes
+    const funcionariosManuaisExistentes = [];
+    escala.escala.forEach(item => {
+      if (item.funcionario && item.funcionario.tipo === 'manual' && !funcionariosManuaisExistentes.find(f => f.nome === item.funcionario.nome)) {
+        funcionariosManuaisExistentes.push(item.funcionario);
+      }
+    });
+    
+    setNovaEscala(escala.escala.map(item => ({
+      _id: item._id,
+      data: new Date(item.data).toISOString().split('T')[0],
+      funcionario: item.funcionario,
+      tarefas: item.tarefas,
+      assinatura: item.assinatura
+    })));
+    setFuncionariosManuais(funcionariosManuaisExistentes);
+    setShowModal(true);
+  };
+
+  const handleSalvarEscala = async () => {
+    try {
+      // Validar que todos os dias têm funcionário
+      const diasSemFuncionario = novaEscala.filter(dia => !dia.funcionario);
+      if (diasSemFuncionario.length > 0) {
+        toast.error('Todos os dias devem ter um funcionário atribuído');
+        return;
+      }
+
+      await api.post('/limpeza', {
+        mes: mesSelecionado,
+        ano: anoSelecionado,
+        escala: novaEscala
+      });
+
+      toast.success('Escala salva com sucesso!');
+      setShowModal(false);
+      fetchEscala();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erro ao salvar escala');
+    }
+  };
+
+  const handleAtualizarTarefa = async (diaId, tarefa, valor) => {
+    try {
+      if (!escala || !escala._id) return;
+
+      const dia = escala.escala.find(d => d._id === diaId);
+      if (!dia) return;
+
+      const novasTarefas = {
+        ...dia.tarefas,
+        [tarefa]: valor
+      };
+
+      await api.put(`/limpeza/${escala._id}/dia/${diaId}`, {
+        tarefas: novasTarefas
+      });
+
+      await fetchEscala();
+      toast.success('Tarefa atualizada!');
+    } catch (error) {
+      toast.error('Erro ao atualizar tarefa');
+    }
+  };
+
+  const handleAtualizarAssinatura = async (diaId, assinatura) => {
+    try {
+      if (!escala || !escala._id) return;
+
+      await api.put(`/limpeza/${escala._id}/dia/${diaId}`, {
+        assinatura: assinatura
+      });
+
+      await fetchEscala();
+      toast.success('Assinatura salva!');
+    } catch (error) {
+      toast.error('Erro ao salvar assinatura');
+    }
   };
 
   const handleAddFuncionarioManual = () => {
@@ -141,128 +197,60 @@ const Limpeza = ({ setIsAuthenticated }) => {
       return;
     }
     
-    // Verificar se já existe
     if (funcionariosManuais.some(f => f.nome.toLowerCase() === nome.toLowerCase())) {
       toast.error('Este funcionário já foi adicionado');
       return;
     }
 
-    setFuncionariosManuais([...funcionariosManuais, { nome }]);
+    setFuncionariosManuais([...funcionariosManuais, { nome, tipo: 'manual' }]);
     setNovoFuncionarioManual('');
   };
 
-  const handleRemoveFuncionarioManual = (index) => {
-    setFuncionariosManuais(funcionariosManuais.filter((_, i) => i !== index));
-  };
+  const handlePrint = () => {
+    if (!escala) return;
 
-  const handleEditFuncionarioManual = (index, novoNome) => {
-    const nome = novoNome.trim();
-    if (!nome) {
-      toast.error('O nome não pode estar vazio');
-      return;
-    }
-    
-    const atualizados = [...funcionariosManuais];
-    atualizados[index] = { nome };
-    setFuncionariosManuais(atualizados);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (formData.funcionarios.length === 0 && funcionariosManuais.length === 0) {
-      toast.error('Adicione pelo menos um funcionário');
-      return;
-    }
-
-    // Combinar funcionários cadastrados (IDs) e manuais (objetos)
-    const funcionariosCombinados = [
-      ...formData.funcionarios,
-      ...funcionariosManuais.map(f => ({ nome: f.nome.trim() }))
-    ];
-
-    const dadosEnvio = {
-      ...formData,
-      funcionarios: funcionariosCombinados
-    };
-
-    try {
-      if (editingLimpeza) {
-        await api.put(`/limpeza/${editingLimpeza._id}`, dadosEnvio);
-        toast.success('Limpeza atualizada com sucesso!');
-      } else {
-        await api.post('/limpeza', dadosEnvio);
-        toast.success('Limpeza criada com sucesso!');
-      }
-      handleCloseModal();
-      fetchLimpezas();
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Erro ao salvar limpeza');
-    }
-  };
-
-  const handleDelete = async (limpeza) => {
-    if (!window.confirm('Tem certeza que deseja excluir esta limpeza?')) {
-      return;
-    }
-
-    try {
-      await api.delete(`/limpeza/${limpeza._id}`);
-      toast.success('Limpeza excluída com sucesso!');
-      fetchLimpezas();
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Erro ao excluir limpeza');
-    }
-  };
-
-  const handleToggleFuncionario = (funcionarioId) => {
-    setFormData(prev => {
-      const funcionarios = [...prev.funcionarios];
-      const index = funcionarios.indexOf(funcionarioId);
-      
-      if (index > -1) {
-        funcionarios.splice(index, 1);
-      } else {
-        funcionarios.push(funcionarioId);
-      }
-      
-      return { ...prev, funcionarios };
-    });
-  };
-
-  const getNomeCompleto = (funcionario) => {
-    // Se for funcionário manual (só tem nome)
-    if (funcionario.tipo === 'manual' || (!funcionario._id && funcionario.nome)) {
-      return funcionario.nome || '';
-    }
-    // Se for funcionário cadastrado
-    if (funcionario.sobrenome && funcionario.sobrenome.trim() !== '') {
-      return `${funcionario.nome} ${funcionario.sobrenome}`;
-    }
-    return funcionario.nome || '';
-  };
-
-  const handlePrint = (limpeza) => {
     const printWindow = window.open('', '_blank');
-    const dataFormatada = new Date(limpeza.data).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-
-    const funcionariosList = limpeza.funcionarios.map((func, index) => {
-      const nomeCompleto = getNomeCompleto(func);
-      return `<tr>
-        <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${index + 1}</td>
-        <td style="border: 1px solid #ddd; padding: 8px;">${nomeCompleto}</td>
-      </tr>`;
+    const mesNome = new Date(anoSelecionado, mesSelecionado - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    
+    const linhas = escala.escala.map((item, index) => {
+      const dataFormatada = new Date(item.data).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit'
+      });
+      const nomeFuncionario = getNomeCompleto(item.funcionario);
+      
+      return `
+        <tr>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: ${index % 2 === 0 ? '#fff9e6' : '#fff'};">
+            ${dataFormatada}
+          </td>
+          <td style="border: 1px solid #ddd; padding: 8px; background-color: ${index % 2 === 0 ? '#e6f3ff' : '#fff'};">
+            ${nomeFuncionario}
+          </td>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">
+            ${item.tarefas.mesa ? '✓' : ''}
+          </td>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">
+            ${item.tarefas.panos ? '✓' : ''}
+          </td>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">
+            ${item.tarefas.microondas ? '✓' : ''}
+          </td>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">
+            ${item.tarefas.geladeira ? '✓' : ''}
+          </td>
+          <td style="border: 1px solid #ddd; padding: 8px; min-width: 150px;">
+            ${item.assinatura || ''}
+          </td>
+        </tr>
+      `;
     }).join('');
 
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Lista de Limpeza - ${dataFormatada}</title>
+          <title>ESCALA DE LIMPEZA - ${mesNome.toUpperCase()}</title>
           <style>
             body {
               font-family: Arial, sans-serif;
@@ -271,21 +259,15 @@ const Limpeza = ({ setIsAuthenticated }) => {
             }
             .header {
               text-align: center;
-              margin-bottom: 30px;
-              border-bottom: 2px solid #169486;
-              padding-bottom: 20px;
+              margin-bottom: 20px;
+              padding: 15px;
+              background-color: #169486;
+              color: white;
             }
             .header h1 {
-              color: #169486;
               margin: 0;
               font-size: 24px;
-            }
-            .info {
-              margin-bottom: 20px;
-            }
-            .info p {
-              margin: 5px 0;
-              font-size: 14px;
+              font-weight: bold;
             }
             table {
               width: 100%;
@@ -296,21 +278,13 @@ const Limpeza = ({ setIsAuthenticated }) => {
               background-color: #169486;
               color: white;
               padding: 12px;
-              text-align: left;
+              text-align: center;
               font-weight: bold;
+              border: 1px solid #ddd;
             }
             td {
+              border: 1px solid #ddd;
               padding: 8px;
-            }
-            .observacoes {
-              margin-top: 30px;
-              padding: 15px;
-              background-color: #f5f5f5;
-              border-radius: 5px;
-            }
-            .observacoes h3 {
-              margin-top: 0;
-              color: #169486;
             }
             @media print {
               body {
@@ -324,29 +298,25 @@ const Limpeza = ({ setIsAuthenticated }) => {
         </head>
         <body>
           <div class="header">
-            <h1>🧹 Lista de Limpeza</h1>
-          </div>
-          <div class="info">
-            <p><strong>Data:</strong> ${dataFormatada}</p>
-            <p><strong>Total de Funcionários:</strong> ${limpeza.funcionarios.length}</p>
+            <h1>🧹 ESCALA DE LIMPEZA</h1>
+            <p style="margin: 5px 0; font-size: 16px;">${mesNome.toUpperCase()}</p>
           </div>
           <table>
             <thead>
               <tr>
-                <th style="width: 50px; text-align: center;">#</th>
-                <th>Funcionário</th>
+                <th>DATA</th>
+                <th>NOME</th>
+                <th>MESA</th>
+                <th>PANOS</th>
+                <th>MICROONDAS</th>
+                <th>GELADEIRA</th>
+                <th>ASSINATURA</th>
               </tr>
             </thead>
             <tbody>
-              ${funcionariosList}
+              ${linhas}
             </tbody>
           </table>
-          ${limpeza.observacoes ? `
-            <div class="observacoes">
-              <h3>Observações:</h3>
-              <p>${limpeza.observacoes}</p>
-            </div>
-          ` : ''}
         </body>
       </html>
     `);
@@ -354,14 +324,14 @@ const Limpeza = ({ setIsAuthenticated }) => {
     printWindow.print();
   };
 
-  const limpezasFiltradas = limpezas.filter(limpeza => {
-    if (!busca) return true;
-    const buscaLower = busca.toLowerCase();
-    return limpeza.funcionarios.some(func => {
-      const nomeCompleto = getNomeCompleto(func).toLowerCase();
-      return nomeCompleto.includes(buscaLower);
-    }) || (limpeza.observacoes && limpeza.observacoes.toLowerCase().includes(buscaLower));
-  });
+  const getDiaEscala = (data) => {
+    if (!escala || !escala.escala) return null;
+    const dataStr = data.toISOString().split('T')[0];
+    return escala.escala.find(item => {
+      const itemData = new Date(item.data).toISOString().split('T')[0];
+      return itemData === dataStr;
+    });
+  };
 
   if (loading) {
     return (
@@ -377,6 +347,12 @@ const Limpeza = ({ setIsAuthenticated }) => {
     );
   }
 
+  const diasDoMes = gerarDiasDoMes();
+  const meses = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+
   return (
     <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <Navbar setIsAuthenticated={setIsAuthenticated} />
@@ -386,214 +362,225 @@ const Limpeza = ({ setIsAuthenticated }) => {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <FaBroom className="text-4xl" style={{ color: '#169486' }} />
-              <h1 className="text-3xl font-bold">Limpeza</h1>
+              <h1 className="text-3xl font-bold">Escala de Limpeza</h1>
             </div>
-            <button
-              onClick={() => handleOpenModal()}
-              className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
-            >
-              <FaPlus /> Nova Limpeza
-            </button>
+            <div className="flex gap-2">
+              {escala && (
+                <button
+                  onClick={handlePrint}
+                  className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+                >
+                  <FaPrint /> Imprimir
+                </button>
+              )}
+              {escala ? (
+                <button
+                  onClick={handleEditarEscala}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <FaEdit /> Editar Escala
+                </button>
+              ) : (
+                <button
+                  onClick={handleCriarEscala}
+                  className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+                >
+                  <FaPlus /> Criar Escala
+                </button>
+              )}
+            </div>
           </div>
-          <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-            Gerencie a lista de funcionários responsáveis pela limpeza do ambiente
-          </p>
-        </div>
 
-        {/* Filtros */}
-        <div className={`mb-6 p-4 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
-          <div className="flex flex-wrap gap-4 items-end">
-            <div className="flex-1 min-w-[200px]">
+          {/* Seletor de Mês/Ano */}
+          <div className="flex gap-4 items-center">
+            <div>
               <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                <FaSearch className="inline mr-2" /> Buscar
+                Mês
               </label>
-              <input
-                type="text"
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                placeholder="Buscar por funcionário ou observação..."
-                className={`w-full px-4 py-2 rounded-lg border ${
+              <select
+                value={mesSelecionado}
+                onChange={(e) => {
+                  setMesSelecionado(parseInt(e.target.value));
+                  setEscala(null);
+                }}
+                className={`px-4 py-2 rounded-lg border ${
                   darkMode 
-                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                    ? 'bg-gray-700 border-gray-600 text-white' 
                     : 'bg-white border-gray-300 text-gray-900'
                 } focus:outline-none focus:ring-2 focus:ring-teal-500`}
-              />
+              >
+                {meses.map((mes, index) => (
+                  <option key={index + 1} value={index + 1}>{mes}</option>
+                ))}
+              </select>
             </div>
-            <div className="min-w-[150px]">
+            <div>
               <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                <FaCalendar className="inline mr-2" /> Data Início
+                Ano
               </label>
               <input
-                type="date"
-                value={filtroDataInicio}
-                onChange={(e) => setFiltroDataInicio(e.target.value)}
-                className={`w-full px-4 py-2 rounded-lg border ${
+                type="number"
+                value={anoSelecionado}
+                onChange={(e) => {
+                  setAnoSelecionado(parseInt(e.target.value));
+                  setEscala(null);
+                }}
+                className={`px-4 py-2 rounded-lg border ${
                   darkMode 
                     ? 'bg-gray-700 border-gray-600 text-white' 
                     : 'bg-white border-gray-300 text-gray-900'
                 } focus:outline-none focus:ring-2 focus:ring-teal-500`}
               />
             </div>
-            <div className="min-w-[150px]">
-              <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                <FaCalendar className="inline mr-2" /> Data Fim
-              </label>
-              <input
-                type="date"
-                value={filtroDataFim}
-                onChange={(e) => setFiltroDataFim(e.target.value)}
-                className={`w-full px-4 py-2 rounded-lg border ${
-                  darkMode 
-                    ? 'bg-gray-700 border-gray-600 text-white' 
-                    : 'bg-white border-gray-300 text-gray-900'
-                } focus:outline-none focus:ring-2 focus:ring-teal-500`}
-              />
-            </div>
-            <button
-              onClick={() => {
-                setFiltroDataInicio('');
-                setFiltroDataFim('');
-                setBusca('');
-                fetchLimpezas();
-              }}
-              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-            >
-              <FaFilter className="inline mr-2" /> Limpar
-            </button>
           </div>
         </div>
 
-        {/* Lista de Limpezas */}
-        {limpezasFiltradas.length === 0 ? (
+        {/* Tabela de Escala */}
+        {escala ? (
+          <div className={`rounded-lg shadow-md overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className={darkMode ? 'bg-gray-700' : 'bg-teal-600'}>
+                    <th className="px-4 py-3 text-left text-white font-semibold">DATA</th>
+                    <th className="px-4 py-3 text-left text-white font-semibold">NOME</th>
+                    <th className="px-4 py-3 text-center text-white font-semibold">MESA</th>
+                    <th className="px-4 py-3 text-center text-white font-semibold">PANOS</th>
+                    <th className="px-4 py-3 text-center text-white font-semibold">MICROONDAS</th>
+                    <th className="px-4 py-3 text-center text-white font-semibold">GELADEIRA</th>
+                    <th className="px-4 py-3 text-left text-white font-semibold">ASSINATURA</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {escala.escala.map((item, index) => {
+                    const dataFormatada = new Date(item.data).toLocaleDateString('pt-BR', {
+                      day: '2-digit',
+                      month: '2-digit'
+                    });
+                    const nomeFuncionario = getNomeCompleto(item.funcionario);
+                    const isPar = index % 2 === 0;
+
+                    return (
+                      <tr
+                        key={item._id}
+                        className={darkMode 
+                          ? (isPar ? 'bg-gray-800' : 'bg-gray-750')
+                          : (isPar ? 'bg-yellow-50' : 'bg-white')
+                        }
+                      >
+                        <td className={`px-4 py-3 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                          {dataFormatada}
+                        </td>
+                        <td className={`px-4 py-3 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                          {nomeFuncionario}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => handleAtualizarTarefa(item._id, 'mesa', !item.tarefas.mesa)}
+                            className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
+                              item.tarefas.mesa
+                                ? 'bg-teal-600 border-teal-600 text-white'
+                                : darkMode
+                                  ? 'border-gray-600 hover:border-teal-500'
+                                  : 'border-gray-300 hover:border-teal-500'
+                            }`}
+                          >
+                            {item.tarefas.mesa && <FaCheck className="text-xs" />}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => handleAtualizarTarefa(item._id, 'panos', !item.tarefas.panos)}
+                            className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
+                              item.tarefas.panos
+                                ? 'bg-teal-600 border-teal-600 text-white'
+                                : darkMode
+                                  ? 'border-gray-600 hover:border-teal-500'
+                                  : 'border-gray-300 hover:border-teal-500'
+                            }`}
+                          >
+                            {item.tarefas.panos && <FaCheck className="text-xs" />}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => handleAtualizarTarefa(item._id, 'microondas', !item.tarefas.microondas)}
+                            className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
+                              item.tarefas.microondas
+                                ? 'bg-teal-600 border-teal-600 text-white'
+                                : darkMode
+                                  ? 'border-gray-600 hover:border-teal-500'
+                                  : 'border-gray-300 hover:border-teal-500'
+                            }`}
+                          >
+                            {item.tarefas.microondas && <FaCheck className="text-xs" />}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => handleAtualizarTarefa(item._id, 'geladeira', !item.tarefas.geladeira)}
+                            className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
+                              item.tarefas.geladeira
+                                ? 'bg-teal-600 border-teal-600 text-white'
+                                : darkMode
+                                  ? 'border-gray-600 hover:border-teal-500'
+                                  : 'border-gray-300 hover:border-teal-500'
+                            }`}
+                          >
+                            {item.tarefas.geladeira && <FaCheck className="text-xs" />}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="text"
+                            value={item.assinatura || ''}
+                            onChange={(e) => handleAtualizarAssinatura(item._id, e.target.value)}
+                            placeholder="Assinatura"
+                            className={`w-full px-2 py-1 rounded border text-sm ${
+                              darkMode 
+                                ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                                : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                            } focus:outline-none focus:ring-2 focus:ring-teal-500`}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
           <div className={`text-center py-12 ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md`}>
             <FaBroom className="text-6xl mx-auto mb-4" style={{ color: '#169486', opacity: 0.5 }} />
             <p className={`text-lg ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Nenhuma limpeza cadastrada ainda
+              Nenhuma escala criada para {meses[mesSelecionado - 1]} de {anoSelecionado}
             </p>
             <button
-              onClick={() => handleOpenModal()}
+              onClick={handleCriarEscala}
               className="mt-4 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
             >
-              Criar primeira limpeza
+              Criar Escala
             </button>
-          </div>
-        ) : (
-          <div className="grid gap-4">
-            {limpezasFiltradas.map((limpeza) => {
-              const dataFormatada = new Date(limpeza.data).toLocaleDateString('pt-BR', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
-              });
-
-              return (
-                <div
-                  key={limpeza._id}
-                  className={`p-6 rounded-lg shadow-md ${darkMode ? 'bg-gray-800' : 'bg-white'} transition-all hover:shadow-lg`}
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <FaCalendar className="text-teal-600" />
-                        <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                          {dataFormatada}
-                        </h3>
-                        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                          darkMode ? 'bg-teal-900 text-teal-200' : 'bg-teal-100 text-teal-800'
-                        }`}>
-                          <FaUsers className="inline mr-1" />
-                          {limpeza.funcionarios.length} funcionário(s)
-                        </span>
-                      </div>
-                      {limpeza.observacoes && (
-                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-2`}>
-                          {limpeza.observacoes}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handlePrint(limpeza)}
-                        className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
-                        title="Imprimir"
-                      >
-                        <FaPrint />
-                      </button>
-                      <button
-                        onClick={() => handleOpenModal(limpeza)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Editar"
-                      >
-                        <FaEdit />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(limpeza)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Excluir"
-                      >
-                        <FaTrash />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <h4 className={`font-semibold mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      Funcionários:
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {limpeza.funcionarios.map((func, index) => (
-                        <span
-                          key={func._id || index}
-                          className={`px-3 py-1 rounded-full text-sm ${
-                            darkMode 
-                              ? 'bg-gray-700 text-gray-300' 
-                              : 'bg-gray-100 text-gray-700'
-                          }`}
-                        >
-                          {getNomeCompleto(func)}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         )}
 
-        {/* Modal de Criar/Editar */}
+        {/* Modal de Criar/Editar Escala */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className={`w-full max-w-2xl rounded-lg shadow-xl ${darkMode ? 'bg-gray-800' : 'bg-white'} max-h-[90vh] overflow-y-auto`}>
+            <div className={`w-full max-w-5xl rounded-lg shadow-xl ${darkMode ? 'bg-gray-800' : 'bg-white'} max-h-[90vh] overflow-y-auto`}>
               <div className={`p-6 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                 <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                  {editingLimpeza ? 'Editar Limpeza' : 'Nova Limpeza'}
+                  {escala ? 'Editar Escala' : 'Criar Escala'} - {meses[mesSelecionado - 1]} de {anoSelecionado}
                 </h2>
               </div>
-              <form onSubmit={handleSubmit} className="p-6">
-                <div className="mb-4">
+              <div className="p-6">
+                {/* Adicionar funcionário manual */}
+                <div className="mb-6">
                   <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Data <span className="text-red-500">*</span>
+                    Adicionar Funcionário Manualmente
                   </label>
-                  <input
-                    type="date"
-                    value={formData.data}
-                    onChange={(e) => setFormData({ ...formData, data: e.target.value })}
-                    required
-                    className={`w-full px-4 py-2 rounded-lg border ${
-                      darkMode 
-                        ? 'bg-gray-700 border-gray-600 text-white' 
-                        : 'bg-white border-gray-300 text-gray-900'
-                    } focus:outline-none focus:ring-2 focus:ring-teal-500`}
-                  />
-                </div>
-
-                <div className="mb-4">
-                  <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Funcionários <span className="text-red-500">*</span>
-                  </label>
-                  
-                  {/* Adicionar funcionário manualmente */}
-                  <div className="mb-4 flex gap-2">
+                  <div className="flex gap-2">
                     <input
                       type="text"
                       value={novoFuncionarioManual}
@@ -604,7 +591,7 @@ const Limpeza = ({ setIsAuthenticated }) => {
                           handleAddFuncionarioManual();
                         }
                       }}
-                      placeholder="Digite o nome do funcionário e pressione Enter"
+                      placeholder="Digite o nome e pressione Enter"
                       className={`flex-1 px-4 py-2 rounded-lg border ${
                         darkMode 
                           ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
@@ -619,138 +606,104 @@ const Limpeza = ({ setIsAuthenticated }) => {
                       <FaPlus /> Adicionar
                     </button>
                   </div>
-
-                  {/* Lista de funcionários selecionados */}
-                  {(formData.funcionarios.length > 0 || funcionariosManuais.length > 0) && (
-                    <div className={`mb-4 p-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                      <p className={`text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Funcionários adicionados:
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {/* Funcionários cadastrados */}
-                        {formData.funcionarios.map((funcId) => {
-                          const func = funcionarios.find(f => f._id === funcId);
-                          if (!func) return null;
-                          const nomeCompleto = getNomeCompleto(func);
-                          return (
-                            <span
-                              key={funcId}
-                              className={`px-3 py-1 rounded-full text-sm flex items-center gap-2 ${
-                                darkMode 
-                                  ? 'bg-teal-900 text-teal-200' 
-                                  : 'bg-teal-100 text-teal-800'
-                              }`}
-                            >
-                              {nomeCompleto}
-                              <button
-                                type="button"
-                                onClick={() => handleToggleFuncionario(funcId)}
-                                className="hover:text-red-500"
-                                title="Remover"
-                              >
-                                <FaTrash className="text-xs" />
-                              </button>
-                            </span>
-                          );
-                        })}
-                        {/* Funcionários manuais */}
-                        {funcionariosManuais.map((func, index) => (
-                          <span
-                            key={`manual-${index}`}
-                            className={`px-3 py-1 rounded-full text-sm flex items-center gap-2 ${
-                              darkMode 
-                                ? 'bg-blue-900 text-blue-200' 
-                                : 'bg-blue-100 text-blue-800'
-                            }`}
-                          >
-                            {func.nome}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveFuncionarioManual(index)}
-                              className="hover:text-red-500"
-                              title="Remover"
-                            >
-                              <FaTrash className="text-xs" />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
+                  {funcionariosManuais.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {funcionariosManuais.map((func, index) => (
+                        <span
+                          key={`manual-${index}`}
+                          className={`px-3 py-1 rounded-full text-sm ${
+                            darkMode 
+                              ? 'bg-blue-900 text-blue-200' 
+                              : 'bg-blue-100 text-blue-800'
+                          }`}
+                        >
+                          {func.nome}
+                        </span>
+                      ))}
                     </div>
                   )}
+                </div>
 
-                  {/* Lista de funcionários cadastrados para seleção */}
-                  {funcionarios.length > 0 && (
-                    <>
-                      <p className={`text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Funcionários cadastrados:
-                      </p>
-                      <div className={`max-h-60 overflow-y-auto border rounded-lg p-4 ${
-                        darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-300'
-                      }`}>
-                        <div className="space-y-2">
-                          {funcionarios.map((func) => {
-                            const nomeCompleto = getNomeCompleto(func);
-                            const isSelected = formData.funcionarios.includes(func._id);
-                            return (
-                              <label
-                                key={func._id}
-                                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
-                                  isSelected
-                                    ? darkMode ? 'bg-teal-900' : 'bg-teal-100'
-                                    : darkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
-                                }`}
+                {/* Tabela de edição */}
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className={darkMode ? 'bg-gray-700' : 'bg-gray-200'}>
+                        <th className="px-3 py-2 text-left text-sm font-semibold">DATA</th>
+                        <th className="px-3 py-2 text-left text-sm font-semibold">FUNCIONÁRIO</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {novaEscala.map((dia, index) => {
+                        const dataFormatada = new Date(dia.data).toLocaleDateString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit'
+                        });
+                        const todosFuncionarios = [
+                          ...funcionarios.map(f => ({ ...f, tipo: 'cadastrado' })),
+                          ...funcionariosManuais
+                        ];
+
+                        return (
+                          <tr
+                            key={index}
+                            className={darkMode 
+                              ? (index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-750')
+                              : (index % 2 === 0 ? 'bg-gray-50' : 'bg-white')
+                            }
+                          >
+                            <td className={`px-3 py-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                              {dataFormatada}
+                            </td>
+                            <td className="px-3 py-2">
+                              <select
+                                value={dia.funcionario?._id || dia.funcionario?.nome || ''}
+                                onChange={(e) => {
+                                  const valor = e.target.value;
+                                  const funcionarioSelecionado = todosFuncionarios.find(f => 
+                                    f._id === valor || f.nome === valor
+                                  );
+                                  const novaEscalaAtualizada = [...novaEscala];
+                                  novaEscalaAtualizada[index].funcionario = funcionarioSelecionado || null;
+                                  setNovaEscala(novaEscalaAtualizada);
+                                }}
+                                className={`w-full px-3 py-2 rounded border text-sm ${
+                                  darkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                                } focus:outline-none focus:ring-2 focus:ring-teal-500`}
                               >
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => handleToggleFuncionario(func._id)}
-                                  className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
-                                />
-                                <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
-                                  {nomeCompleto}
-                                </span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {formData.funcionarios.length === 0 && funcionariosManuais.length === 0 && funcionarios.length === 0 && (
-                    <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      Nenhum funcionário disponível. Adicione funcionários manualmente acima.
-                    </p>
-                  )}
-
-                  {(formData.funcionarios.length > 0 || funcionariosManuais.length > 0) && (
-                    <p className={`text-sm mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      Total: {formData.funcionarios.length + funcionariosManuais.length} funcionário(s)
-                    </p>
-                  )}
+                                <option value="">Selecione...</option>
+                                {funcionarios.map(func => {
+                                  const nomeCompleto = getNomeCompleto(func);
+                                  return (
+                                    <option key={func._id} value={func._id}>
+                                      {nomeCompleto}
+                                    </option>
+                                  );
+                                })}
+                                {funcionariosManuais.map((func, idx) => (
+                                  <option key={`manual-${idx}`} value={func.nome}>
+                                    {func.nome}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
 
-                <div className="mb-6">
-                  <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Observações
-                  </label>
-                  <textarea
-                    value={formData.observacoes}
-                    onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
-                    rows="3"
-                    placeholder="Observações adicionais (opcional)"
-                    className={`w-full px-4 py-2 rounded-lg border ${
-                      darkMode 
-                        ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-                    } focus:outline-none focus:ring-2 focus:ring-teal-500`}
-                  />
-                </div>
-
-                <div className="flex gap-3 justify-end">
+                <div className="flex gap-3 justify-end mt-6">
                   <button
                     type="button"
-                    onClick={handleCloseModal}
+                    onClick={() => {
+                      setShowModal(false);
+                      setNovaEscala([]);
+                      setFuncionariosManuais([]);
+                    }}
                     className={`px-4 py-2 rounded-lg transition-colors ${
                       darkMode
                         ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -760,13 +713,13 @@ const Limpeza = ({ setIsAuthenticated }) => {
                     Cancelar
                   </button>
                   <button
-                    type="submit"
-                    className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+                    onClick={handleSalvarEscala}
+                    className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors flex items-center gap-2"
                   >
-                    {editingLimpeza ? 'Atualizar' : 'Criar'}
+                    <FaSave /> Salvar Escala
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
           </div>
         )}
@@ -776,4 +729,3 @@ const Limpeza = ({ setIsAuthenticated }) => {
 };
 
 export default Limpeza;
-
