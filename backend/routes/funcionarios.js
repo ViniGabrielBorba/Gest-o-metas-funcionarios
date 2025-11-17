@@ -72,7 +72,7 @@ router.get('/:id', async (req, res) => {
 // Criar novo funcionário
 router.post('/', validate(funcionarioSchema), async (req, res) => {
   try {
-    const { nome, sobrenome, sexo, idade, funcao, dataAniversario, metaIndividual } = req.body;
+    const { nome, sobrenome, sexo, idade, funcao, dataAniversario, dataNascimento, cpf, email, chavePix, metaIndividual } = req.body;
 
     console.log('=== CRIANDO FUNCIONÁRIO ===');
     console.log('Dados recebidos no backend:', req.body);
@@ -94,6 +94,10 @@ router.post('/', validate(funcionarioSchema), async (req, res) => {
       idade,
       funcao,
       dataAniversario: new Date(dataAniversario),
+      dataNascimento: dataNascimento ? new Date(dataNascimento) : undefined,
+      cpf: cpf || '',
+      email: email || '',
+      chavePix: chavePix || '',
       metaIndividual,
       vendas: []
     });
@@ -120,7 +124,7 @@ router.post('/', validate(funcionarioSchema), async (req, res) => {
 // Atualizar funcionário
 router.put('/:id', validate(funcionarioSchema), async (req, res) => {
   try {
-    const { nome, sobrenome, sexo, idade, funcao, dataAniversario, metaIndividual } = req.body;
+    const { nome, sobrenome, sexo, idade, funcao, dataAniversario, dataNascimento, cpf, email, chavePix, metaIndividual } = req.body;
 
     console.log('=== ATUALIZANDO FUNCIONÁRIO ===');
     console.log('Dados recebidos no backend:', req.body);
@@ -142,6 +146,10 @@ router.put('/:id', validate(funcionarioSchema), async (req, res) => {
         idade,
         funcao,
         dataAniversario: new Date(dataAniversario),
+        dataNascimento: dataNascimento ? new Date(dataNascimento) : undefined,
+        cpf: cpf || '',
+        email: email || '',
+        chavePix: chavePix || '',
         metaIndividual
       },
       { new: true, runValidators: true }

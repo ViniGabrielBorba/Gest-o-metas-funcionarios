@@ -13,6 +13,7 @@ import {
   FaBox,
   FaCalendar,
   FaBroom,
+  FaIdCard,
   FaSignOutAlt,
   FaBars,
   FaTimes,
@@ -49,6 +50,7 @@ const Navbar = ({ setIsAuthenticated }) => {
   const menuItems = [
     { to: '/dashboard', icon: FaHome, label: 'Dashboard' },
     { to: '/funcionarios', icon: FaUsers, label: 'Funcionários' },
+    { to: '/dados-funcionarios', icon: FaIdCard, label: 'Dados Funcionários' },
     { to: '/metas', icon: FaBullseye, label: 'Metas' },
     { to: '/vendas-comerciais', icon: FaDollarSign, label: 'Vendas Comerciais' },
     { to: '/feedback', icon: FaComments, label: 'Feedback' },

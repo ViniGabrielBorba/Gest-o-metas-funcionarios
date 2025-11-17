@@ -37,6 +37,29 @@ const funcionarioSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
+  dataNascimento: {
+    type: Date,
+    required: false
+  },
+  cpf: {
+    type: String,
+    required: false,
+    trim: true,
+    default: ''
+  },
+  email: {
+    type: String,
+    required: false,
+    trim: true,
+    lowercase: true,
+    default: ''
+  },
+  chavePix: {
+    type: String,
+    required: false,
+    trim: true,
+    default: ''
+  },
   metaIndividual: {
     type: Number,
     required: true,

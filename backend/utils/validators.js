@@ -194,6 +194,19 @@ const funcionarioSchema = Joi.object({
     'date.base': 'Data de aniversário inválida',
     'any.required': 'Data de aniversário é obrigatória'
   }),
+  dataNascimento: Joi.date().allow(null, '').optional().messages({
+    'date.base': 'Data de nascimento inválida'
+  }),
+  cpf: Joi.string().max(14).allow('', null).optional().pattern(/^[\d.-]*$/).messages({
+    'string.max': 'CPF deve ter no máximo 14 caracteres',
+    'string.pattern.base': 'CPF deve conter apenas números, pontos e hífens'
+  }),
+  email: Joi.string().email().allow('', null).optional().messages({
+    'string.email': 'Email inválido'
+  }),
+  chavePix: Joi.string().max(100).allow('', null).optional().messages({
+    'string.max': 'Chave PIX deve ter no máximo 100 caracteres'
+  }),
   metaIndividual: Joi.number().min(0).required().messages({
     'number.min': 'Meta individual deve ser maior ou igual a zero',
     'number.base': 'Meta individual deve ser um número',

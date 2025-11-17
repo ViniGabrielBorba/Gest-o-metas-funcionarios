@@ -15,6 +15,7 @@ import Feedback from './components/feedback/Feedback';
 import Estoque from './components/estoque/Estoque';
 import Agenda from './components/agenda/Agenda';
 import Limpeza from './components/limpeza/Limpeza';
+import DadosFuncionarios from './components/dados-funcionarios/DadosFuncionarios';
 import { getAuthToken } from './utils/auth';
 import { requestNotificationPermission } from './utils/notifications';
 
@@ -140,6 +141,10 @@ function App() {
           <Route 
             path="/limpeza" 
             element={isAuthenticated && isGerente ? <Limpeza setIsAuthenticated={setIsAuthenticated} /> : <Navigate to={isDono ? "/dashboard-dono" : "/login"} />} 
+          />
+          <Route 
+            path="/dados-funcionarios" 
+            element={isAuthenticated && isGerente ? <DadosFuncionarios setIsAuthenticated={setIsAuthenticated} /> : <Navigate to={isDono ? "/dashboard-dono" : "/login"} />} 
           />
           
           {/* Rotas do Dono */}
