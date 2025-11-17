@@ -657,14 +657,29 @@ const Limpeza = ({ setIsAuthenticated }) => {
                             </td>
                             <td className="px-3 py-2">
                               <select
-                                value={dia.funcionario?._id || dia.funcionario?.nome || ''}
+                                value={
+                                  dia.funcionario?._id 
+                                    ? dia.funcionario._id 
+                                    : (dia.funcionario?.nome 
+                                        ? `manual-${dia.funcionario.nome}` 
+                                        : '')
+                                }
                                 onChange={(e) => {
                                   const valor = e.target.value;
-                                  const funcionarioSelecionado = todosFuncionarios.find(f => 
-                                    f._id === valor || f.nome === valor
-                                  );
+                                  let funcionarioSelecionado = null;
+                                  
+                                  if (valor.startsWith('manual-')) {
+                                    const nome = valor.replace('manual-', '');
+                                    funcionarioSelecionado = funcionariosManuais.find(f => f.nome === nome);
+                                    if (!funcionarioSelecionado) {
+                                      funcionarioSelecionado = { nome, tipo: 'manual' };
+                                    }
+                                  } else if (valor) {
+                                    funcionarioSelecionado = funcionarios.find(f => f._id === valor);
+                                  }
+                                  
                                   const novaEscalaAtualizada = [...novaEscala];
-                                  novaEscalaAtualizada[index].funcionario = funcionarioSelecionado || null;
+                                  novaEscalaAtualizada[index].funcionario = funcionarioSelecionado;
                                   setNovaEscala(novaEscalaAtualizada);
                                 }}
                                 className={`w-full px-3 py-2 rounded border text-sm ${
@@ -683,7 +698,7 @@ const Limpeza = ({ setIsAuthenticated }) => {
                                   );
                                 })}
                                 {funcionariosManuais.map((func, idx) => (
-                                  <option key={`manual-${idx}`} value={func.nome}>
+                                  <option key={`manual-${idx}`} value={`manual-${func.nome}`}>
                                     {func.nome}
                                   </option>
                                 ))}
