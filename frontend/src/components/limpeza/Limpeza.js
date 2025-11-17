@@ -80,9 +80,21 @@ const Limpeza = ({ setIsAuthenticated }) => {
   };
 
   const gerarDiasDoMes = () => {
+    const hoje = new Date();
+    const hojeAno = hoje.getFullYear();
+    const hojeMes = hoje.getMonth() + 1;
+    const hojeDia = hoje.getDate();
+    
     const diasNoMes = new Date(anoSelecionado, mesSelecionado, 0).getDate();
     const dias = [];
-    for (let i = 1; i <= diasNoMes; i++) {
+    
+    // Se for o mês atual, começar a partir de hoje
+    // Se for mês futuro, começar do dia 1
+    const diaInicial = (anoSelecionado === hojeAno && mesSelecionado === hojeMes) 
+      ? hojeDia 
+      : 1;
+    
+    for (let i = diaInicial; i <= diasNoMes; i++) {
       const data = new Date(anoSelecionado, mesSelecionado - 1, i);
       dias.push(data);
     }
@@ -131,17 +143,18 @@ const Limpeza = ({ setIsAuthenticated }) => {
 
   const handleSalvarEscala = async () => {
     try {
-      // Validar que todos os dias têm funcionário
-      const diasSemFuncionario = novaEscala.filter(dia => !dia.funcionario);
-      if (diasSemFuncionario.length > 0) {
-        toast.error('Todos os dias devem ter um funcionário atribuído');
+      // Filtrar apenas os dias que têm funcionário atribuído
+      const escalaComFuncionarios = novaEscala.filter(dia => dia.funcionario);
+      
+      if (escalaComFuncionarios.length === 0) {
+        toast.error('Adicione pelo menos um funcionário para algum dia');
         return;
       }
 
       await api.post('/limpeza', {
         mes: mesSelecionado,
         ano: anoSelecionado,
-        escala: novaEscala
+        escala: escalaComFuncionarios
       });
 
       toast.success('Escala salva com sucesso!');
@@ -365,11 +378,17 @@ const Limpeza = ({ setIsAuthenticated }) => {
     );
   }
 
-  const diasDoMes = gerarDiasDoMes();
   const meses = [
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
   ];
+
+  // Verificar se é mês atual para mostrar mensagem
+  const hoje = new Date();
+  const hojeAno = hoje.getFullYear();
+  const hojeMes = hoje.getMonth() + 1;
+  const hojeDia = hoje.getDate();
+  const isMesAtual = anoSelecionado === hojeAno && mesSelecionado === hojeMes;
 
   return (
     <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
@@ -598,6 +617,11 @@ const Limpeza = ({ setIsAuthenticated }) => {
                 <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
                   {escala ? 'Editar Escala' : 'Criar Escala'} - {meses[mesSelecionado - 1]} de {anoSelecionado}
                 </h2>
+                {!escala && isMesAtual && (
+                  <p className={`text-sm mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Você pode preencher apenas os dias que desejar. A escala será criada apenas com os dias que tiverem funcionário atribuído.
+                  </p>
+                )}
               </div>
               <div className="p-6">
                 {/* Adicionar funcionário manual */}
