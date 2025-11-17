@@ -31,6 +31,8 @@ const Limpeza = ({ setIsAuthenticated }) => {
     funcionarios: [],
     observacoes: ''
   });
+  const [funcionariosManuais, setFuncionariosManuais] = useState([]);
+  const [novoFuncionarioManual, setNovoFuncionarioManual] = useState('');
 
   useEffect(() => {
     fetchLimpezas();
@@ -93,11 +95,25 @@ const Limpeza = ({ setIsAuthenticated }) => {
     if (limpeza) {
       setEditingLimpeza(limpeza);
       const dataFormatada = new Date(limpeza.data).toISOString().split('T')[0];
+      
+      // Separar funcionários cadastrados dos manuais
+      const funcionariosIds = [];
+      const funcionariosManuaisList = [];
+      
+      limpeza.funcionarios.forEach(f => {
+        if (f.tipo === 'cadastrado' && f._id) {
+          funcionariosIds.push(f._id);
+        } else if (f.tipo === 'manual' || (!f._id && f.nome)) {
+          funcionariosManuaisList.push({ nome: f.nome || getNomeCompleto(f) });
+        }
+      });
+      
       setFormData({
         data: dataFormatada,
-        funcionarios: limpeza.funcionarios.map(f => f._id || f),
+        funcionarios: funcionariosIds,
         observacoes: limpeza.observacoes || ''
       });
+      setFuncionariosManuais(funcionariosManuaisList);
     } else {
       setEditingLimpeza(null);
       setFormData({
@@ -105,29 +121,77 @@ const Limpeza = ({ setIsAuthenticated }) => {
         funcionarios: [],
         observacoes: ''
       });
+      setFuncionariosManuais([]);
     }
+    setNovoFuncionarioManual('');
     setShowModal(true);
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingLimpeza(null);
+    setFuncionariosManuais([]);
+    setNovoFuncionarioManual('');
+  };
+
+  const handleAddFuncionarioManual = () => {
+    const nome = novoFuncionarioManual.trim();
+    if (!nome) {
+      toast.error('Digite o nome do funcionário');
+      return;
+    }
+    
+    // Verificar se já existe
+    if (funcionariosManuais.some(f => f.nome.toLowerCase() === nome.toLowerCase())) {
+      toast.error('Este funcionário já foi adicionado');
+      return;
+    }
+
+    setFuncionariosManuais([...funcionariosManuais, { nome }]);
+    setNovoFuncionarioManual('');
+  };
+
+  const handleRemoveFuncionarioManual = (index) => {
+    setFuncionariosManuais(funcionariosManuais.filter((_, i) => i !== index));
+  };
+
+  const handleEditFuncionarioManual = (index, novoNome) => {
+    const nome = novoNome.trim();
+    if (!nome) {
+      toast.error('O nome não pode estar vazio');
+      return;
+    }
+    
+    const atualizados = [...funcionariosManuais];
+    atualizados[index] = { nome };
+    setFuncionariosManuais(atualizados);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (formData.funcionarios.length === 0) {
-      toast.error('Selecione pelo menos um funcionário');
+    if (formData.funcionarios.length === 0 && funcionariosManuais.length === 0) {
+      toast.error('Adicione pelo menos um funcionário');
       return;
     }
 
+    // Combinar funcionários cadastrados (IDs) e manuais (objetos)
+    const funcionariosCombinados = [
+      ...formData.funcionarios,
+      ...funcionariosManuais.map(f => ({ nome: f.nome.trim() }))
+    ];
+
+    const dadosEnvio = {
+      ...formData,
+      funcionarios: funcionariosCombinados
+    };
+
     try {
       if (editingLimpeza) {
-        await api.put(`/limpeza/${editingLimpeza._id}`, formData);
+        await api.put(`/limpeza/${editingLimpeza._id}`, dadosEnvio);
         toast.success('Limpeza atualizada com sucesso!');
       } else {
-        await api.post('/limpeza', formData);
+        await api.post('/limpeza', dadosEnvio);
         toast.success('Limpeza criada com sucesso!');
       }
       handleCloseModal();
@@ -167,6 +231,11 @@ const Limpeza = ({ setIsAuthenticated }) => {
   };
 
   const getNomeCompleto = (funcionario) => {
+    // Se for funcionário manual (só tem nome)
+    if (funcionario.tipo === 'manual' || (!funcionario._id && funcionario.nome)) {
+      return funcionario.nome || '';
+    }
+    // Se for funcionário cadastrado
     if (funcionario.sobrenome && funcionario.sobrenome.trim() !== '') {
       return `${funcionario.nome} ${funcionario.sobrenome}`;
     }
@@ -522,45 +591,141 @@ const Limpeza = ({ setIsAuthenticated }) => {
                   <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                     Funcionários <span className="text-red-500">*</span>
                   </label>
-                  <div className={`max-h-60 overflow-y-auto border rounded-lg p-4 ${
-                    darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-300'
-                  }`}>
-                    {funcionarios.length === 0 ? (
-                      <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        Nenhum funcionário cadastrado
+                  
+                  {/* Adicionar funcionário manualmente */}
+                  <div className="mb-4 flex gap-2">
+                    <input
+                      type="text"
+                      value={novoFuncionarioManual}
+                      onChange={(e) => setNovoFuncionarioManual(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddFuncionarioManual();
+                        }
+                      }}
+                      placeholder="Digite o nome do funcionário e pressione Enter"
+                      className={`flex-1 px-4 py-2 rounded-lg border ${
+                        darkMode 
+                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                      } focus:outline-none focus:ring-2 focus:ring-teal-500`}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddFuncionarioManual}
+                      className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+                    >
+                      <FaPlus /> Adicionar
+                    </button>
+                  </div>
+
+                  {/* Lista de funcionários selecionados */}
+                  {(formData.funcionarios.length > 0 || funcionariosManuais.length > 0) && (
+                    <div className={`mb-4 p-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <p className={`text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                        Funcionários adicionados:
                       </p>
-                    ) : (
-                      <div className="space-y-2">
-                        {funcionarios.map((func) => {
+                      <div className="flex flex-wrap gap-2">
+                        {/* Funcionários cadastrados */}
+                        {formData.funcionarios.map((funcId) => {
+                          const func = funcionarios.find(f => f._id === funcId);
+                          if (!func) return null;
                           const nomeCompleto = getNomeCompleto(func);
-                          const isSelected = formData.funcionarios.includes(func._id);
                           return (
-                            <label
-                              key={func._id}
-                              className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
-                                isSelected
-                                  ? darkMode ? 'bg-teal-900' : 'bg-teal-100'
-                                  : darkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
+                            <span
+                              key={funcId}
+                              className={`px-3 py-1 rounded-full text-sm flex items-center gap-2 ${
+                                darkMode 
+                                  ? 'bg-teal-900 text-teal-200' 
+                                  : 'bg-teal-100 text-teal-800'
                               }`}
                             >
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => handleToggleFuncionario(func._id)}
-                                className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
-                              />
-                              <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
-                                {nomeCompleto}
-                              </span>
-                            </label>
+                              {nomeCompleto}
+                              <button
+                                type="button"
+                                onClick={() => handleToggleFuncionario(funcId)}
+                                className="hover:text-red-500"
+                                title="Remover"
+                              >
+                                <FaTrash className="text-xs" />
+                              </button>
+                            </span>
                           );
                         })}
+                        {/* Funcionários manuais */}
+                        {funcionariosManuais.map((func, index) => (
+                          <span
+                            key={`manual-${index}`}
+                            className={`px-3 py-1 rounded-full text-sm flex items-center gap-2 ${
+                              darkMode 
+                                ? 'bg-blue-900 text-blue-200' 
+                                : 'bg-blue-100 text-blue-800'
+                            }`}
+                          >
+                            {func.nome}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFuncionarioManual(index)}
+                              className="hover:text-red-500"
+                              title="Remover"
+                            >
+                              <FaTrash className="text-xs" />
+                            </button>
+                          </span>
+                        ))}
                       </div>
-                    )}
-                  </div>
-                  {formData.funcionarios.length > 0 && (
+                    </div>
+                  )}
+
+                  {/* Lista de funcionários cadastrados para seleção */}
+                  {funcionarios.length > 0 && (
+                    <>
+                      <p className={`text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                        Funcionários cadastrados:
+                      </p>
+                      <div className={`max-h-60 overflow-y-auto border rounded-lg p-4 ${
+                        darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-300'
+                      }`}>
+                        <div className="space-y-2">
+                          {funcionarios.map((func) => {
+                            const nomeCompleto = getNomeCompleto(func);
+                            const isSelected = formData.funcionarios.includes(func._id);
+                            return (
+                              <label
+                                key={func._id}
+                                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                                  isSelected
+                                    ? darkMode ? 'bg-teal-900' : 'bg-teal-100'
+                                    : darkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => handleToggleFuncionario(func._id)}
+                                  className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
+                                />
+                                <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                                  {nomeCompleto}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {formData.funcionarios.length === 0 && funcionariosManuais.length === 0 && funcionarios.length === 0 && (
+                    <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      Nenhum funcionário disponível. Adicione funcionários manualmente acima.
+                    </p>
+                  )}
+
+                  {(formData.funcionarios.length > 0 || funcionariosManuais.length > 0) && (
                     <p className={`text-sm mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {formData.funcionarios.length} funcionário(s) selecionado(s)
+                      Total: {formData.funcionarios.length + funcionariosManuais.length} funcionário(s)
                     </p>
                   )}
                 </div>

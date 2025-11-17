@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const Limpeza = require('../models/Limpeza');
 const Funcionario = require('../models/Funcionario');
 const auth = require('../middleware/auth');
@@ -31,10 +32,39 @@ router.get('/', async (req, res) => {
     }
 
     const limpezas = await Limpeza.find(query)
-      .populate('funcionarios', 'nome sobrenome')
       .sort({ data: -1, criadoEm: -1 });
 
-    res.json(limpezas);
+    // Processar funcionários: popular os que são ObjectIds, manter os que são objetos
+    const limpezasProcessadas = await Promise.all(limpezas.map(async (limpeza) => {
+      const funcionariosProcessados = await Promise.all(limpeza.funcionarios.map(async (func) => {
+        // Se for ObjectId, popular
+        if (func instanceof mongoose.Types.ObjectId || mongoose.Types.ObjectId.isValid(func)) {
+          const funcionario = await Funcionario.findById(func).select('nome sobrenome');
+          if (funcionario) {
+            return {
+              _id: funcionario._id,
+              nome: funcionario.nome,
+              sobrenome: funcionario.sobrenome,
+              tipo: 'cadastrado'
+            };
+          }
+        }
+        // Se já for objeto (adicionado manualmente), retornar como está
+        if (typeof func === 'object' && func.nome) {
+          return {
+            ...func,
+            tipo: 'manual'
+          };
+        }
+        return func;
+      }));
+      
+      const limpezaObj = limpeza.toObject();
+      limpezaObj.funcionarios = funcionariosProcessados;
+      return limpezaObj;
+    }));
+
+    res.json(limpezasProcessadas);
   } catch (error) {
     logger.error('Erro ao listar limpezas', {
       error: error.message,
@@ -50,13 +80,37 @@ router.get('/:id', async (req, res) => {
     const limpeza = await Limpeza.findOne({
       _id: req.params.id,
       gerenteId: req.user.id
-    }).populate('funcionarios', 'nome sobrenome');
+    });
 
     if (!limpeza) {
       return res.status(404).json({ message: 'Limpeza não encontrada' });
     }
 
-    res.json(limpeza);
+    // Processar funcionários
+    const funcionariosProcessados = await Promise.all(limpeza.funcionarios.map(async (func) => {
+      if (func instanceof mongoose.Types.ObjectId || mongoose.Types.ObjectId.isValid(func)) {
+        const funcionario = await Funcionario.findById(func).select('nome sobrenome');
+        if (funcionario) {
+          return {
+            _id: funcionario._id,
+            nome: funcionario.nome,
+            sobrenome: funcionario.sobrenome,
+            tipo: 'cadastrado'
+          };
+        }
+      }
+      if (typeof func === 'object' && func.nome) {
+        return {
+          ...func,
+          tipo: 'manual'
+        };
+      }
+      return func;
+    }));
+
+    const limpezaObj = limpeza.toObject();
+    limpezaObj.funcionarios = funcionariosProcessados;
+    res.json(limpezaObj);
   } catch (error) {
     logger.error('Erro ao buscar limpeza', {
       error: error.message,
@@ -78,36 +132,74 @@ router.post('/', async (req, res) => {
     }
 
     if (!funcionarios || !Array.isArray(funcionarios) || funcionarios.length === 0) {
-      return res.status(400).json({ message: 'É necessário selecionar pelo menos um funcionário' });
+      return res.status(400).json({ message: 'É necessário adicionar pelo menos um funcionário' });
     }
 
-    // Verificar se os funcionários pertencem ao gerente
-    const funcionariosValidos = await Funcionario.find({
-      _id: { $in: funcionarios },
-      gerenteId: req.user.id
-    });
+    // Processar funcionários: separar IDs de objetos
+    const funcionariosIds = funcionarios.filter(f => typeof f === 'string' || mongoose.Types.ObjectId.isValid(f));
+    const funcionariosManuais = funcionarios.filter(f => typeof f === 'object' && f.nome);
 
-    if (funcionariosValidos.length !== funcionarios.length) {
-      return res.status(400).json({ message: 'Um ou mais funcionários não foram encontrados' });
+    // Validar funcionários cadastrados
+    if (funcionariosIds.length > 0) {
+      const funcionariosValidos = await Funcionario.find({
+        _id: { $in: funcionariosIds },
+        gerenteId: req.user.id
+      });
+
+      if (funcionariosValidos.length !== funcionariosIds.length) {
+        return res.status(400).json({ message: 'Um ou mais funcionários cadastrados não foram encontrados' });
+      }
     }
+
+    // Validar funcionários manuais (devem ter nome)
+    for (const func of funcionariosManuais) {
+      if (!func.nome || !func.nome.trim()) {
+        return res.status(400).json({ message: 'Funcionários adicionados manualmente devem ter um nome' });
+      }
+    }
+
+    // Combinar funcionários: IDs e objetos
+    const funcionariosProcessados = [...funcionariosIds, ...funcionariosManuais];
 
     const limpeza = await Limpeza.create({
       gerenteId: req.user.id,
       data: new Date(data),
-      funcionarios: funcionarios,
+      funcionarios: funcionariosProcessados,
       observacoes: observacoes || ''
     });
 
-    // Popular funcionários para retornar
-    await limpeza.populate('funcionarios', 'nome sobrenome');
+    // Processar funcionários para retornar
+    const funcionariosRetorno = await Promise.all(limpeza.funcionarios.map(async (func) => {
+      if (func instanceof mongoose.Types.ObjectId || mongoose.Types.ObjectId.isValid(func)) {
+        const funcionario = await Funcionario.findById(func).select('nome sobrenome');
+        if (funcionario) {
+          return {
+            _id: funcionario._id,
+            nome: funcionario.nome,
+            sobrenome: funcionario.sobrenome,
+            tipo: 'cadastrado'
+          };
+        }
+      }
+      if (typeof func === 'object' && func.nome) {
+        return {
+          ...func,
+          tipo: 'manual'
+        };
+      }
+      return func;
+    }));
+
+    const limpezaObj = limpeza.toObject();
+    limpezaObj.funcionarios = funcionariosRetorno;
 
     logger.audit('Limpeza criada', req.user.id, {
       limpezaId: limpeza._id,
       data: limpeza.data,
-      funcionarios: funcionarios.length
+      funcionarios: funcionariosProcessados.length
     });
 
-    res.status(201).json(limpeza);
+    res.status(201).json(limpezaObj);
   } catch (error) {
     logger.error('Erro ao criar limpeza', {
       error: error.message,
@@ -138,20 +230,34 @@ router.put('/:id', async (req, res) => {
 
     if (funcionarios !== undefined) {
       if (!Array.isArray(funcionarios) || funcionarios.length === 0) {
-        return res.status(400).json({ message: 'É necessário selecionar pelo menos um funcionário' });
+        return res.status(400).json({ message: 'É necessário adicionar pelo menos um funcionário' });
       }
 
-      // Verificar se os funcionários pertencem ao gerente
-      const funcionariosValidos = await Funcionario.find({
-        _id: { $in: funcionarios },
-        gerenteId: req.user.id
-      });
+      // Processar funcionários: separar IDs de objetos
+      const funcionariosIds = funcionarios.filter(f => typeof f === 'string' || mongoose.Types.ObjectId.isValid(f));
+      const funcionariosManuais = funcionarios.filter(f => typeof f === 'object' && f.nome);
 
-      if (funcionariosValidos.length !== funcionarios.length) {
-        return res.status(400).json({ message: 'Um ou mais funcionários não foram encontrados' });
+      // Validar funcionários cadastrados
+      if (funcionariosIds.length > 0) {
+        const funcionariosValidos = await Funcionario.find({
+          _id: { $in: funcionariosIds },
+          gerenteId: req.user.id
+        });
+
+        if (funcionariosValidos.length !== funcionariosIds.length) {
+          return res.status(400).json({ message: 'Um ou mais funcionários cadastrados não foram encontrados' });
+        }
       }
 
-      limpeza.funcionarios = funcionarios;
+      // Validar funcionários manuais
+      for (const func of funcionariosManuais) {
+        if (!func.nome || !func.nome.trim()) {
+          return res.status(400).json({ message: 'Funcionários adicionados manualmente devem ter um nome' });
+        }
+      }
+
+      // Combinar funcionários
+      limpeza.funcionarios = [...funcionariosIds, ...funcionariosManuais];
     }
 
     if (observacoes !== undefined) {
@@ -159,14 +265,38 @@ router.put('/:id', async (req, res) => {
     }
 
     await limpeza.save();
-    await limpeza.populate('funcionarios', 'nome sobrenome');
+
+    // Processar funcionários para retornar
+    const funcionariosProcessados = await Promise.all(limpeza.funcionarios.map(async (func) => {
+      if (func instanceof mongoose.Types.ObjectId || mongoose.Types.ObjectId.isValid(func)) {
+        const funcionario = await Funcionario.findById(func).select('nome sobrenome');
+        if (funcionario) {
+          return {
+            _id: funcionario._id,
+            nome: funcionario.nome,
+            sobrenome: funcionario.sobrenome,
+            tipo: 'cadastrado'
+          };
+        }
+      }
+      if (typeof func === 'object' && func.nome) {
+        return {
+          ...func,
+          tipo: 'manual'
+        };
+      }
+      return func;
+    }));
+
+    const limpezaObj = limpeza.toObject();
+    limpezaObj.funcionarios = funcionariosProcessados;
 
     logger.audit('Limpeza atualizada', req.user.id, {
       limpezaId: limpeza._id,
       data: limpeza.data
     });
 
-    res.json(limpeza);
+    res.json(limpezaObj);
   } catch (error) {
     logger.error('Erro ao atualizar limpeza', {
       error: error.message,

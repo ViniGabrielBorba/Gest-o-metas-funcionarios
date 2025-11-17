@@ -11,8 +11,8 @@ const limpezaSchema = new mongoose.Schema({
     required: true
   },
   funcionarios: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Funcionario',
+    // Pode ser um ObjectId (funcionário cadastrado) ou um objeto com nome (adicionado manualmente)
+    type: mongoose.Schema.Types.Mixed,
     required: true
   }],
   observacoes: {
