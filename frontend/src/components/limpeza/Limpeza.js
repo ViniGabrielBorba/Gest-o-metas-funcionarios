@@ -89,7 +89,6 @@ const Limpeza = ({ setIsAuthenticated }) => {
     
     // Obter o número correto de dias no mês
     // new Date(ano, mes, 0) retorna o último dia do mês anterior
-    // Então new Date(ano, mesSelecionado, 0) retorna o último dia de (mesSelecionado - 1)
     // Para obter o último dia do mês selecionado, usamos new Date(ano, mesSelecionado, 0)
     const diasNoMes = new Date(anoSelecionado, mesSelecionado, 0).getDate();
     const dias = [];
@@ -100,14 +99,11 @@ const Limpeza = ({ setIsAuthenticated }) => {
       ? hojeDia 
       : 1;
     
-    // Garantir que vamos até o último dia do mês
-    for (let i = diaInicial; i <= diasNoMes; i++) {
-      // Criar data no formato correto (mês é 0-indexed no JavaScript)
-      const data = new Date(anoSelecionado, mesSelecionado - 1, i);
-      // Verificar se a data é válida e está no mês correto
-      if (data.getMonth() === mesSelecionado - 1 && data.getDate() === i) {
-        dias.push(data);
-      }
+    // Gerar todos os dias do mês (ou a partir de hoje se for o mês atual)
+    for (let dia = diaInicial; dia <= diasNoMes; dia++) {
+      // Criar data no formato correto (mês é 0-indexed no JavaScript, então subtraímos 1)
+      const data = new Date(anoSelecionado, mesSelecionado - 1, dia);
+      dias.push(data);
     }
     return dias;
   };
