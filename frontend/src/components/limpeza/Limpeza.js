@@ -28,6 +28,8 @@ const Limpeza = ({ setIsAuthenticated }) => {
   const [novaEscala, setNovaEscala] = useState([]);
   const [funcionariosManuais, setFuncionariosManuais] = useState([]);
   const [novoFuncionarioManual, setNovoFuncionarioManual] = useState('');
+  const [editandoFuncionarioManual, setEditandoFuncionarioManual] = useState(null);
+  const [nomeEditandoFuncionarioManual, setNomeEditandoFuncionarioManual] = useState('');
 
   useEffect(() => {
     fetchFuncionarios();
@@ -85,6 +87,10 @@ const Limpeza = ({ setIsAuthenticated }) => {
     const hojeMes = hoje.getMonth() + 1;
     const hojeDia = hoje.getDate();
     
+    // Obter o número correto de dias no mês
+    // new Date(ano, mes, 0) retorna o último dia do mês anterior
+    // Então new Date(ano, mesSelecionado, 0) retorna o último dia de (mesSelecionado - 1)
+    // Para obter o último dia do mês selecionado, usamos new Date(ano, mesSelecionado, 0)
     const diasNoMes = new Date(anoSelecionado, mesSelecionado, 0).getDate();
     const dias = [];
     
@@ -94,9 +100,14 @@ const Limpeza = ({ setIsAuthenticated }) => {
       ? hojeDia 
       : 1;
     
+    // Garantir que vamos até o último dia do mês
     for (let i = diaInicial; i <= diasNoMes; i++) {
+      // Criar data no formato correto (mês é 0-indexed no JavaScript)
       const data = new Date(anoSelecionado, mesSelecionado - 1, i);
-      dias.push(data);
+      // Verificar se a data é válida e está no mês correto
+      if (data.getMonth() === mesSelecionado - 1 && data.getDate() === i) {
+        dias.push(data);
+      }
     }
     return dias;
   };
@@ -235,6 +246,78 @@ const Limpeza = ({ setIsAuthenticated }) => {
 
     setFuncionariosManuais([...funcionariosManuais, { nome, tipo: 'manual' }]);
     setNovoFuncionarioManual('');
+  };
+
+  const handleEditFuncionarioManual = (index) => {
+    const funcionario = funcionariosManuais[index];
+    setEditandoFuncionarioManual(index);
+    setNomeEditandoFuncionarioManual(funcionario.nome);
+  };
+
+  const handleSalvarEdicaoFuncionarioManual = (index) => {
+    const nome = nomeEditandoFuncionarioManual.trim();
+    if (!nome) {
+      toast.error('Digite o nome do funcionário');
+      return;
+    }
+    
+    // Verificar se já existe outro funcionário com o mesmo nome (exceto o que está sendo editado)
+    if (funcionariosManuais.some((f, i) => i !== index && f.nome.toLowerCase() === nome.toLowerCase())) {
+      toast.error('Este funcionário já foi adicionado');
+      return;
+    }
+
+    const novosFuncionarios = [...funcionariosManuais];
+    novosFuncionarios[index].nome = nome;
+    setFuncionariosManuais(novosFuncionarios);
+    
+    // Atualizar também na escala se este funcionário estiver sendo usado
+    const novaEscalaAtualizada = novaEscala.map(dia => {
+      if (dia.funcionario && dia.funcionario.tipo === 'manual' && dia.funcionario.nome === funcionariosManuais[index].nome) {
+        return {
+          ...dia,
+          funcionario: { ...dia.funcionario, nome }
+        };
+      }
+      return dia;
+    });
+    setNovaEscala(novaEscalaAtualizada);
+    
+    setEditandoFuncionarioManual(null);
+    setNomeEditandoFuncionarioManual('');
+    toast.success('Funcionário editado com sucesso!');
+  };
+
+  const handleCancelarEdicaoFuncionarioManual = () => {
+    setEditandoFuncionarioManual(null);
+    setNomeEditandoFuncionarioManual('');
+  };
+
+  const handleRemoveFuncionarioManual = (index) => {
+    const funcionario = funcionariosManuais[index];
+    const confirmar = window.confirm(
+      `Tem certeza que deseja remover "${funcionario.nome}"?\n\nEste funcionário será removido de todos os dias da escala onde estiver atribuído.`
+    );
+    
+    if (!confirmar) return;
+
+    // Remover da lista
+    const novosFuncionarios = funcionariosManuais.filter((_, i) => i !== index);
+    setFuncionariosManuais(novosFuncionarios);
+    
+    // Remover da escala onde estiver sendo usado
+    const novaEscalaAtualizada = novaEscala.map(dia => {
+      if (dia.funcionario && dia.funcionario.tipo === 'manual' && dia.funcionario.nome === funcionario.nome) {
+        return {
+          ...dia,
+          funcionario: null
+        };
+      }
+      return dia;
+    });
+    setNovaEscala(novaEscalaAtualizada);
+    
+    toast.success('Funcionário removido com sucesso!');
   };
 
   const handlePrint = () => {
@@ -663,16 +746,71 @@ const Limpeza = ({ setIsAuthenticated }) => {
                   {funcionariosManuais.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {funcionariosManuais.map((func, index) => (
-                        <span
+                        <div
                           key={`manual-${index}`}
-                          className={`px-3 py-1 rounded-full text-sm ${
+                          className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
                             darkMode 
                               ? 'bg-blue-900 text-blue-200' 
                               : 'bg-blue-100 text-blue-800'
                           }`}
                         >
-                          {func.nome}
-                        </span>
+                          {editandoFuncionarioManual === index ? (
+                            <>
+                              <input
+                                type="text"
+                                value={nomeEditandoFuncionarioManual}
+                                onChange={(e) => setNomeEditandoFuncionarioManual(e.target.value)}
+                                onKeyPress={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleSalvarEdicaoFuncionarioManual(index);
+                                  } else if (e.key === 'Escape') {
+                                    e.preventDefault();
+                                    handleCancelarEdicaoFuncionarioManual();
+                                  }
+                                }}
+                                className={`px-2 py-1 rounded text-sm ${
+                                  darkMode 
+                                    ? 'bg-gray-700 text-white border-gray-600' 
+                                    : 'bg-white text-gray-900 border-gray-300'
+                                } border focus:outline-none focus:ring-2 focus:ring-teal-500`}
+                                autoFocus
+                              />
+                              <button
+                                onClick={() => handleSalvarEdicaoFuncionarioManual(index)}
+                                className="text-green-600 hover:text-green-700"
+                                title="Salvar"
+                              >
+                                <FaCheck />
+                              </button>
+                              <button
+                                onClick={handleCancelarEdicaoFuncionarioManual}
+                                className="text-red-600 hover:text-red-700"
+                                title="Cancelar"
+                              >
+                                <FaTimes />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <span>{func.nome}</span>
+                              <button
+                                onClick={() => handleEditFuncionarioManual(index)}
+                                className="text-blue-600 hover:text-blue-700"
+                                title="Editar"
+                              >
+                                <FaEdit className="text-xs" />
+                              </button>
+                              <button
+                                onClick={() => handleRemoveFuncionarioManual(index)}
+                                className="text-red-600 hover:text-red-700"
+                                title="Excluir"
+                              >
+                                <FaTrash className="text-xs" />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       ))}
                     </div>
                   )}
