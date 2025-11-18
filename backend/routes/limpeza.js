@@ -176,8 +176,33 @@ router.post('/', async (req, res) => {
         return res.status(400).json({ message: 'Funcionário inválido' });
       }
 
+      // Normalizar data usando UTC para evitar problemas de timezone
+      let dataNormalizada;
+      if (typeof item.data === 'string' && item.data.includes('-')) {
+        const partes = item.data.split('-');
+        if (partes.length === 3) {
+          const ano = parseInt(partes[0], 10);
+          const mes = parseInt(partes[1], 10);
+          const dia = parseInt(partes[2], 10);
+          // Usar UTC para criar a data - garante que dia/mês/ano sejam preservados
+          dataNormalizada = new Date(Date.UTC(ano, mes - 1, dia, 12, 0, 0, 0));
+        } else {
+          const dataTemp = new Date(item.data);
+          const ano = dataTemp.getUTCFullYear();
+          const mes = dataTemp.getUTCMonth();
+          const dia = dataTemp.getUTCDate();
+          dataNormalizada = new Date(Date.UTC(ano, mes, dia, 12, 0, 0, 0));
+        }
+      } else {
+        const dataTemp = new Date(item.data);
+        const ano = dataTemp.getUTCFullYear();
+        const mes = dataTemp.getUTCMonth();
+        const dia = dataTemp.getUTCDate();
+        dataNormalizada = new Date(Date.UTC(ano, mes, dia, 12, 0, 0, 0));
+      }
+
       escalaProcessada.push({
-        data: new Date(item.data),
+        data: dataNormalizada,
         funcionario: funcionarioProcessado,
         tarefas: {
           mesa: item.tarefas?.mesa || false,

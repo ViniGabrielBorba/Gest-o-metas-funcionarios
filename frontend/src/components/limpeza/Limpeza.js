@@ -100,9 +100,11 @@ const Limpeza = ({ setIsAuthenticated }) => {
       : 1;
     
     // Gerar todos os dias do mês (ou a partir de hoje se for o mês atual)
+    // Usar UTC para evitar problemas de timezone
     for (let dia = diaInicial; dia <= diasNoMes; dia++) {
-      // Criar data no formato correto (mês é 0-indexed no JavaScript, então subtraímos 1)
-      const data = new Date(anoSelecionado, mesSelecionado - 1, dia);
+      // Criar data usando UTC para garantir que o dia/mês/ano sejam preservados
+      // Usar meio-dia UTC para evitar problemas de timezone
+      const data = new Date(Date.UTC(anoSelecionado, mesSelecionado - 1, dia, 12, 0, 0, 0));
       dias.push(data);
     }
     return dias;
@@ -110,17 +112,23 @@ const Limpeza = ({ setIsAuthenticated }) => {
 
   const handleCriarEscala = () => {
     const dias = gerarDiasDoMes();
-    const escalaInicial = dias.map(data => ({
-      data: data.toISOString().split('T')[0],
-      funcionario: null,
-      tarefas: {
-        mesa: false,
-        panos: false,
-        microondas: false,
-        geladeira: false
-      },
-      assinatura: ''
-    }));
+    const escalaInicial = dias.map(data => {
+      // Garantir formato YYYY-MM-DD usando UTC para evitar problemas de timezone
+      const ano = data.getUTCFullYear();
+      const mes = String(data.getUTCMonth() + 1).padStart(2, '0');
+      const dia = String(data.getUTCDate()).padStart(2, '0');
+      return {
+        data: `${ano}-${mes}-${dia}`,
+        funcionario: null,
+        tarefas: {
+          mesa: false,
+          panos: false,
+          microondas: false,
+          geladeira: false
+        },
+        assinatura: ''
+      };
+    });
     setNovaEscala(escalaInicial);
     setFuncionariosManuais([]);
     setShowModal(true);
@@ -137,13 +145,20 @@ const Limpeza = ({ setIsAuthenticated }) => {
       }
     });
     
-    setNovaEscala(escala.escala.map(item => ({
-      _id: item._id,
-      data: new Date(item.data).toISOString().split('T')[0],
-      funcionario: item.funcionario,
-      tarefas: item.tarefas,
-      assinatura: item.assinatura
-    })));
+    setNovaEscala(escala.escala.map(item => {
+      // Garantir formato YYYY-MM-DD usando UTC
+      const dataObj = new Date(item.data);
+      const ano = dataObj.getUTCFullYear();
+      const mes = String(dataObj.getUTCMonth() + 1).padStart(2, '0');
+      const dia = String(dataObj.getUTCDate()).padStart(2, '0');
+      return {
+        _id: item._id,
+        data: `${ano}-${mes}-${dia}`,
+        funcionario: item.funcionario,
+        tarefas: item.tarefas,
+        assinatura: item.assinatura
+      };
+    }));
     setFuncionariosManuais(funcionariosManuaisExistentes);
     setShowModal(true);
   };
@@ -323,10 +338,11 @@ const Limpeza = ({ setIsAuthenticated }) => {
     const mesNome = new Date(anoSelecionado, mesSelecionado - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
     
     const linhas = escala.escala.map((item, index) => {
-      const dataFormatada = new Date(item.data).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit'
-      });
+      // Usar UTC para garantir que a data seja exibida corretamente
+      const dataObj = new Date(item.data);
+      const dia = String(dataObj.getUTCDate()).padStart(2, '0');
+      const mes = String(dataObj.getUTCMonth() + 1).padStart(2, '0');
+      const dataFormatada = `${dia}/${mes}`;
       const nomeFuncionario = getNomeCompleto(item.funcionario);
       
       return `
@@ -576,10 +592,11 @@ const Limpeza = ({ setIsAuthenticated }) => {
                 </thead>
                 <tbody>
                   {escala.escala.map((item, index) => {
-                    const dataFormatada = new Date(item.data).toLocaleDateString('pt-BR', {
-                      day: '2-digit',
-                      month: '2-digit'
-                    });
+                    // Usar UTC para garantir que a data seja exibida corretamente
+                    const dataObj = new Date(item.data);
+                    const dia = String(dataObj.getUTCDate()).padStart(2, '0');
+                    const mes = String(dataObj.getUTCMonth() + 1).padStart(2, '0');
+                    const dataFormatada = `${dia}/${mes}`;
                     const nomeFuncionario = getNomeCompleto(item.funcionario);
                     const isPar = index % 2 === 0;
 
@@ -823,10 +840,11 @@ const Limpeza = ({ setIsAuthenticated }) => {
                     </thead>
                     <tbody>
                       {novaEscala.map((dia, index) => {
-                        const dataFormatada = new Date(dia.data).toLocaleDateString('pt-BR', {
-                          day: '2-digit',
-                          month: '2-digit'
-                        });
+                        // Usar UTC para garantir que a data seja exibida corretamente
+                        const dataObj = new Date(dia.data + 'T12:00:00Z'); // Adicionar timezone UTC
+                        const diaFormatado = String(dataObj.getUTCDate()).padStart(2, '0');
+                        const mesFormatado = String(dataObj.getUTCMonth() + 1).padStart(2, '0');
+                        const dataFormatada = `${diaFormatado}/${mesFormatado}`;
                         const todosFuncionarios = [
                           ...funcionarios.map(f => ({ ...f, tipo: 'cadastrado' })),
                           ...funcionariosManuais
