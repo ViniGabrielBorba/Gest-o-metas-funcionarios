@@ -57,23 +57,30 @@ router.get('/', async (req, res) => {
       }
     });
 
-    // Calcular total de vendas do mês
-    const totalVendasMes = vendasMes.reduce((sum, v) => sum + v.valor, 0);
+    // Calcular total de vendas do mês - apenas de funcionários com função de venda
+    const funcoesVenda = ['Vendedor', 'Vendedora', 'Vendedor Online'];
+    const totalVendasMes = vendasMes
+      .filter(v => v.funcao && funcoesVenda.includes(v.funcao))
+      .reduce((sum, v) => sum + (Number(v.valor) || 0), 0);
 
     // Calcular top vendedores do mês (ordenado) - apenas funcionários com função de venda
-    const funcoesVenda = ['Vendedor', 'Vendedora', 'Vendedor Online'];
     const topVendedoresMes = [...vendasMes]
       .filter(v => v.funcao && funcoesVenda.includes(v.funcao))
-      .sort((a, b) => b.valor - a.valor)
-      .filter(v => v.valor > 0)
+      .sort((a, b) => (Number(b.valor) || 0) - (Number(a.valor) || 0))
+      .filter(v => (Number(v.valor) || 0) > 0)
       .slice(0, 10); // Top 10
 
     // Calcular vendas diárias do mês (agregado por dia) - Funcionários + Loja
     const vendasDiariasMes = {};
     
-    // Vendas dos funcionários
+    // Vendas dos funcionários - apenas funcionários com função de venda
+    const funcoesVendaArray = ['Vendedor', 'Vendedora', 'Vendedor Online'];
     funcionarios.forEach(func => {
       try {
+        // Processar vendas diárias apenas de funcionários com função de venda
+        const temFuncaoVenda = func.funcao && funcoesVendaArray.includes(func.funcao);
+        if (!temFuncaoVenda) return; // Pular funcionários que não são vendedores
+        
         if (func.vendasDiarias && Array.isArray(func.vendasDiarias) && func.vendasDiarias.length > 0) {
           func.vendasDiarias.forEach(venda => {
             try {
