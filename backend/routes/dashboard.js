@@ -38,6 +38,7 @@ router.get('/', async (req, res) => {
         nome: func.nome,
         sobrenome: func.sobrenome || '',
         nomeCompleto: nomeCompleto,
+        funcao: func.funcao || '',
         valor: venda ? venda.valor : 0,
         metaIndividual: func.metaIndividual
       };
@@ -46,8 +47,10 @@ router.get('/', async (req, res) => {
     // Calcular total de vendas do mês
     const totalVendasMes = vendasMes.reduce((sum, v) => sum + v.valor, 0);
 
-    // Calcular top vendedores do mês (ordenado)
+    // Calcular top vendedores do mês (ordenado) - apenas funcionários com função de venda
+    const funcoesVenda = ['Vendedor', 'Vendedora', 'Vendedor Online'];
     const topVendedoresMes = [...vendasMes]
+      .filter(v => funcoesVenda.includes(v.funcao))
       .sort((a, b) => b.valor - a.valor)
       .filter(v => v.valor > 0)
       .slice(0, 10); // Top 10
@@ -134,11 +137,14 @@ router.get('/', async (req, res) => {
     const vendasDiariasArray = Object.values(vendasDiariasMes)
       .sort((a, b) => a.dia - b.dia);
 
-    // Encontrar melhor vendedor do mês
-    const melhorMes = vendasMes.reduce((best, current) => 
-      current.valor > best.valor ? current : best, 
-      { nome: 'Nenhum', valor: 0 }
-    );
+    // Encontrar melhor vendedor do mês (apenas funcionários com função de venda)
+    const funcoesVenda = ['Vendedor', 'Vendedora', 'Vendedor Online'];
+    const melhorMes = vendasMes
+      .filter(v => funcoesVenda.includes(v.funcao))
+      .reduce((best, current) => 
+        current.valor > best.valor ? current : best, 
+        { nome: 'Nenhum', valor: 0 }
+      );
 
     // Calcular total vendido (vendas dos funcionários + vendas comerciais)
     // O meta.totalVendido inclui apenas vendas dos funcionários agora

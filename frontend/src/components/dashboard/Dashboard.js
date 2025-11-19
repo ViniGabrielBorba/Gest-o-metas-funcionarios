@@ -434,11 +434,12 @@ const Dashboard = ({ setIsAuthenticated }) => {
   console.log('Total de dias com vendas:', vendasDiarias?.length || 0);
   console.log('Total de vendas diárias:', vendasDiarias?.reduce((sum, v) => sum + (v.total || 0), 0) || 0);
 
-  // Gráfico de vendas do mês (comparativo com meta)
+  // Gráfico de vendas do mês (comparativo com meta) - incluir função
   const chartDataMes = vendasMes.map(v => ({
     name: v.nomeCompleto || v.nome,
     vendas: v.valor,
-    meta: v.metaIndividual
+    meta: v.metaIndividual,
+    funcao: v.funcao || ''
   }));
 
   // Gráfico de Top Vendedores do Mês (ranking)
@@ -1318,6 +1319,9 @@ const Dashboard = ({ setIsAuthenticated }) => {
                     <th className={`px-4 py-2 text-left ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                       Nome
                     </th>
+                    <th className={`px-4 py-2 text-left ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Função
+                    </th>
                     <th className={`px-4 py-2 text-right ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                       Vendas (R$)
                     </th>
@@ -1388,6 +1392,9 @@ const Dashboard = ({ setIsAuthenticated }) => {
                           </td>
                           <td className={`px-4 py-2 font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
                             {func.nomeCompleto || func.nome}
+                          </td>
+                          <td className={`px-4 py-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                            {func.funcao || 'Não informado'}
                           </td>
                           <td className="px-4 py-2 text-right font-bold text-green-600">
                             R$ {func.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
