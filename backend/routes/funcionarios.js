@@ -86,12 +86,28 @@ router.post('/', validate(funcionarioSchema), async (req, res) => {
 
     console.log('Sobrenome processado:', sobrenomeProcessado);
 
+    // Calcular idade se não fornecida e houver data de nascimento
+    let idadeFinal = idade;
+    if (!idadeFinal && dataNascimento) {
+      const nascimento = new Date(dataNascimento);
+      const hoje = new Date();
+      idadeFinal = hoje.getFullYear() - nascimento.getFullYear();
+      const mesAniversario = hoje.getMonth() - nascimento.getMonth();
+      if (mesAniversario < 0 || (mesAniversario === 0 && hoje.getDate() < nascimento.getDate())) {
+        idadeFinal--;
+      }
+    }
+    // Se ainda não tiver idade, usar valor padrão
+    if (!idadeFinal) {
+      idadeFinal = 25;
+    }
+
     const funcionario = await Funcionario.create({
       gerenteId: req.user.id,
       nome,
       sobrenome: sobrenomeProcessado, // Sempre salvar, mesmo que vazio
       sexo,
-      idade,
+      idade: idadeFinal,
       funcao,
       dataAniversario: new Date(dataAniversario),
       dataNascimento: dataNascimento ? new Date(dataNascimento) : undefined,
@@ -138,13 +154,30 @@ router.put('/:id', validate(funcionarioSchema), async (req, res) => {
       ? String(sobrenome).trim() 
       : '';
 
+    // Calcular idade se não fornecida e houver data de nascimento
+    let idadeFinal = idade;
+    if (!idadeFinal && dataNascimento) {
+      const nascimento = new Date(dataNascimento);
+      const hoje = new Date();
+      idadeFinal = hoje.getFullYear() - nascimento.getFullYear();
+      const mesAniversario = hoje.getMonth() - nascimento.getMonth();
+      if (mesAniversario < 0 || (mesAniversario === 0 && hoje.getDate() < nascimento.getDate())) {
+        idadeFinal--;
+      }
+    }
+    // Se ainda não tiver idade, manter a existente ou usar padrão
+    if (!idadeFinal) {
+      const funcionarioExistente = await Funcionario.findById(req.params.id);
+      idadeFinal = funcionarioExistente?.idade || 25;
+    }
+
     const funcionario = await Funcionario.findOneAndUpdate(
       { _id: req.params.id, gerenteId: req.user.id },
       {
         nome,
         sobrenome: sobrenomeProcessado, // Sempre salvar, mesmo que vazio
         sexo,
-        idade,
+        idade: idadeFinal,
         funcao,
         dataAniversario: new Date(dataAniversario),
         dataNascimento: dataNascimento ? new Date(dataNascimento) : undefined,

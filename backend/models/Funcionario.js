@@ -24,9 +24,10 @@ const funcionarioSchema = new mongoose.Schema({
   },
   idade: {
     type: Number,
-    required: true,
+    required: false,
     min: 16,
-    max: 100
+    max: 100,
+    default: 25
   },
   funcao: {
     type: String,

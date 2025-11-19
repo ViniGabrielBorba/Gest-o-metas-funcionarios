@@ -38,7 +38,6 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
     dataNascimento: '',
     dataAniversario: '',
     sexo: 'Masculino',
-    idade: '',
     funcao: 'Funcionário',
     metaIndividual: 0,
     telefone: '',
@@ -148,9 +147,6 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
               ? new Date(funcionario.dataNascimento).toISOString().split('T')[0]
               : new Date().toISOString().split('T')[0]),
         sexo: funcionario.sexo || 'Masculino',
-        idade: funcionario.idade !== undefined && funcionario.idade !== null
-          ? String(funcionario.idade)
-          : '',
         funcao: funcionario.funcao || 'Funcionário',
         metaIndividual: funcionario.metaIndividual ?? 0,
         telefone: funcionario.telefone || '',
@@ -166,7 +162,6 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
         dataNascimento: '',
         dataAniversario: new Date().toISOString().split('T')[0],
         sexo: 'Masculino',
-        idade: '',
         funcao: 'Funcionário',
         metaIndividual: 0,
         telefone: '',
@@ -190,17 +185,22 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
       return;
     }
 
-    const idadeFormatada = formData.idade ? Number(formData.idade) : null;
-
-    if (idadeFormatada !== null && (isNaN(idadeFormatada) || idadeFormatada < 16)) {
-      toast.error('Informe uma idade válida (mínimo 16 anos)');
-      return;
-    }
-
     try {
-      const dadosComIdade = {
+      // Calcular idade a partir da data de nascimento se disponível
+      let idadeCalculada = null;
+      if (formData.dataNascimento) {
+        const nascimento = new Date(formData.dataNascimento);
+        const hoje = new Date();
+        idadeCalculada = hoje.getFullYear() - nascimento.getFullYear();
+        const mesAniversario = hoje.getMonth() - nascimento.getMonth();
+        if (mesAniversario < 0 || (mesAniversario === 0 && hoje.getDate() < nascimento.getDate())) {
+          idadeCalculada--;
+        }
+      }
+
+      const dadosParaEnvio = {
         ...formData,
-        idade: idadeFormatada ?? (editingFuncionario?.idade || 25),
+        idade: idadeCalculada || editingFuncionario?.idade || 25,
         funcao: formData.funcao || editingFuncionario?.funcao || 'Funcionário',
         metaIndividual: formData.metaIndividual ?? editingFuncionario?.metaIndividual ?? 0,
         telefone: formData.telefone || editingFuncionario?.telefone || '',
@@ -208,13 +208,25 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
       };
 
       if (editingFuncionario) {
-        await api.put(`/funcionarios/${editingFuncionario._id}`, dadosComIdade);
+        await api.put(`/funcionarios/${editingFuncionario._id}`, dadosParaEnvio);
         toast.success('Dados do funcionário atualizados com sucesso!');
       } else {
         // Criar novo funcionário com dados mínimos obrigatórios
+        // Calcular idade a partir da data de nascimento se disponível
+        let idadeCriacao = 25; // Valor padrão
+        if (formData.dataNascimento) {
+          const nascimento = new Date(formData.dataNascimento);
+          const hoje = new Date();
+          idadeCriacao = hoje.getFullYear() - nascimento.getFullYear();
+          const mesAniversario = hoje.getMonth() - nascimento.getMonth();
+          if (mesAniversario < 0 || (mesAniversario === 0 && hoje.getDate() < nascimento.getDate())) {
+            idadeCriacao--;
+          }
+        }
+
         const dadosCriacao = {
           ...formData,
-          idade: formData.idade ? Number(formData.idade) : 25, // Valor padrão ou o informado
+          idade: idadeCriacao,
           funcao: formData.funcao || 'Funcionário',
           dataAniversario: formData.dataAniversario || formData.dataNascimento || new Date().toISOString().split('T')[0],
           telefone: formData.telefone || '',
@@ -389,7 +401,6 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
               <div><strong>Email:</strong> ${funcionario.email || 'Não informado'}</div>
             <div><strong>Telefone:</strong> ${funcionario.telefone || 'Não informado'}</div>
               <div><strong>Chave PIX:</strong> ${funcionario.chavePix || 'Não informada'}</div>
-              <div><strong>Idade:</strong> ${funcionario.idade ?? 'Não informada'}</div>
             </div>
           </div>
         `;
@@ -524,7 +535,6 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
         '#',
         'Nome',
         'Função',
-        'Idade',
         'Sexo',
         'Nascimento',
         'CPF',
@@ -536,7 +546,6 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
         index + 1,
         getNomeCompleto(funcionario) || 'Sem nome',
         funcionario.funcao || 'Não informado',
-        funcionario.idade ?? 'Não informado',
         funcionario.sexo || 'Não informado',
         formatarData(funcionario.dataNascimento),
         funcionario.cpf ? formatarCPF(funcionario.cpf) : 'Não informado',
@@ -861,24 +870,6 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
                       onChange={(e) => setFormData({ ...formData, funcao: e.target.value })}
                       required
                       placeholder="Ex: Vendedor, Caixa..."
-                      className={`w-full px-4 py-2 rounded-lg border ${
-                        darkMode 
-                          ? 'bg-gray-700 border-gray-600 text-white' 
-                          : 'bg-white border-gray-300 text-gray-900'
-                      } focus:outline-none focus:ring-2 focus:ring-teal-500`}
-                    />
-                  </div>
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      Idade <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      min="16"
-                      max="100"
-                      value={formData.idade}
-                      onChange={(e) => setFormData({ ...formData, idade: e.target.value })}
-                      required
                       className={`w-full px-4 py-2 rounded-lg border ${
                         darkMode 
                           ? 'bg-gray-700 border-gray-600 text-white' 

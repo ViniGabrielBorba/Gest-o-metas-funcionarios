@@ -178,11 +178,10 @@ const funcionarioSchema = Joi.object({
     'any.only': 'Sexo deve ser Masculino, Feminino ou Outro',
     'any.required': 'Sexo é obrigatório'
   }),
-  idade: Joi.number().integer().min(16).max(100).required().messages({
+  idade: Joi.number().integer().min(16).max(100).optional().allow(null).messages({
     'number.min': 'Idade mínima é 16 anos',
     'number.max': 'Idade máxima é 100 anos',
-    'number.base': 'Idade deve ser um número',
-    'any.required': 'Idade é obrigatória'
+    'number.base': 'Idade deve ser um número'
   }),
   funcao: Joi.string().min(2).max(50).required().messages({
     'string.min': 'Função deve ter no mínimo 2 caracteres',
