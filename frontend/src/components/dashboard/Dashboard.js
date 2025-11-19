@@ -434,13 +434,16 @@ const Dashboard = ({ setIsAuthenticated }) => {
   console.log('Total de dias com vendas:', vendasDiarias?.length || 0);
   console.log('Total de vendas diárias:', vendasDiarias?.reduce((sum, v) => sum + (v.total || 0), 0) || 0);
 
-  // Gráfico de vendas do mês (comparativo com meta) - incluir função
-  const chartDataMes = vendasMes.map(v => ({
-    name: v.nomeCompleto || v.nome,
-    vendas: v.valor,
-    meta: v.metaIndividual,
-    funcao: v.funcao || ''
-  }));
+  // Gráfico de vendas do mês (comparativo com meta) - apenas vendedores
+  const funcoesVenda = ['Vendedor', 'Vendedora', 'Vendedor Online'];
+  const chartDataMes = vendasMes
+    .filter(v => v.funcao && funcoesVenda.includes(v.funcao))
+    .map(v => ({
+      name: v.nomeCompleto || v.nome,
+      vendas: v.valor,
+      meta: v.metaIndividual,
+      funcao: v.funcao || ''
+    }));
 
   // Gráfico de Top Vendedores do Mês (ranking)
   const chartDataTopMes = topVendedoresMes.map(v => ({
@@ -471,16 +474,18 @@ const Dashboard = ({ setIsAuthenticated }) => {
     }
   ] : [];
 
-  // Filtrar funcionários por busca (buscar em nome e sobrenome)
+  // Filtrar funcionários por busca (buscar em nome e sobrenome) - apenas vendedores
   const funcionariosFiltrados = buscaFuncionario
-    ? vendasMes.filter(v => {
-        const nomeCompleto = (v.nomeCompleto || v.nome || '').toLowerCase();
-        const nome = (v.nome || '').toLowerCase();
-        const sobrenome = (v.sobrenome || '').toLowerCase();
-        const busca = buscaFuncionario.toLowerCase();
-        return nomeCompleto.includes(busca) || nome.includes(busca) || sobrenome.includes(busca);
-      })
-    : vendasMes;
+    ? vendasMes
+        .filter(v => v.funcao && funcoesVenda.includes(v.funcao))
+        .filter(v => {
+          const nomeCompleto = (v.nomeCompleto || v.nome || '').toLowerCase();
+          const nome = (v.nome || '').toLowerCase();
+          const sobrenome = (v.sobrenome || '').toLowerCase();
+          const busca = buscaFuncionario.toLowerCase();
+          return nomeCompleto.includes(busca) || nome.includes(busca) || sobrenome.includes(busca);
+        })
+    : vendasMes.filter(v => v.funcao && funcoesVenda.includes(v.funcao));
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${

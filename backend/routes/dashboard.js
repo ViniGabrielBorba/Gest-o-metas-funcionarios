@@ -231,17 +231,19 @@ router.get('/', async (req, res) => {
       }
     }
 
-    // Aniversariantes do mês
+    // Aniversariantes do mês - usar dataNascimento da seção Dados Funcionários
     const aniversariantes = funcionarios
       .filter(func => {
         try {
-          if (!func.dataAniversario) return false;
+          // Usar dataNascimento (da seção Dados Funcionários) em vez de dataAniversario
+          const dataParaUsar = func.dataNascimento || func.dataAniversario;
+          if (!dataParaUsar) return false;
           
           // Tentar extrair mês diretamente da string se for formato ISO
           let mesAniversario = null;
-          if (typeof func.dataAniversario === 'string') {
+          if (typeof dataParaUsar === 'string') {
             // Se for string no formato YYYY-MM-DD ou ISO
-            const match = func.dataAniversario.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            const match = dataParaUsar.match(/^(\d{4})-(\d{2})-(\d{2})/);
             if (match) {
               mesAniversario = parseInt(match[2], 10);
             }
@@ -249,7 +251,7 @@ router.get('/', async (req, res) => {
           
           // Se não conseguiu extrair da string, usar Date com UTC
           if (mesAniversario === null) {
-            const dataAniv = new Date(func.dataAniversario);
+            const dataAniv = new Date(dataParaUsar);
             if (isNaN(dataAniv.getTime())) return false;
             mesAniversario = dataAniv.getUTCMonth() + 1;
           }
@@ -267,10 +269,13 @@ router.get('/', async (req, res) => {
             ? `${func.nome || ''} ${func.sobrenome}`
             : (func.nome || '');
           
+          // Usar dataNascimento (da seção Dados Funcionários) em vez de dataAniversario
+          const dataParaUsar = func.dataNascimento || func.dataAniversario;
+          
           // Tentar extrair dia diretamente da string se for formato ISO
           let dia = null;
-          if (typeof func.dataAniversario === 'string') {
-            const match = func.dataAniversario.match(/^(\d{4})-(\d{2})-(\d{2})/);
+          if (typeof dataParaUsar === 'string') {
+            const match = dataParaUsar.match(/^(\d{4})-(\d{2})-(\d{2})/);
             if (match) {
               dia = parseInt(match[3], 10);
             }
@@ -278,7 +283,7 @@ router.get('/', async (req, res) => {
           
           // Se não conseguiu extrair da string, usar Date com UTC
           if (dia === null) {
-            const dataAniv = new Date(func.dataAniversario);
+            const dataAniv = new Date(dataParaUsar);
             dia = dataAniv.getUTCDate() || 1;
           }
           
