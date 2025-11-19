@@ -282,6 +282,132 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
     printWindow.print();
   };
 
+  const handlePrintAll = () => {
+    if (!funcionarios.length) {
+      toast.error('Nenhum funcionário cadastrado para imprimir');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    const funcionariosHTML = funcionarios
+      .sort((a, b) => getNomeCompleto(a).localeCompare(getNomeCompleto(b)))
+      .map((funcionario, index) => {
+        const dataNascimentoFormatada = funcionario.dataNascimento
+          ? new Date(funcionario.dataNascimento).toLocaleDateString('pt-BR')
+          : 'Não informado';
+        const cpfFormatado = funcionario.cpf ? formatarCPF(funcionario.cpf) : 'Não informado';
+
+        return `
+          <div class="card">
+            <div class="card-header">
+              <span class="card-index">#${index + 1}</span>
+              <div>
+                <h3>${getNomeCompleto(funcionario) || 'Sem nome'}</h3>
+                <p>${funcionario.funcao || 'Função não informada'}</p>
+              </div>
+            </div>
+            <div class="info-grid">
+              <div><strong>CPF:</strong> ${cpfFormatado}</div>
+              <div><strong>Data de Nascimento:</strong> ${dataNascimentoFormatada}</div>
+              <div><strong>Sexo:</strong> ${funcionario.sexo || 'Não informado'}</div>
+              <div><strong>Email:</strong> ${funcionario.email || 'Não informado'}</div>
+              <div><strong>Chave PIX:</strong> ${funcionario.chavePix || 'Não informada'}</div>
+              <div><strong>Idade:</strong> ${funcionario.idade ?? 'Não informada'}</div>
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Relatório - Dados dos Funcionários</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              padding: 30px;
+              margin: 0;
+              background-color: #f4f4f4;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 30px;
+            }
+            .header h1 {
+              color: #169486;
+              margin-bottom: 5px;
+            }
+            .header p {
+              color: #555;
+              font-size: 14px;
+            }
+            .card {
+              background-color: #fff;
+              border-radius: 10px;
+              padding: 20px;
+              margin-bottom: 15px;
+              box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            }
+            .card-header {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              border-bottom: 1px solid #eee;
+              padding-bottom: 10px;
+              margin-bottom: 15px;
+            }
+            .card-header h3 {
+              margin: 0;
+              color: #111;
+            }
+            .card-header p {
+              margin: 2px 0 0;
+              color: #666;
+              font-size: 14px;
+            }
+            .card-index {
+              font-size: 20px;
+              font-weight: bold;
+              color: #169486;
+            }
+            .info-grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+              gap: 10px;
+            }
+            .info-grid div {
+              background: #f9fafb;
+              padding: 10px;
+              border-radius: 6px;
+              font-size: 14px;
+              color: #333;
+            }
+            @media print {
+              body {
+                background: #fff;
+                padding: 0;
+              }
+              .card {
+                page-break-inside: avoid;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>📋 Relatório de Funcionários</h1>
+            <p>Gerado em ${new Date().toLocaleString('pt-BR')} • Total: ${funcionarios.length}</p>
+          </div>
+          ${funcionariosHTML}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
   const funcionariosFiltrados = funcionarios.filter(func => {
     if (!busca) return true;
     const buscaLower = busca.toLowerCase();
@@ -318,12 +444,20 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
               <FaIdCard className="text-4xl" style={{ color: '#169486' }} />
               <h1 className="text-3xl font-bold">Dados Funcionários</h1>
             </div>
-            <button
-              onClick={() => handleOpenModal()}
-              className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
-            >
-              <FaPlus /> Adicionar Funcionário
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={handlePrintAll}
+                className="flex items-center gap-2 px-4 py-2 border border-teal-600 text-teal-600 rounded-lg hover:bg-teal-50 transition-colors"
+              >
+                <FaPrint /> Imprimir Todos
+              </button>
+              <button
+                onClick={() => handleOpenModal()}
+                className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+              >
+                <FaPlus /> Adicionar Funcionário
+              </button>
+            </div>
           </div>
           <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
             Gerencie os dados pessoais dos funcionários (CPF, data de nascimento, email, chave PIX)
