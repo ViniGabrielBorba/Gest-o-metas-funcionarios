@@ -236,10 +236,25 @@ router.get('/', async (req, res) => {
       .filter(func => {
         try {
           if (!func.dataAniversario) return false;
-          const dataAniv = new Date(func.dataAniversario);
-          if (isNaN(dataAniv.getTime())) return false;
-          // Usar UTC para garantir que o mês seja extraído corretamente
-          return dataAniv.getUTCMonth() + 1 === mesAtual;
+          
+          // Tentar extrair mês diretamente da string se for formato ISO
+          let mesAniversario = null;
+          if (typeof func.dataAniversario === 'string') {
+            // Se for string no formato YYYY-MM-DD ou ISO
+            const match = func.dataAniversario.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (match) {
+              mesAniversario = parseInt(match[2], 10);
+            }
+          }
+          
+          // Se não conseguiu extrair da string, usar Date com UTC
+          if (mesAniversario === null) {
+            const dataAniv = new Date(func.dataAniversario);
+            if (isNaN(dataAniv.getTime())) return false;
+            mesAniversario = dataAniv.getUTCMonth() + 1;
+          }
+          
+          return mesAniversario === mesAtual;
         } catch (err) {
           console.error('Erro ao processar aniversário do funcionário:', func._id, err);
           return false;
@@ -251,9 +266,22 @@ router.get('/', async (req, res) => {
           const nomeCompleto = func.sobrenome && func.sobrenome.trim() !== ''
             ? `${func.nome || ''} ${func.sobrenome}`
             : (func.nome || '');
-          const dataAniv = new Date(func.dataAniversario);
-          // Usar UTC para garantir que o dia seja extraído corretamente
-          const dia = dataAniv.getUTCDate() || 1;
+          
+          // Tentar extrair dia diretamente da string se for formato ISO
+          let dia = null;
+          if (typeof func.dataAniversario === 'string') {
+            const match = func.dataAniversario.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (match) {
+              dia = parseInt(match[3], 10);
+            }
+          }
+          
+          // Se não conseguiu extrair da string, usar Date com UTC
+          if (dia === null) {
+            const dataAniv = new Date(func.dataAniversario);
+            dia = dataAniv.getUTCDate() || 1;
+          }
+          
           return {
             id: func._id,
             nome: func.nome || '',
