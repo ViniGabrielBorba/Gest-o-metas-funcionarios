@@ -83,11 +83,29 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
 
   const formatarData = (data) => {
     if (!data) return 'Não informado';
-    try {
-      return new Date(data).toLocaleDateString('pt-BR');
-    } catch (error) {
-      return 'Não informado';
-    }
+
+    const normalizar = (valor) => {
+      if (!valor) return null;
+      if (typeof valor === 'string') {
+        const apenasData = valor.split('T')[0];
+        if (/^\d{4}-\d{2}-\d{2}$/.test(apenasData)) {
+          const [ano, mes, dia] = apenasData.split('-');
+          return { dia, mes, ano };
+        }
+      }
+
+      const dataObj = new Date(valor);
+      if (isNaN(dataObj)) return null;
+      return {
+        dia: String(dataObj.getUTCDate()).padStart(2, '0'),
+        mes: String(dataObj.getUTCMonth() + 1).padStart(2, '0'),
+        ano: String(dataObj.getUTCFullYear())
+      };
+    };
+
+    const partes = normalizar(data);
+    if (!partes) return 'Não informado';
+    return `${partes.dia}/${partes.mes}/${partes.ano}`;
   };
 
   const handleOpenModal = (funcionario = null) => {
@@ -200,9 +218,7 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
 
   const handlePrint = (funcionario) => {
     const printWindow = window.open('', '_blank');
-    const dataNascimentoFormatada = funcionario.dataNascimento
-      ? new Date(funcionario.dataNascimento).toLocaleDateString('pt-BR')
-      : 'Não informado';
+    const dataNascimentoFormatada = formatarData(funcionario.dataNascimento);
     const cpfFormatado = funcionario.cpf ? formatarCPF(funcionario.cpf) : 'Não informado';
 
     printWindow.document.write(`
@@ -647,7 +663,7 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
                     <div className="flex items-center gap-2 text-sm">
                       <FaUser className="text-gray-400" />
                       <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
-                        <strong>Nascimento:</strong> {new Date(funcionario.dataNascimento).toLocaleDateString('pt-BR')}
+                        <strong>Nascimento:</strong> {formatarData(funcionario.dataNascimento)}
                       </span>
                     </div>
                   )}
