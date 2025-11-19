@@ -29,6 +29,7 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
     cpf: '',
     dataNascimento: '',
     sexo: 'Masculino',
+    idade: '',
     email: '',
     chavePix: ''
   });
@@ -85,6 +86,9 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
           ? new Date(funcionario.dataNascimento).toISOString().split('T')[0]
           : '',
         sexo: funcionario.sexo || 'Masculino',
+        idade: funcionario.idade !== undefined && funcionario.idade !== null
+          ? String(funcionario.idade)
+          : '',
         email: funcionario.email || '',
         chavePix: funcionario.chavePix || ''
       });
@@ -96,6 +100,7 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
         cpf: '',
         dataNascimento: '',
         sexo: 'Masculino',
+        idade: '',
         email: '',
         chavePix: ''
       });
@@ -116,15 +121,27 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
       return;
     }
 
+    const idadeFormatada = formData.idade ? Number(formData.idade) : null;
+
+    if (idadeFormatada !== null && (isNaN(idadeFormatada) || idadeFormatada < 16)) {
+      toast.error('Informe uma idade válida (mínimo 16 anos)');
+      return;
+    }
+
     try {
+      const dadosComIdade = {
+        ...formData,
+        idade: idadeFormatada ?? (editingFuncionario?.idade || 25)
+      };
+
       if (editingFuncionario) {
-        await api.put(`/funcionarios/${editingFuncionario._id}`, formData);
+        await api.put(`/funcionarios/${editingFuncionario._id}`, dadosComIdade);
         toast.success('Dados do funcionário atualizados com sucesso!');
       } else {
         // Criar novo funcionário com dados mínimos obrigatórios
         const dadosCriacao = {
           ...formData,
-          idade: 25, // Valor padrão, pode ser editado depois
+          idade: formData.idade ? Number(formData.idade) : 25, // Valor padrão ou o informado
           funcao: 'Funcionário', // Valor padrão
           dataAniversario: formData.dataNascimento || new Date().toISOString().split('T')[0],
           metaIndividual: 0
@@ -527,6 +544,24 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
                       <option value="Feminino">Feminino</option>
                       <option value="Outro">Outro</option>
                     </select>
+                  </div>
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Idade <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="16"
+                      max="100"
+                      value={formData.idade}
+                      onChange={(e) => setFormData({ ...formData, idade: e.target.value })}
+                      required
+                      className={`w-full px-4 py-2 rounded-lg border ${
+                        darkMode 
+                          ? 'bg-gray-700 border-gray-600 text-white' 
+                          : 'bg-white border-gray-300 text-gray-900'
+                      } focus:outline-none focus:ring-2 focus:ring-teal-500`}
+                    />
                   </div>
                   <div>
                     <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
