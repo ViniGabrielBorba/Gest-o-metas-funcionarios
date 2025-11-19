@@ -201,6 +201,7 @@ const funcionarioSchema = Joi.object({
     'string.max': 'CPF deve ter no máximo 14 caracteres',
     'string.pattern.base': 'CPF deve conter apenas números, pontos e hífens'
   }),
+  telefone: telefoneSchema,
   email: Joi.string().email().allow('', null).optional().messages({
     'string.email': 'Email inválido'
   }),

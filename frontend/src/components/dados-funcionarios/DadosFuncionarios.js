@@ -40,6 +40,7 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
     idade: '',
     funcao: 'Funcionário',
     metaIndividual: 0,
+    telefone: '',
     email: '',
     chavePix: ''
   });
@@ -151,6 +152,7 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
           : '',
         funcao: funcionario.funcao || 'Funcionário',
         metaIndividual: funcionario.metaIndividual ?? 0,
+        telefone: funcionario.telefone || '',
         email: funcionario.email || '',
         chavePix: funcionario.chavePix || ''
       });
@@ -166,6 +168,7 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
         idade: '',
         funcao: 'Funcionário',
         metaIndividual: 0,
+        telefone: '',
         email: '',
         chavePix: ''
       });
@@ -199,6 +202,7 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
         idade: idadeFormatada ?? (editingFuncionario?.idade || 25),
         funcao: formData.funcao || editingFuncionario?.funcao || 'Funcionário',
         metaIndividual: formData.metaIndividual ?? editingFuncionario?.metaIndividual ?? 0,
+        telefone: formData.telefone || editingFuncionario?.telefone || '',
         dataAniversario: formData.dataAniversario || formData.dataNascimento || editingFuncionario?.dataAniversario || new Date().toISOString().split('T')[0]
       };
 
@@ -212,6 +216,7 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
           idade: formData.idade ? Number(formData.idade) : 25, // Valor padrão ou o informado
           funcao: formData.funcao || 'Funcionário',
           dataAniversario: formData.dataAniversario || formData.dataNascimento || new Date().toISOString().split('T')[0],
+          telefone: formData.telefone || '',
           metaIndividual: formData.metaIndividual ?? 0
         };
         await api.post('/funcionarios', dadosCriacao);
@@ -334,6 +339,10 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
               <span class="info-value">${funcionario.email || 'Não informado'}</span>
             </div>
             <div class="info-row">
+              <span class="info-label">Telefone:</span>
+              <span class="info-value">${funcionario.telefone || 'Não informado'}</span>
+            </div>
+            <div class="info-row">
               <span class="info-label">Chave PIX:</span>
               <span class="info-value">${funcionario.chavePix || 'Não informado'}</span>
             </div>
@@ -377,6 +386,7 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
               <div><strong>Data de Nascimento:</strong> ${dataNascimentoFormatada}</div>
               <div><strong>Sexo:</strong> ${funcionario.sexo || 'Não informado'}</div>
               <div><strong>Email:</strong> ${funcionario.email || 'Não informado'}</div>
+            <div><strong>Telefone:</strong> ${funcionario.telefone || 'Não informado'}</div>
               <div><strong>Chave PIX:</strong> ${funcionario.chavePix || 'Não informada'}</div>
               <div><strong>Idade:</strong> ${funcionario.idade ?? 'Não informada'}</div>
             </div>
@@ -518,6 +528,7 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
         'Nascimento',
         'CPF',
         'Email',
+        'Telefone',
         'Chave PIX'
       ]],
       body: funcionariosOrdenados.map((funcionario, index) => [
@@ -529,6 +540,7 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
         formatarData(funcionario.dataNascimento),
         funcionario.cpf ? formatarCPF(funcionario.cpf) : 'Não informado',
         funcionario.email || 'Não informado',
+        funcionario.telefone || 'Não informado',
         funcionario.chavePix || 'Não informada'
       ]),
       styles: {
@@ -557,9 +569,11 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
     const nomeCompleto = getNomeCompleto(func).toLowerCase();
     const cpf = (func.cpf || '').toLowerCase();
     const email = (func.email || '').toLowerCase();
+    const telefone = (func.telefone || '').toLowerCase();
     return nomeCompleto.includes(buscaLower) || 
            cpf.includes(buscaLower) || 
-           email.includes(buscaLower);
+           email.includes(buscaLower) ||
+           telefone.includes(buscaLower);
   });
 
   if (loading) {
@@ -707,6 +721,14 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
                       </span>
                     </div>
                   )}
+                  {funcionario.telefone && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <FaPhone className="text-gray-400" />
+                      <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                        <strong>Telefone:</strong> {funcionario.telefone}
+                      </span>
+                    </div>
+                  )}
                   {funcionario.chavePix && (
                     <div className="flex items-center gap-2 text-sm">
                       <FaCreditCard className="text-gray-400" />
@@ -830,6 +852,23 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
                   </div>
                   <div>
                     <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Função <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.funcao}
+                      onChange={(e) => setFormData({ ...formData, funcao: e.target.value })}
+                      required
+                      placeholder="Ex: Vendedor, Caixa..."
+                      className={`w-full px-4 py-2 rounded-lg border ${
+                        darkMode 
+                          ? 'bg-gray-700 border-gray-600 text-white' 
+                          : 'bg-white border-gray-300 text-gray-900'
+                      } focus:outline-none focus:ring-2 focus:ring-teal-500`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                       Idade <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -855,6 +894,22 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       placeholder="exemplo@email.com"
+                      className={`w-full px-4 py-2 rounded-lg border ${
+                        darkMode 
+                          ? 'bg-gray-700 border-gray-600 text-white' 
+                          : 'bg-white border-gray-300 text-gray-900'
+                      } focus:outline-none focus:ring-2 focus:ring-teal-500`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Telefone
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.telefone}
+                      onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                      placeholder="(11) 99999-9999"
                       className={`w-full px-4 py-2 rounded-lg border ${
                         darkMode 
                           ? 'bg-gray-700 border-gray-600 text-white' 

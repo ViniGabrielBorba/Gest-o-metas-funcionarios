@@ -47,6 +47,12 @@ const funcionarioSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  telefone: {
+    type: String,
+    required: false,
+    trim: true,
+    default: ''
+  },
   email: {
     type: String,
     required: false,
