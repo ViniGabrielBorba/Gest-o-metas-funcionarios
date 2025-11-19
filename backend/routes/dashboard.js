@@ -408,10 +408,13 @@ router.get('/alertas', async (req, res) => {
       // Não mostrar alerta para "no_prazo" ou "no_ritmo" - são situações normais
     }
 
-    // Funcionários sem vendas no mês
+    // Funcionários sem vendas no mês - apenas vendedores
+    const funcoesVendaAlertas = ['Vendedor', 'Vendedora', 'Vendedor Online'];
     const funcionariosSemVendas = funcionarios.filter(f => {
-      const v = f.vendas.find(v => v.mes === mesAtual && v.ano === anoAtual);
-      return !v || v.valor === 0;
+      // Apenas verificar funcionários com função de venda
+      if (!f.funcao || !funcoesVendaAlertas.includes(f.funcao)) return false;
+      const v = (f.vendas || []).find(v => v && v.mes === mesAtual && v.ano === anoAtual);
+      return !v || (Number(v.valor) || 0) === 0;
     });
 
     if (funcionariosSemVendas.length > 0) {
@@ -450,10 +453,12 @@ router.get('/alertas', async (req, res) => {
     const percentualEsperado = diasDecorridos > 0 ? (diasDecorridos / diasNoMes) * 100 : 0;
     
     const funcionariosAbaixoMeta = funcionarios.filter(f => {
-      const v = f.vendas.find(v => v.mes === mesAtual && v.ano === anoAtual);
-      const valorVendido = v ? v.valor : 0;
+      // Apenas verificar funcionários com função de venda
+      if (!f.funcao || !funcoesVendaAlertas.includes(f.funcao)) return false;
+      const v = (f.vendas || []).find(v => v && v.mes === mesAtual && v.ano === anoAtual);
+      const valorVendido = (v && v.valor) ? Number(v.valor) : 0;
       
-      if (f.metaIndividual <= 0) return false; // Ignorar funcionários sem meta
+      if ((f.metaIndividual || 0) <= 0) return false; // Ignorar funcionários sem meta
       
       // Se já bateu a meta, não está abaixo
       if (valorVendido >= f.metaIndividual) return false;
