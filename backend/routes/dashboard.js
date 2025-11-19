@@ -242,7 +242,12 @@ router.get('/', async (req, res) => {
       aniversariantes
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Erro ao buscar dados do dashboard:', error);
+    console.error('Stack trace:', error.stack);
+    res.status(500).json({ 
+      message: error.message || 'Erro ao buscar dados do dashboard',
+      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
@@ -436,7 +441,12 @@ router.get('/alertas', async (req, res) => {
 
     res.json({ alertas });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Erro ao buscar dados do dashboard:', error);
+    console.error('Stack trace:', error.stack);
+    res.status(500).json({ 
+      message: error.message || 'Erro ao buscar dados do dashboard',
+      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
