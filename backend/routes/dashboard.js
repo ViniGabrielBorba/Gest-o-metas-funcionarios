@@ -26,22 +26,35 @@ router.get('/', async (req, res) => {
 
     // Calcular vendas do mês
     const vendasMes = funcionarios.map(func => {
-      const venda = func.vendas.find(
-        v => v.mes === mesAtual && v.ano === anoAtual
-      );
-      // Montar nome completo (nome + sobrenome)
-      const nomeCompleto = func.sobrenome && func.sobrenome.trim() !== ''
-        ? `${func.nome} ${func.sobrenome}`
-        : func.nome;
-      return {
-        funcionarioId: func._id,
-        nome: func.nome,
-        sobrenome: func.sobrenome || '',
-        nomeCompleto: nomeCompleto,
-        funcao: func.funcao || '',
-        valor: venda ? venda.valor : 0,
-        metaIndividual: func.metaIndividual
-      };
+      try {
+        const venda = (func.vendas || []).find(
+          v => v && v.mes === mesAtual && v.ano === anoAtual
+        );
+        // Montar nome completo (nome + sobrenome)
+        const nomeCompleto = func.sobrenome && func.sobrenome.trim() !== ''
+          ? `${func.nome || ''} ${func.sobrenome}`
+          : (func.nome || '');
+        return {
+          funcionarioId: func._id,
+          nome: func.nome || '',
+          sobrenome: func.sobrenome || '',
+          nomeCompleto: nomeCompleto,
+          funcao: (func.funcao && typeof func.funcao === 'string') ? func.funcao : '',
+          valor: (venda && venda.valor) ? Number(venda.valor) : 0,
+          metaIndividual: (func.metaIndividual) ? Number(func.metaIndividual) : 0
+        };
+      } catch (err) {
+        console.error('Erro ao processar funcionário:', func._id, err);
+        return {
+          funcionarioId: func._id,
+          nome: func.nome || '',
+          sobrenome: func.sobrenome || '',
+          nomeCompleto: func.nome || '',
+          funcao: '',
+          valor: 0,
+          metaIndividual: 0
+        };
+      }
     });
 
     // Calcular total de vendas do mês
@@ -60,30 +73,41 @@ router.get('/', async (req, res) => {
     
     // Vendas dos funcionários
     funcionarios.forEach(func => {
-      if (func.vendasDiarias && func.vendasDiarias.length > 0) {
-        func.vendasDiarias.forEach(venda => {
-          // Normalizar data usando UTC para evitar problemas de timezone
-          const vendaDate = new Date(venda.data);
-          // Usar UTC para extrair os componentes (garante dia correto)
-          const mesVenda = vendaDate.getUTCMonth() + 1;
-          const anoVenda = vendaDate.getUTCFullYear();
-          const diaVenda = vendaDate.getUTCDate();
-          
-          if (mesVenda === mesAtual && anoVenda === anoAtual) {
-            const dataKey = `${anoVenda}-${String(mesVenda).padStart(2, '0')}-${String(diaVenda).padStart(2, '0')}`;
-            
-            if (!vendasDiariasMes[dataKey]) {
-              vendasDiariasMes[dataKey] = {
-                data: dataKey,
-                dia: diaVenda,
-                total: 0,
-                quantidade: 0
-              };
+      try {
+        if (func.vendasDiarias && Array.isArray(func.vendasDiarias) && func.vendasDiarias.length > 0) {
+          func.vendasDiarias.forEach(venda => {
+            try {
+              if (!venda || !venda.data) return;
+              // Normalizar data usando UTC para evitar problemas de timezone
+              const vendaDate = new Date(venda.data);
+              if (isNaN(vendaDate.getTime())) return;
+              // Usar UTC para extrair os componentes (garante dia correto)
+              const mesVenda = vendaDate.getUTCMonth() + 1;
+              const anoVenda = vendaDate.getUTCFullYear();
+              const diaVenda = vendaDate.getUTCDate();
+              
+              if (mesVenda === mesAtual && anoVenda === anoAtual) {
+                const dataKey = `${anoVenda}-${String(mesVenda).padStart(2, '0')}-${String(diaVenda).padStart(2, '0')}`;
+                
+                if (!vendasDiariasMes[dataKey]) {
+                  vendasDiariasMes[dataKey] = {
+                    data: dataKey,
+                    dia: diaVenda,
+                    total: 0,
+                    quantidade: 0
+                  };
+                }
+                const valorVenda = Number(venda.valor) || 0;
+                vendasDiariasMes[dataKey].total += valorVenda;
+                vendasDiariasMes[dataKey].quantidade += 1;
+              }
+            } catch (err) {
+              console.error('Erro ao processar venda diária:', err);
             }
-            vendasDiariasMes[dataKey].total += venda.valor;
-            vendasDiariasMes[dataKey].quantidade += 1;
-          }
-        });
+          });
+        }
+      } catch (err) {
+        console.error('Erro ao processar vendas diárias do funcionário:', func._id, err);
       }
     });
 
@@ -201,22 +225,43 @@ router.get('/', async (req, res) => {
     }
 
     // Aniversariantes do mês
-    const aniversariantes = funcionarios.filter(func => {
-      const dataAniv = new Date(func.dataAniversario);
-      return dataAniv.getMonth() + 1 === mesAtual;
-    }).map(func => {
-      // Montar nome completo (nome + sobrenome)
-      const nomeCompleto = func.sobrenome && func.sobrenome.trim() !== ''
-        ? `${func.nome} ${func.sobrenome}`
-        : func.nome;
-      return {
-        id: func._id,
-        nome: func.nome,
-        sobrenome: func.sobrenome || '',
-        nomeCompleto: nomeCompleto,
-        dia: new Date(func.dataAniversario).getDate()
-      };
-    });
+    const aniversariantes = funcionarios
+      .filter(func => {
+        try {
+          if (!func.dataAniversario) return false;
+          const dataAniv = new Date(func.dataAniversario);
+          if (isNaN(dataAniv.getTime())) return false;
+          return dataAniv.getMonth() + 1 === mesAtual;
+        } catch (err) {
+          console.error('Erro ao processar aniversário do funcionário:', func._id, err);
+          return false;
+        }
+      })
+      .map(func => {
+        try {
+          // Montar nome completo (nome + sobrenome)
+          const nomeCompleto = func.sobrenome && func.sobrenome.trim() !== ''
+            ? `${func.nome || ''} ${func.sobrenome}`
+            : (func.nome || '');
+          const dataAniv = new Date(func.dataAniversario);
+          return {
+            id: func._id,
+            nome: func.nome || '',
+            sobrenome: func.sobrenome || '',
+            nomeCompleto: nomeCompleto,
+            dia: dataAniv.getDate() || 1
+          };
+        } catch (err) {
+          console.error('Erro ao mapear aniversariante:', func._id, err);
+          return {
+            id: func._id,
+            nome: func.nome || '',
+            sobrenome: func.sobrenome || '',
+            nomeCompleto: func.nome || '',
+            dia: 1
+          };
+        }
+      });
 
     res.json({
       resumo: {
