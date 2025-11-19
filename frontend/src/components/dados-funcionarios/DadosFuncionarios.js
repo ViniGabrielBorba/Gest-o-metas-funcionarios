@@ -490,21 +490,25 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
       format: 'a4'
     });
 
-    const loja = gerenteInfo.nomeLoja?.trim() || 'FlowGest';
+    const loja = gerenteInfo.nomeLoja?.trim() || 'Loja não informada';
     const gerenteNome = gerenteInfo.nome?.trim() || 'Gerente';
-    const cabecalho = `FlowGest / ${loja} / ${gerenteNome}`;
 
-    doc.setFontSize(16);
+    doc.setFontSize(22);
     doc.setTextColor(22, 148, 134);
-    doc.text(cabecalho, 40, 40);
+    doc.text('FlowGest', 40, 40);
+
+    doc.setFontSize(12);
+    doc.text(`Loja: ${loja}`, 40, 58);
+    doc.text(`Gerente: ${gerenteNome}`, 40, 74);
+
     doc.setFontSize(18);
-    doc.text('Relatório de Funcionários', 40, 65);
+    doc.text('Relatório de Funcionários', 40, 100);
     doc.setFontSize(11);
     doc.setTextColor(80, 80, 80);
-    doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')} • Total: ${funcionariosOrdenados.length}`, 40, 83);
+    doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')} • Total: ${funcionariosOrdenados.length}`, 40, 118);
 
     autoTable(doc, {
-      startY: 100,
+      startY: 135,
       head: [[
         '#',
         'Nome',
