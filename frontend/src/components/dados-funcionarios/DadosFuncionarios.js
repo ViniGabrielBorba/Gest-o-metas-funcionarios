@@ -16,6 +16,7 @@ import {
   FaDownload
 } from 'react-icons/fa';
 import jsPDF from 'jspdf';
+// @ts-ignore
 import autoTable from 'jspdf-autotable';
 
 const DadosFuncionarios = ({ setIsAuthenticated }) => {
