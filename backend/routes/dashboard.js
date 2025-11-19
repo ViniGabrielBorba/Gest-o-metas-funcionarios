@@ -460,12 +460,13 @@ router.get('/alertas', async (req, res) => {
       
       if ((f.metaIndividual || 0) <= 0) return false; // Ignorar funcionários sem meta
       
-      // Se já bateu a meta, não está abaixo
-      if (valorVendido >= f.metaIndividual) return false;
-      
       // Calcular percentual atingido
       const metaIndividual = Number(f.metaIndividual) || 0;
       if (metaIndividual <= 0) return false; // Ignorar se meta inválida
+      
+      // Se já bateu a meta, não está abaixo
+      if (valorVendido >= metaIndividual) return false;
+      
       const percentualAtingido = (valorVendido / metaIndividual) * 100;
       
       // Se for o mês atual, considerar o tempo decorrido
