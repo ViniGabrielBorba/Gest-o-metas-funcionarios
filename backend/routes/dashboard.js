@@ -238,7 +238,8 @@ router.get('/', async (req, res) => {
           if (!func.dataAniversario) return false;
           const dataAniv = new Date(func.dataAniversario);
           if (isNaN(dataAniv.getTime())) return false;
-          return dataAniv.getMonth() + 1 === mesAtual;
+          // Usar UTC para garantir que o mês seja extraído corretamente
+          return dataAniv.getUTCMonth() + 1 === mesAtual;
         } catch (err) {
           console.error('Erro ao processar aniversário do funcionário:', func._id, err);
           return false;
@@ -251,12 +252,14 @@ router.get('/', async (req, res) => {
             ? `${func.nome || ''} ${func.sobrenome}`
             : (func.nome || '');
           const dataAniv = new Date(func.dataAniversario);
+          // Usar UTC para garantir que o dia seja extraído corretamente
+          const dia = dataAniv.getUTCDate() || 1;
           return {
             id: func._id,
             nome: func.nome || '',
             sobrenome: func.sobrenome || '',
             nomeCompleto: nomeCompleto,
-            dia: dataAniv.getDate() || 1
+            dia: dia
           };
         } catch (err) {
           console.error('Erro ao mapear aniversariante:', func._id, err);

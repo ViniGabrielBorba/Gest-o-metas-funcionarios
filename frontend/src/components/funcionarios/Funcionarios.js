@@ -90,6 +90,31 @@ const Funcionarios = ({ setIsAuthenticated }) => {
     return funcionario.nome || '';
   };
 
+  // Função helper para formatar data de aniversário (usando UTC para evitar problemas de timezone)
+  const formatarDataAniversario = (data) => {
+    if (!data) return 'Não informado';
+    
+    try {
+      // Se for string no formato YYYY-MM-DD, extrair diretamente
+      if (typeof data === 'string' && /^\d{4}-\d{2}-\d{2}/.test(data)) {
+        const apenasData = data.split('T')[0];
+        const [ano, mes, dia] = apenasData.split('-');
+        return `${dia}/${mes}`;
+      }
+      
+      // Caso contrário, usar Date com UTC
+      const dataObj = new Date(data);
+      if (isNaN(dataObj.getTime())) return 'Não informado';
+      
+      const dia = String(dataObj.getUTCDate()).padStart(2, '0');
+      const mes = String(dataObj.getUTCMonth() + 1).padStart(2, '0');
+      return `${dia}/${mes}`;
+    } catch (err) {
+      console.error('Erro ao formatar data de aniversário:', err);
+      return 'Não informado';
+    }
+  };
+
   // Função helper para separar nome completo em nome e sobrenome (para compatibilidade)
   const separarNomeSobrenome = (nomeCompleto) => {
     if (!nomeCompleto) return { nome: '', sobrenome: '' };
@@ -828,10 +853,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
                   <span>{funcionario.idade} anos</span>
                   <span className="mx-2">•</span>
                   <span>
-                    {new Date(funcionario.dataAniversario).toLocaleDateString('pt-BR', {
-                      day: '2-digit',
-                      month: '2-digit'
-                    })}
+                    {formatarDataAniversario(funcionario.dataAniversario)}
                   </span>
                 </div>
                 <div className={`flex items-center gap-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
