@@ -12,8 +12,11 @@ import {
   FaSearch,
   FaIdCard,
   FaEnvelope,
-  FaCreditCard
+  FaCreditCard,
+  FaDownload
 } from 'react-icons/fa';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const DadosFuncionarios = ({ setIsAuthenticated }) => {
   const toast = useToast();
@@ -76,6 +79,15 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
       return cpfLimpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
     }
     return cpf;
+  };
+
+  const formatarData = (data) => {
+    if (!data) return 'Não informado';
+    try {
+      return new Date(data).toLocaleDateString('pt-BR');
+    } catch (error) {
+      return 'Não informado';
+    }
   };
 
   const handleOpenModal = (funcionario = null) => {
@@ -424,6 +436,73 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
     printWindow.print();
   };
 
+  const handleDownloadPdf = () => {
+    if (!funcionarios.length) {
+      toast.error('Nenhum funcionário cadastrado para gerar PDF');
+      return;
+    }
+
+    const funcionariosOrdenados = [...funcionarios].sort((a, b) =>
+      getNomeCompleto(a).localeCompare(getNomeCompleto(b))
+    );
+
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'pt',
+      format: 'a4'
+    });
+
+    doc.setFontSize(18);
+    doc.setTextColor(22, 148, 134);
+    doc.text('Relatório de Funcionários', 40, 40);
+    doc.setFontSize(11);
+    doc.setTextColor(80, 80, 80);
+    doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')} • Total: ${funcionariosOrdenados.length}`, 40, 60);
+
+    autoTable(doc, {
+      startY: 80,
+      head: [[
+        '#',
+        'Nome',
+        'Função',
+        'Idade',
+        'Sexo',
+        'Nascimento',
+        'CPF',
+        'Email',
+        'Chave PIX'
+      ]],
+      body: funcionariosOrdenados.map((funcionario, index) => [
+        index + 1,
+        getNomeCompleto(funcionario) || 'Sem nome',
+        funcionario.funcao || 'Não informado',
+        funcionario.idade ?? 'Não informado',
+        funcionario.sexo || 'Não informado',
+        formatarData(funcionario.dataNascimento),
+        funcionario.cpf ? formatarCPF(funcionario.cpf) : 'Não informado',
+        funcionario.email || 'Não informado',
+        funcionario.chavePix || 'Não informada'
+      ]),
+      styles: {
+        fontSize: 10,
+        cellPadding: 6
+      },
+      headStyles: {
+        fillColor: [22, 148, 134],
+        textColor: [255, 255, 255],
+        fontSize: 11
+      },
+      alternateRowStyles: {
+        fillColor: [245, 247, 250]
+      },
+      margin: { left: 40, right: 40 }
+    });
+
+    const fileName = `dados-funcionarios-${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(fileName);
+    toast.success('PDF gerado com sucesso!');
+  };
+
   const funcionariosFiltrados = funcionarios.filter(func => {
     if (!busca) return true;
     const buscaLower = busca.toLowerCase();
@@ -466,6 +545,12 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
                 className="flex items-center gap-2 px-4 py-2 border border-teal-600 text-teal-600 rounded-lg hover:bg-teal-50 transition-colors"
               >
                 <FaPrint /> Imprimir Todos
+              </button>
+              <button
+                onClick={handleDownloadPdf}
+                className="flex items-center gap-2 px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+              >
+                <FaDownload /> Baixar PDF
               </button>
               <button
                 onClick={() => handleOpenModal()}
