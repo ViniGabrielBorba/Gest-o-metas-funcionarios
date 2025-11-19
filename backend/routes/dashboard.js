@@ -50,7 +50,7 @@ router.get('/', async (req, res) => {
     // Calcular top vendedores do mês (ordenado) - apenas funcionários com função de venda
     const funcoesVenda = ['Vendedor', 'Vendedora', 'Vendedor Online'];
     const topVendedoresMes = [...vendasMes]
-      .filter(v => funcoesVenda.includes(v.funcao))
+      .filter(v => v.funcao && funcoesVenda.includes(v.funcao))
       .sort((a, b) => b.valor - a.valor)
       .filter(v => v.valor > 0)
       .slice(0, 10); // Top 10
@@ -139,12 +139,13 @@ router.get('/', async (req, res) => {
 
     // Encontrar melhor vendedor do mês (apenas funcionários com função de venda)
     const funcoesVenda = ['Vendedor', 'Vendedora', 'Vendedor Online'];
-    const melhorMes = vendasMes
-      .filter(v => funcoesVenda.includes(v.funcao))
-      .reduce((best, current) => 
-        current.valor > best.valor ? current : best, 
-        { nome: 'Nenhum', valor: 0 }
-      );
+    const vendedoresFiltrados = vendasMes.filter(v => v.funcao && funcoesVenda.includes(v.funcao));
+    const melhorMes = vendedoresFiltrados.length > 0
+      ? vendedoresFiltrados.reduce((best, current) => 
+          current.valor > best.valor ? current : best, 
+          { nome: 'Nenhum', valor: 0, nomeCompleto: 'Nenhum' }
+        )
+      : { nome: 'Nenhum', valor: 0, nomeCompleto: 'Nenhum' };
 
     // Calcular total vendido (vendas dos funcionários + vendas comerciais)
     // O meta.totalVendido inclui apenas vendas dos funcionários agora
