@@ -28,8 +28,11 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
     sobrenome: '',
     cpf: '',
     dataNascimento: '',
+    dataAniversario: '',
     sexo: 'Masculino',
     idade: '',
+    funcao: 'Funcionário',
+    metaIndividual: 0,
     email: '',
     chavePix: ''
   });
@@ -85,10 +88,17 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
         dataNascimento: funcionario.dataNascimento 
           ? new Date(funcionario.dataNascimento).toISOString().split('T')[0]
           : '',
+        dataAniversario: funcionario.dataAniversario
+          ? new Date(funcionario.dataAniversario).toISOString().split('T')[0]
+          : (funcionario.dataNascimento 
+              ? new Date(funcionario.dataNascimento).toISOString().split('T')[0]
+              : new Date().toISOString().split('T')[0]),
         sexo: funcionario.sexo || 'Masculino',
         idade: funcionario.idade !== undefined && funcionario.idade !== null
           ? String(funcionario.idade)
           : '',
+        funcao: funcionario.funcao || 'Funcionário',
+        metaIndividual: funcionario.metaIndividual ?? 0,
         email: funcionario.email || '',
         chavePix: funcionario.chavePix || ''
       });
@@ -99,8 +109,11 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
         sobrenome: '',
         cpf: '',
         dataNascimento: '',
+        dataAniversario: new Date().toISOString().split('T')[0],
         sexo: 'Masculino',
         idade: '',
+        funcao: 'Funcionário',
+        metaIndividual: 0,
         email: '',
         chavePix: ''
       });
@@ -131,7 +144,10 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
     try {
       const dadosComIdade = {
         ...formData,
-        idade: idadeFormatada ?? (editingFuncionario?.idade || 25)
+        idade: idadeFormatada ?? (editingFuncionario?.idade || 25),
+        funcao: formData.funcao || editingFuncionario?.funcao || 'Funcionário',
+        metaIndividual: formData.metaIndividual ?? editingFuncionario?.metaIndividual ?? 0,
+        dataAniversario: formData.dataAniversario || formData.dataNascimento || editingFuncionario?.dataAniversario || new Date().toISOString().split('T')[0]
       };
 
       if (editingFuncionario) {
@@ -142,9 +158,9 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
         const dadosCriacao = {
           ...formData,
           idade: formData.idade ? Number(formData.idade) : 25, // Valor padrão ou o informado
-          funcao: 'Funcionário', // Valor padrão
-          dataAniversario: formData.dataNascimento || new Date().toISOString().split('T')[0],
-          metaIndividual: 0
+          funcao: formData.funcao || 'Funcionário',
+          dataAniversario: formData.dataAniversario || formData.dataNascimento || new Date().toISOString().split('T')[0],
+          metaIndividual: formData.metaIndividual ?? 0
         };
         await api.post('/funcionarios', dadosCriacao);
         toast.success('Funcionário criado com sucesso!');
