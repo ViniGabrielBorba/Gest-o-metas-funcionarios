@@ -464,7 +464,9 @@ router.get('/alertas', async (req, res) => {
       if (valorVendido >= f.metaIndividual) return false;
       
       // Calcular percentual atingido
-      const percentualAtingido = (valorVendido / f.metaIndividual) * 100;
+      const metaIndividual = Number(f.metaIndividual) || 0;
+      if (metaIndividual <= 0) return false; // Ignorar se meta inválida
+      const percentualAtingido = (valorVendido / metaIndividual) * 100;
       
       // Se for o mês atual, considerar o tempo decorrido
       if (isMesAtual && diasDecorridos > 0) {
