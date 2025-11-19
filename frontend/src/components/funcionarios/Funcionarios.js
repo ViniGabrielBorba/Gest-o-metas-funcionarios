@@ -998,6 +998,7 @@ const Funcionarios = ({ setIsAuthenticated }) => {
                         <option value="Caixa">Caixa</option>
                         <option value="Auxiliar de Loja">Auxiliar de Loja</option>
                         <option value="Fiscal">Fiscal</option>
+                        <option value="Estoque">Estoque</option>
                         <option value="Vendedor">Vendedor</option>
                         <option value="Vendedora">Vendedora</option>
                         <option value="Vendedor Online">Vendedor Online</option>
