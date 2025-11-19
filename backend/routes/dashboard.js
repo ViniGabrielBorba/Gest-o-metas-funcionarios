@@ -166,16 +166,16 @@ router.get('/', async (req, res) => {
 
     // Converter para array e ordenar por data
     const vendasDiariasArray = Object.values(vendasDiariasMes)
-      .sort((a, b) => a.dia - b.dia);
+      .sort((a, b) => (a.dia || 0) - (b.dia || 0));
 
     // Encontrar melhor vendedor do mês (apenas funcionários com função de venda)
-    const funcoesVenda = ['Vendedor', 'Vendedora', 'Vendedor Online'];
     const vendedoresFiltrados = vendasMes.filter(v => v.funcao && funcoesVenda.includes(v.funcao));
     const melhorMes = vendedoresFiltrados.length > 0
-      ? vendedoresFiltrados.reduce((best, current) => 
-          current.valor > best.valor ? current : best, 
-          { nome: 'Nenhum', valor: 0, nomeCompleto: 'Nenhum' }
-        )
+      ? vendedoresFiltrados.reduce((best, current) => {
+          const valorAtual = Number(current.valor) || 0;
+          const valorBest = Number(best.valor) || 0;
+          return valorAtual > valorBest ? current : best;
+        }, { nome: 'Nenhum', valor: 0, nomeCompleto: 'Nenhum' })
       : { nome: 'Nenhum', valor: 0, nomeCompleto: 'Nenhum' };
 
     // Calcular total vendido (vendas dos funcionários + vendas comerciais)
