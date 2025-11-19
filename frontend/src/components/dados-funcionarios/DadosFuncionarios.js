@@ -26,6 +26,10 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
   const [showModal, setShowModal] = useState(false);
   const [editingFuncionario, setEditingFuncionario] = useState(null);
   const [busca, setBusca] = useState('');
+  const [gerenteInfo, setGerenteInfo] = useState({
+    nome: '',
+    nomeLoja: ''
+  });
   const [formData, setFormData] = useState({
     nome: '',
     sobrenome: '',
@@ -43,6 +47,24 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
   useEffect(() => {
     fetchFuncionarios();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const fetchGerenteInfo = async () => {
+      try {
+        const response = await api.get('/auth/me');
+        if (response.data) {
+          setGerenteInfo({
+            nome: response.data.nome || '',
+            nomeLoja: response.data.nomeLoja || ''
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao buscar informações do gerente:', error);
+      }
+    };
+
+    fetchGerenteInfo();
   }, []);
 
   const fetchFuncionarios = async () => {
@@ -468,15 +490,21 @@ const DadosFuncionarios = ({ setIsAuthenticated }) => {
       format: 'a4'
     });
 
-    doc.setFontSize(18);
+    const loja = gerenteInfo.nomeLoja?.trim() || 'FlowGest';
+    const gerenteNome = gerenteInfo.nome?.trim() || 'Gerente';
+    const cabecalho = `FlowGest / ${loja} / ${gerenteNome}`;
+
+    doc.setFontSize(16);
     doc.setTextColor(22, 148, 134);
-    doc.text('Relatório de Funcionários', 40, 40);
+    doc.text(cabecalho, 40, 40);
+    doc.setFontSize(18);
+    doc.text('Relatório de Funcionários', 40, 65);
     doc.setFontSize(11);
     doc.setTextColor(80, 80, 80);
-    doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')} • Total: ${funcionariosOrdenados.length}`, 40, 60);
+    doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')} • Total: ${funcionariosOrdenados.length}`, 40, 83);
 
     autoTable(doc, {
-      startY: 80,
+      startY: 100,
       head: [[
         '#',
         'Nome',
