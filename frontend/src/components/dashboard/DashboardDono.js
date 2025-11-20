@@ -1576,28 +1576,33 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Aniversário:</span>
+                    <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Idade:</span>
                     <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
                       {(() => {
                         try {
-                          // Aniversário deve mostrar a mesma data do nascimento
-                          let dataFormatada = null;
+                          let dataNascimento = null;
                           
                           if (typeof tooltipFuncionario.dataNascimento === 'string' && /^\d{4}-\d{2}-\d{2}/.test(tooltipFuncionario.dataNascimento)) {
                             // Extrair diretamente da string ISO
                             const [ano, mes, dia] = tooltipFuncionario.dataNascimento.split('T')[0].split('-');
-                            dataFormatada = `${dia}/${mes}/${ano}`;
+                            dataNascimento = new Date(parseInt(ano, 10), parseInt(mes, 10) - 1, parseInt(dia, 10));
                           } else {
-                            // Usar Date com UTC
-                            const data = new Date(tooltipFuncionario.dataNascimento);
-                            if (isNaN(data.getTime())) return 'Não informado';
-                            const dia = String(data.getUTCDate()).padStart(2, '0');
-                            const mes = String(data.getUTCMonth() + 1).padStart(2, '0');
-                            const ano = String(data.getUTCFullYear());
-                            dataFormatada = `${dia}/${mes}/${ano}`;
+                            // Usar Date
+                            dataNascimento = new Date(tooltipFuncionario.dataNascimento);
                           }
                           
-                          return dataFormatada;
+                          if (isNaN(dataNascimento.getTime())) return 'Não informado';
+                          
+                          // Calcular idade
+                          const hoje = new Date();
+                          let idade = hoje.getFullYear() - dataNascimento.getFullYear();
+                          const mesAniversario = hoje.getMonth() - dataNascimento.getMonth();
+                          
+                          if (mesAniversario < 0 || (mesAniversario === 0 && hoje.getDate() < dataNascimento.getDate())) {
+                            idade--;
+                          }
+                          
+                          return `${idade} anos`;
                         } catch (err) {
                           return 'Não informado';
                         }
