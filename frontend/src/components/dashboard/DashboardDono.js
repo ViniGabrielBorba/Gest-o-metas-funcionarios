@@ -59,6 +59,8 @@ const DashboardDono = ({ setIsAuthenticated }) => {
   const [previsoes, setPrevisoes] = useState(null);
   const [darkMode, setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
   const [dadosMesAnterior, setDadosMesAnterior] = useState(null);
+  const [tooltipFuncionario, setTooltipFuncionario] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -1326,7 +1328,18 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                                       <td className={`px-3 py-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                                         {index + 1}
                                       </td>
-                                      <td className={`px-3 py-2 font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                                      <td 
+                                        className={`px-3 py-2 font-medium ${darkMode ? 'text-white' : 'text-gray-800'} cursor-pointer relative`}
+                                        onMouseEnter={(e) => {
+                                          const rect = e.target.getBoundingClientRect();
+                                          setTooltipPosition({
+                                            x: rect.left + rect.width / 2,
+                                            y: rect.top - 10
+                                          });
+                                          setTooltipFuncionario(func);
+                                        }}
+                                        onMouseLeave={() => setTooltipFuncionario(null)}
+                                      >
                                         {func.nomeCompleto || func.nome || 'Sem nome'}
                                       </td>
                                     </tr>
@@ -1481,6 +1494,106 @@ const DashboardDono = ({ setIsAuthenticated }) => {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Tooltip de Funcionário */}
+      {tooltipFuncionario && (
+        <div
+          className="fixed z-50 pointer-events-none"
+          style={{
+            left: `${tooltipPosition.x}px`,
+            top: `${tooltipPosition.y}px`,
+            transform: 'translate(-50%, -100%)',
+            marginTop: '-10px'
+          }}
+        >
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-300'} border rounded-lg shadow-xl p-4 min-w-[280px] max-w-[320px]`}>
+            <h4 className={`font-bold text-lg mb-3 ${darkMode ? 'text-white' : 'text-gray-800'} border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'} pb-2`}>
+              {tooltipFuncionario.nomeCompleto || tooltipFuncionario.nome}
+            </h4>
+            <div className="space-y-2 text-sm">
+              {tooltipFuncionario.funcao && (
+                <div className="flex justify-between">
+                  <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Função:</span>
+                  <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                    {tooltipFuncionario.funcao}
+                  </span>
+                </div>
+              )}
+              {tooltipFuncionario.telefone && (
+                <div className="flex justify-between">
+                  <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Telefone:</span>
+                  <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                    {tooltipFuncionario.telefone}
+                  </span>
+                </div>
+              )}
+              {tooltipFuncionario.email && (
+                <div className="flex justify-between">
+                  <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Email:</span>
+                  <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                    {tooltipFuncionario.email}
+                  </span>
+                </div>
+              )}
+              {tooltipFuncionario.cpf && (
+                <div className="flex justify-between">
+                  <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>CPF:</span>
+                  <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                    {tooltipFuncionario.cpf.replace(/\D/g, '').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}
+                  </span>
+                </div>
+              )}
+              {tooltipFuncionario.dataNascimento && (
+                <div className="flex justify-between">
+                  <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Nascimento:</span>
+                  <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                    {new Date(tooltipFuncionario.dataNascimento).toLocaleDateString('pt-BR')}
+                  </span>
+                </div>
+              )}
+              {tooltipFuncionario.dataAniversario && (
+                <div className="flex justify-between">
+                  <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Aniversário:</span>
+                  <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                    {new Date(tooltipFuncionario.dataAniversario).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                  </span>
+                </div>
+              )}
+              {tooltipFuncionario.sexo && (
+                <div className="flex justify-between">
+                  <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Sexo:</span>
+                  <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                    {tooltipFuncionario.sexo}
+                  </span>
+                </div>
+              )}
+              {tooltipFuncionario.metaIndividual > 0 && (
+                <div className="flex justify-between">
+                  <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Meta Individual:</span>
+                  <span className={`font-semibold ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
+                    R$ {tooltipFuncionario.metaIndividual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              )}
+              {tooltipFuncionario.chavePix && (
+                <div className="flex justify-between">
+                  <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Chave PIX:</span>
+                  <span className={`text-xs ${darkMode ? 'text-gray-300' : 'text-gray-700'} break-all`}>
+                    {tooltipFuncionario.chavePix}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+          {/* Seta do tooltip */}
+          <div 
+            className={`absolute left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-8 ${
+              darkMode ? 'border-t-gray-800' : 'border-t-white'
+            }`}
+            style={{ top: '100%' }}
+          />
         </div>
       )}
     </div>

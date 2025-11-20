@@ -364,7 +364,15 @@ router.get('/dashboard', authDono, async (req, res) => {
                   nome: func.nome || '',
                   sobrenome: func.sobrenome || '',
                   nomeCompleto: nomeCompleto,
-                  funcao: funcaoOriginal // Manter função original para exibição individual se necessário
+                  funcao: funcaoOriginal, // Manter função original para exibição individual se necessário
+                  telefone: func.telefone || '',
+                  email: func.email || '',
+                  cpf: func.cpf || '',
+                  dataNascimento: func.dataNascimento || null,
+                  dataAniversario: func.dataAniversario || null,
+                  sexo: func.sexo || '',
+                  metaIndividual: func.metaIndividual || 0,
+                  chavePix: func.chavePix || ''
                 });
               } catch (err) {
                 console.error('Erro ao processar funcionário para agrupamento:', func._id, err);
