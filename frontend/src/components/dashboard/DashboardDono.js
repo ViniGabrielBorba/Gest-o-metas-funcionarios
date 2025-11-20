@@ -441,6 +441,207 @@ const DashboardDono = ({ setIsAuthenticated }) => {
         styles: { fontSize: 9 },
         margin: { left: 14, right: 14 }
       });
+
+      yPos = doc.lastAutoTable.finalY + 10;
+    }
+
+    // Gráfico de Vendas Diárias
+    if (((detalhesLoja.vendasDiariasComerciais && detalhesLoja.vendasDiariasComerciais.length > 0) || 
+         (detalhesLoja.vendasDiariasFuncionarios && detalhesLoja.vendasDiariasFuncionarios.length > 0))) {
+      
+      if (yPos > 200) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      doc.setFontSize(14);
+      doc.text('Vendas Diárias', 14, yPos);
+      yPos += 10;
+
+      // Combinar vendas por dia
+      const vendasPorDia = {};
+      
+      if (detalhesLoja.vendasDiariasComerciais) {
+        detalhesLoja.vendasDiariasComerciais.forEach(v => {
+          const data = new Date(v.data);
+          const dia = data.getDate();
+          const dataKey = `${dia}`;
+          if (!vendasPorDia[dataKey]) {
+            vendasPorDia[dataKey] = { dia, comercial: 0, funcionario: 0, total: 0 };
+          }
+          vendasPorDia[dataKey].comercial += v.valor || 0;
+          vendasPorDia[dataKey].total += v.valor || 0;
+        });
+      }
+
+      if (detalhesLoja.vendasDiariasFuncionarios) {
+        detalhesLoja.vendasDiariasFuncionarios.forEach(v => {
+          const data = new Date(v.data);
+          const dia = data.getDate();
+          const dataKey = `${dia}`;
+          if (!vendasPorDia[dataKey]) {
+            vendasPorDia[dataKey] = { dia, comercial: 0, funcionario: 0, total: 0 };
+          }
+          vendasPorDia[dataKey].funcionario += v.valor || 0;
+          vendasPorDia[dataKey].total += v.valor || 0;
+        });
+      }
+
+      const vendasDiariasArray = Object.values(vendasPorDia).sort((a, b) => a.dia - b.dia);
+
+      if (vendasDiariasArray.length > 0) {
+        // Desenhar gráfico simples
+        const chartStartX = 14;
+        const chartStartY = yPos;
+        const chartWidth = 180;
+        const chartHeight = 60;
+        const chartEndX = chartStartX + chartWidth;
+        const chartEndY = chartStartY + chartHeight;
+
+        // Encontrar valor máximo
+        const maxValor = Math.max(...vendasDiariasArray.map(v => v.total), 1);
+
+        // Desenhar eixos
+        doc.setDrawColor(100, 100, 100);
+        doc.setLineWidth(0.5);
+        // Eixo Y
+        doc.line(chartStartX, chartStartY, chartStartX, chartEndY);
+        // Eixo X
+        doc.line(chartStartX, chartEndY, chartEndX, chartEndY);
+
+        // Desenhar linhas de grade e valores
+        doc.setFontSize(7);
+        doc.setTextColor(100, 100, 100);
+        for (let i = 0; i <= 5; i++) {
+          const y = chartEndY - (chartHeight / 5) * i;
+          const valor = (maxValor / 5) * i;
+          doc.line(chartStartX, y, chartEndX, y);
+          doc.text(`R$ ${valor.toFixed(0)}`, chartStartX - 2, y + 2, { align: 'right' });
+        }
+
+        // Desenhar linha do gráfico
+        doc.setDrawColor(22, 148, 134);
+        doc.setLineWidth(1);
+        const pointSpacing = chartWidth / (vendasDiariasArray.length - 1 || 1);
+        
+        for (let i = 0; i < vendasDiariasArray.length - 1; i++) {
+          const x1 = chartStartX + (i * pointSpacing);
+          const y1 = chartEndY - (vendasDiariasArray[i].total / maxValor) * chartHeight;
+          const x2 = chartStartX + ((i + 1) * pointSpacing);
+          const y2 = chartEndY - (vendasDiariasArray[i + 1].total / maxValor) * chartHeight;
+          
+          doc.line(x1, y1, x2, y2);
+          
+          // Desenhar ponto
+          doc.setFillColor(22, 148, 134);
+          doc.circle(x1, y1, 1, 'F');
+        }
+        
+        // Último ponto
+        if (vendasDiariasArray.length > 0) {
+          const lastIndex = vendasDiariasArray.length - 1;
+          const x = chartStartX + (lastIndex * pointSpacing);
+          const y = chartEndY - (vendasDiariasArray[lastIndex].total / maxValor) * chartHeight;
+          doc.circle(x, y, 1, 'F');
+        }
+
+        // Labels dos dias
+        doc.setFontSize(6);
+        doc.setTextColor(100, 100, 100);
+        vendasDiariasArray.forEach((v, i) => {
+          const x = chartStartX + (i * pointSpacing);
+          doc.text(`D${v.dia}`, x, chartEndY + 4, { align: 'center' });
+        });
+
+        yPos = chartEndY + 15;
+
+        // Tabela de vendas diárias
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        doc.text('Detalhamento Vendas Diárias', 14, yPos);
+        yPos += 8;
+
+        const vendasDiariasData = vendasDiariasArray.map(v => [
+          `Dia ${v.dia}`,
+          `R$ ${(v.funcionario || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+          `R$ ${(v.comercial || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+          `R$ ${(v.total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+        ]);
+
+        autoTable(doc, {
+          startY: yPos,
+          head: [['Dia', 'Vendas Funcionários', 'Vendas Comerciais', 'Total']],
+          body: vendasDiariasData,
+          theme: 'striped',
+          headStyles: { fillColor: [22, 148, 134] },
+          styles: { fontSize: 8 },
+          margin: { left: 14, right: 14 }
+        });
+
+        yPos = doc.lastAutoTable.finalY + 10;
+      }
+    }
+
+    // Feedback dos Funcionários
+    if (detalhesLoja.feedbacks && detalhesLoja.feedbacks.length > 0) {
+      if (yPos > 250) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      doc.setFontSize(14);
+      doc.text('Feedback dos Funcionários', 14, yPos);
+      yPos += 8;
+
+      detalhesLoja.feedbacks.forEach((feedback, idx) => {
+        if (yPos > 270) {
+          doc.addPage();
+          yPos = 20;
+        }
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'bold');
+        doc.text(feedback.funcionarioNomeCompleto || feedback.funcionarioNome || 'Funcionário', 14, yPos);
+        yPos += 6;
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(9);
+        const observacao = doc.splitTextToSize(feedback.observacao || 'Sem observação', 180);
+        doc.text(observacao, 14, yPos);
+        yPos += observacao.length * 5 + 4;
+      });
+    }
+
+    // Histórico de Metas
+    if (detalhesLoja.historicoMetas && detalhesLoja.historicoMetas.length > 0) {
+      if (yPos > 250) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      doc.setFontSize(14);
+      doc.text('Histórico de Metas', 14, yPos);
+      yPos += 8;
+
+      const historicoData = detalhesLoja.historicoMetas.map(meta => {
+        const percentual = meta.valor > 0 
+          ? ((meta.totalVendido || 0) / meta.valor * 100).toFixed(1)
+          : '0.0';
+        return [
+          `${new Date(2000, meta.mes - 1).toLocaleDateString('pt-BR', { month: 'short' })}/${meta.ano}`,
+          `R$ ${meta.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+          `R$ ${(meta.totalVendido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+          `${percentual}%`
+        ];
+      });
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Período', 'Meta', 'Vendido', '% Atingido']],
+        body: historicoData,
+        theme: 'striped',
+        headStyles: { fillColor: [22, 148, 134] },
+        styles: { fontSize: 9 },
+        margin: { left: 14, right: 14 }
+      });
     }
 
     // Rodapé
