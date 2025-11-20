@@ -1444,7 +1444,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
                     className={`${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'} border rounded-lg p-4 transition-colors`}
                   >
                     <h3 className={`text-lg font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
-                      {funcao} ({funcionarios.length})
+                      {funcao === 'Vendedor' ? 'Vendedor(a)' : funcao} ({funcionarios.length})
                     </h3>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">

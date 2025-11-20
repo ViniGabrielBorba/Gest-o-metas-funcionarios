@@ -1637,7 +1637,7 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                           className={`${darkMode ? 'bg-gray-600 border-gray-500' : 'bg-white border-gray-300'} border rounded-lg p-4 transition-colors`}
                         >
                           <h4 className={`text-lg font-bold mb-3 ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
-                            {funcao} ({funcionarios.length})
+                            {funcao === 'Vendedor' ? 'Vendedor(a)' : funcao} ({funcionarios.length})
                           </h4>
                           <div className="overflow-x-auto">
                             <table className="w-full text-sm">
