@@ -1552,16 +1552,23 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                     <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
                       {(() => {
                         try {
-                          const data = new Date(tooltipFuncionario.dataNascimento);
-                          if (isNaN(data.getTime())) {
-                            // Tentar extrair diretamente da string se for formato ISO
-                            if (typeof tooltipFuncionario.dataNascimento === 'string' && /^\d{4}-\d{2}-\d{2}/.test(tooltipFuncionario.dataNascimento)) {
-                              const [ano, mes, dia] = tooltipFuncionario.dataNascimento.split('T')[0].split('-');
-                              return `${dia}/${mes}/${ano}`;
-                            }
-                            return 'Data inválida';
+                          let dataFormatada = null;
+                          
+                          if (typeof tooltipFuncionario.dataNascimento === 'string' && /^\d{4}-\d{2}-\d{2}/.test(tooltipFuncionario.dataNascimento)) {
+                            // Extrair diretamente da string ISO
+                            const [ano, mes, dia] = tooltipFuncionario.dataNascimento.split('T')[0].split('-');
+                            dataFormatada = `${dia}/${mes}/${ano}`;
+                          } else {
+                            // Usar Date com UTC
+                            const data = new Date(tooltipFuncionario.dataNascimento);
+                            if (isNaN(data.getTime())) return 'Data inválida';
+                            const dia = String(data.getUTCDate()).padStart(2, '0');
+                            const mes = String(data.getUTCMonth() + 1).padStart(2, '0');
+                            const ano = String(data.getUTCFullYear());
+                            dataFormatada = `${dia}/${mes}/${ano}`;
                           }
-                          return data.toLocaleDateString('pt-BR');
+                          
+                          return dataFormatada;
                         } catch (err) {
                           return 'Data inválida';
                         }
@@ -1573,24 +1580,24 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                     <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
                       {(() => {
                         try {
-                          // Calcular aniversário a partir da data de nascimento
-                          let dia = null;
-                          let mes = null;
+                          // Aniversário deve mostrar a mesma data do nascimento
+                          let dataFormatada = null;
                           
                           if (typeof tooltipFuncionario.dataNascimento === 'string' && /^\d{4}-\d{2}-\d{2}/.test(tooltipFuncionario.dataNascimento)) {
                             // Extrair diretamente da string ISO
-                            const [ano, mesStr, diaStr] = tooltipFuncionario.dataNascimento.split('T')[0].split('-');
-                            dia = parseInt(diaStr, 10);
-                            mes = parseInt(mesStr, 10);
+                            const [ano, mes, dia] = tooltipFuncionario.dataNascimento.split('T')[0].split('-');
+                            dataFormatada = `${dia}/${mes}/${ano}`;
                           } else {
                             // Usar Date com UTC
                             const data = new Date(tooltipFuncionario.dataNascimento);
                             if (isNaN(data.getTime())) return 'Não informado';
-                            dia = data.getUTCDate();
-                            mes = data.getUTCMonth() + 1;
+                            const dia = String(data.getUTCDate()).padStart(2, '0');
+                            const mes = String(data.getUTCMonth() + 1).padStart(2, '0');
+                            const ano = String(data.getUTCFullYear());
+                            dataFormatada = `${dia}/${mes}/${ano}`;
                           }
                           
-                          return `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}`;
+                          return dataFormatada;
                         } catch (err) {
                           return 'Não informado';
                         }
