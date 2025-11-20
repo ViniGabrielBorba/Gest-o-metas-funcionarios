@@ -306,6 +306,14 @@ router.get('/', async (req, res) => {
         }
       });
 
+    // Função helper para normalizar função (Vendedor e Vendedora são a mesma função)
+    const normalizarFuncao = (funcao) => {
+      if (!funcao || typeof funcao !== 'string') return 'Sem função';
+      // Normalizar Vendedor e Vendedora para "Vendedor"
+      if (funcao === 'Vendedora') return 'Vendedor';
+      return funcao;
+    };
+
     // Agrupar funcionários por função
     const funcionariosPorFuncao = {};
     funcionarios.forEach(func => {
@@ -314,18 +322,19 @@ router.get('/', async (req, res) => {
           ? `${func.nome || ''} ${func.sobrenome}`
           : (func.nome || '');
         
-        const funcao = (func.funcao && typeof func.funcao === 'string') ? func.funcao : 'Sem função';
+        const funcaoOriginal = (func.funcao && typeof func.funcao === 'string') ? func.funcao : 'Sem função';
+        const funcaoNormalizada = normalizarFuncao(funcaoOriginal);
         
-        if (!funcionariosPorFuncao[funcao]) {
-          funcionariosPorFuncao[funcao] = [];
+        if (!funcionariosPorFuncao[funcaoNormalizada]) {
+          funcionariosPorFuncao[funcaoNormalizada] = [];
         }
         
-        funcionariosPorFuncao[funcao].push({
+        funcionariosPorFuncao[funcaoNormalizada].push({
           id: func._id,
           nome: func.nome || '',
           sobrenome: func.sobrenome || '',
           nomeCompleto: nomeCompleto,
-          funcao: funcao
+          funcao: funcaoOriginal // Manter função original para exibição individual se necessário
         });
       } catch (err) {
         console.error('Erro ao processar funcionário para agrupamento:', func._id, err);
