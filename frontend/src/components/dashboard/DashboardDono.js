@@ -1546,20 +1546,58 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                 </div>
               )}
               {tooltipFuncionario.dataNascimento && (
-                <div className="flex justify-between">
-                  <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Nascimento:</span>
-                  <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
-                    {new Date(tooltipFuncionario.dataNascimento).toLocaleDateString('pt-BR')}
-                  </span>
-                </div>
-              )}
-              {tooltipFuncionario.dataAniversario && (
-                <div className="flex justify-between">
-                  <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Aniversário:</span>
-                  <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
-                    {new Date(tooltipFuncionario.dataAniversario).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                  </span>
-                </div>
+                <>
+                  <div className="flex justify-between">
+                    <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Nascimento:</span>
+                    <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                      {(() => {
+                        try {
+                          const data = new Date(tooltipFuncionario.dataNascimento);
+                          if (isNaN(data.getTime())) {
+                            // Tentar extrair diretamente da string se for formato ISO
+                            if (typeof tooltipFuncionario.dataNascimento === 'string' && /^\d{4}-\d{2}-\d{2}/.test(tooltipFuncionario.dataNascimento)) {
+                              const [ano, mes, dia] = tooltipFuncionario.dataNascimento.split('T')[0].split('-');
+                              return `${dia}/${mes}/${ano}`;
+                            }
+                            return 'Data inválida';
+                          }
+                          return data.toLocaleDateString('pt-BR');
+                        } catch (err) {
+                          return 'Data inválida';
+                        }
+                      })()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Aniversário:</span>
+                    <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                      {(() => {
+                        try {
+                          // Calcular aniversário a partir da data de nascimento
+                          let dia = null;
+                          let mes = null;
+                          
+                          if (typeof tooltipFuncionario.dataNascimento === 'string' && /^\d{4}-\d{2}-\d{2}/.test(tooltipFuncionario.dataNascimento)) {
+                            // Extrair diretamente da string ISO
+                            const [ano, mesStr, diaStr] = tooltipFuncionario.dataNascimento.split('T')[0].split('-');
+                            dia = parseInt(diaStr, 10);
+                            mes = parseInt(mesStr, 10);
+                          } else {
+                            // Usar Date com UTC
+                            const data = new Date(tooltipFuncionario.dataNascimento);
+                            if (isNaN(data.getTime())) return 'Não informado';
+                            dia = data.getUTCDate();
+                            mes = data.getUTCMonth() + 1;
+                          }
+                          
+                          return `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}`;
+                        } catch (err) {
+                          return 'Não informado';
+                        }
+                      })()}
+                    </span>
+                  </div>
+                </>
               )}
               {tooltipFuncionario.sexo && (
                 <div className="flex justify-between">
