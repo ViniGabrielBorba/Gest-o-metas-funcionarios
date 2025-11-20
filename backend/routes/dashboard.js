@@ -306,6 +306,32 @@ router.get('/', async (req, res) => {
         }
       });
 
+    // Agrupar funcionários por função
+    const funcionariosPorFuncao = {};
+    funcionarios.forEach(func => {
+      try {
+        const nomeCompleto = func.sobrenome && func.sobrenome.trim() !== ''
+          ? `${func.nome || ''} ${func.sobrenome}`
+          : (func.nome || '');
+        
+        const funcao = (func.funcao && typeof func.funcao === 'string') ? func.funcao : 'Sem função';
+        
+        if (!funcionariosPorFuncao[funcao]) {
+          funcionariosPorFuncao[funcao] = [];
+        }
+        
+        funcionariosPorFuncao[funcao].push({
+          id: func._id,
+          nome: func.nome || '',
+          sobrenome: func.sobrenome || '',
+          nomeCompleto: nomeCompleto,
+          funcao: funcao
+        });
+      } catch (err) {
+        console.error('Erro ao processar funcionário para agrupamento:', func._id, err);
+      }
+    });
+
     res.json({
       resumo: {
         totalFuncionarios: funcionarios.length,
@@ -327,7 +353,8 @@ router.get('/', async (req, res) => {
       vendasMes,
       topVendedoresMes,
       vendasDiarias: vendasDiariasArray,
-      aniversariantes
+      aniversariantes,
+      funcionariosPorFuncao // Novo: funcionários agrupados por função
     });
   } catch (error) {
     console.error('Erro ao buscar dados do dashboard:', error);
