@@ -31,7 +31,7 @@ import {
   ComposedChart,
   Brush
 } from 'recharts';
-import { notifyMetaBatida, notifyTarefasPendentes } from '../../utils/notifications';
+import { notifyMetaBatida } from '../../utils/notifications';
 import { useToast } from '../../contexts/ToastContext';
 
 const Dashboard = ({ setIsAuthenticated }) => {
@@ -99,12 +99,6 @@ const Dashboard = ({ setIsAuthenticated }) => {
           new Date(2000, selectedMonth - 1).toLocaleDateString('pt-BR', { month: 'long' }),
           response.data.resumo.excedenteMeta
         );
-      }
-      
-      // Verificar tarefas pendentes (funcionários sem vendas no mês)
-      const funcionariosSemVendas = response.data.vendasMes.filter(v => v.valor === 0).length;
-      if (funcionariosSemVendas > 0) {
-        notifyTarefasPendentes(funcionariosSemVendas);
       }
     } catch (error) {
       console.error('Erro ao buscar dados do dashboard:', error);
