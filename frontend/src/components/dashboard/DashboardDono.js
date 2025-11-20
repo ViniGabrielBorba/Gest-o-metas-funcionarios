@@ -19,8 +19,11 @@ import {
   FaMoon,
   FaSun,
   FaPrint,
-  FaDollarSign
+  FaDollarSign,
+  FaDownload
 } from 'react-icons/fa';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   BarChart,
   Bar,
@@ -332,6 +335,127 @@ const DashboardDono = ({ setIsAuthenticated }) => {
     localStorage.removeItem('userType');
     setIsAuthenticated(false);
     navigate('/login-dono');
+  };
+
+  const handleDownloadPdfLoja = () => {
+    if (!detalhesLoja) return;
+
+    const doc = new jsPDF();
+    const nomeLoja = detalhesLoja.gerente.nomeLoja || 'Loja';
+    const mesAtual = new Date(2000, selectedMonth - 1).toLocaleDateString('pt-BR', { month: 'long' });
+    const anoAtual = selectedYear;
+
+    // Cabeçalho
+    doc.setFontSize(20);
+    doc.text('FlowGest', 14, 20);
+    doc.setFontSize(16);
+    doc.text(nomeLoja, 14, 30);
+    doc.setFontSize(12);
+    doc.text(`Gerente: ${detalhesLoja.gerente.nome || 'Não informado'}`, 14, 40);
+    doc.text(`Período: ${mesAtual}/${anoAtual}`, 14, 46);
+    
+    let yPos = 56;
+
+    // Informações da Loja
+    doc.setFontSize(14);
+    doc.text('Informações da Loja', 14, yPos);
+    yPos += 8;
+    
+    doc.setFontSize(10);
+    const infoLoja = [
+      ['Email:', detalhesLoja.gerente.email || 'Não informado'],
+      ['Telefone:', detalhesLoja.gerente.telefone || 'Não informado'],
+      ['Total de Funcionários:', detalhesLoja.funcionarios.length.toString()],
+    ];
+    
+    if (detalhesLoja.meta) {
+      infoLoja.push(['Meta do Mês:', `R$ ${detalhesLoja.meta.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]);
+      infoLoja.push(['Total Vendido:', `R$ ${(detalhesLoja.totalGeral || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]);
+      infoLoja.push(['Vendas Funcionários:', `R$ ${(detalhesLoja.totalVendasFuncionarios || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]);
+      infoLoja.push(['Vendas Comerciais:', `R$ ${(detalhesLoja.totalVendasComerciais || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]);
+      
+      const percentualAtingido = detalhesLoja.meta.valor > 0 
+        ? ((detalhesLoja.totalGeral || 0) / detalhesLoja.meta.valor * 100).toFixed(1)
+        : '0.0';
+      infoLoja.push(['% Atingido:', `${percentualAtingido}%`]);
+    }
+
+    infoLoja.forEach(([label, value]) => {
+      doc.text(label, 14, yPos);
+      doc.text(value, 60, yPos);
+      yPos += 6;
+    });
+
+    yPos += 4;
+
+    // Tabela de Funcionários
+    if (detalhesLoja.funcionarios && detalhesLoja.funcionarios.length > 0) {
+      doc.setFontSize(14);
+      doc.text('Funcionários', 14, yPos);
+      yPos += 8;
+
+      const funcionariosData = detalhesLoja.funcionarios.map((func, index) => [
+        index + 1,
+        func.nomeCompleto || func.nome || 'Sem nome',
+        func.funcao || 'Não informado',
+        `R$ ${(func.metaIndividual || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        `R$ ${(func.vendasMes || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+      ]);
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['#', 'Nome', 'Função', 'Meta Individual', 'Vendas Mês']],
+        body: funcionariosData,
+        theme: 'striped',
+        headStyles: { fillColor: [22, 148, 134] },
+        styles: { fontSize: 9 },
+        margin: { left: 14, right: 14 }
+      });
+
+      yPos = doc.lastAutoTable.finalY + 10;
+    }
+
+    // Top Vendedores
+    if (detalhesLoja.topVendedores && detalhesLoja.topVendedores.length > 0) {
+      if (yPos > 250) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      doc.setFontSize(14);
+      doc.text('Top Vendedores', 14, yPos);
+      yPos += 8;
+
+      const topVendedoresData = detalhesLoja.topVendedores.slice(0, 5).map((v, index) => [
+        index + 1,
+        v.nomeCompleto || v.nome || 'Sem nome',
+        `R$ ${(v.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+      ]);
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['#', 'Nome', 'Vendas']],
+        body: topVendedoresData,
+        theme: 'striped',
+        headStyles: { fillColor: [22, 148, 134] },
+        styles: { fontSize: 9 },
+        margin: { left: 14, right: 14 }
+      });
+    }
+
+    // Rodapé
+    const pageCount = doc.internal.pages.length - 1;
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.text(
+        `Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`,
+        14,
+        doc.internal.pageSize.height - 10
+      );
+    }
+
+    doc.save(`Detalhes_${nomeLoja}_${mesAtual}_${anoAtual}.pdf`);
   };
 
   const COLORS = ['#169486', '#14b8a6', '#06b6d4', '#0891b2', '#0e7490'];
@@ -1096,15 +1220,28 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                 <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
                   {detalhesLoja.gerente.nomeLoja}
                 </h2>
-                <button
-                  onClick={() => {
-                    setShowModalLoja(false);
-                    setDetalhesLoja(null);
-                  }}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <FaTimes className="text-2xl" />
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleDownloadPdfLoja}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                      darkMode 
+                        ? 'bg-teal-600 hover:bg-teal-700 text-white' 
+                        : 'bg-teal-500 hover:bg-teal-600 text-white'
+                    }`}
+                    title="Baixar PDF"
+                  >
+                    <FaDownload /> Baixar PDF
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowModalLoja(false);
+                      setDetalhesLoja(null);
+                    }}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <FaTimes className="text-2xl" />
+                  </button>
+                </div>
               </div>
               
               {/* Informações da Loja */}
