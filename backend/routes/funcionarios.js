@@ -154,6 +154,16 @@ router.put('/:id', validate(funcionarioSchema), async (req, res) => {
       ? String(sobrenome).trim() 
       : '';
 
+    // Buscar funcionário existente para verificar se existe e pegar dados atuais
+    const funcionarioExistente = await Funcionario.findOne({ 
+      _id: req.params.id, 
+      gerenteId: req.user.id 
+    });
+
+    if (!funcionarioExistente) {
+      return res.status(404).json({ message: 'Funcionário não encontrado' });
+    }
+
     // Calcular idade se não fornecida e houver data de nascimento
     let idadeFinal = idade;
     if (!idadeFinal && dataNascimento) {
@@ -167,8 +177,7 @@ router.put('/:id', validate(funcionarioSchema), async (req, res) => {
     }
     // Se ainda não tiver idade, manter a existente ou usar padrão
     if (!idadeFinal) {
-      const funcionarioExistente = await Funcionario.findById(req.params.id);
-      idadeFinal = funcionarioExistente?.idade || 25;
+      idadeFinal = funcionarioExistente.idade || 25;
     }
 
     const funcionario = await Funcionario.findOneAndUpdate(
@@ -189,10 +198,6 @@ router.put('/:id', validate(funcionarioSchema), async (req, res) => {
       },
       { new: true, runValidators: true }
     );
-
-    if (!funcionario) {
-      return res.status(404).json({ message: 'Funcionário não encontrado' });
-    }
 
     console.log('Funcionário atualizado. Sobrenome salvo:', funcionario.sobrenome);
 

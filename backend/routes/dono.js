@@ -195,20 +195,20 @@ router.get('/dashboard', authDono, async (req, res) => {
 
         // Vendas do mês dos funcionários (para ranking e exibição)
         const vendasFuncionarios = funcionarios.map(func => {
-          const venda = func.vendas.find(
-            v => v.mes === mesAtual && v.ano === anoAtual
+          const venda = (func.vendas || []).find(
+            v => v && v.mes === mesAtual && v.ano === anoAtual
           );
           // Montar nome completo (nome + sobrenome)
           const nomeCompleto = func.sobrenome && func.sobrenome.trim() !== ''
-            ? `${func.nome} ${func.sobrenome}`
-            : func.nome;
+            ? `${func.nome || ''} ${func.sobrenome}`
+            : (func.nome || '');
           return {
             funcionarioId: func._id,
-            nome: func.nome,
+            nome: func.nome || '',
             sobrenome: func.sobrenome || '',
             nomeCompleto: nomeCompleto,
-            valor: venda ? venda.valor : 0,
-            metaIndividual: func.metaIndividual
+            valor: (venda && venda.valor) ? Number(venda.valor) : 0,
+            metaIndividual: (func.metaIndividual) ? Number(func.metaIndividual) : 0
           };
         });
 
@@ -423,12 +423,12 @@ router.get('/lojas/:lojaId', authDono, async (req, res) => {
     
     // Vendas dos funcionários
     const vendasFuncionarios = funcionarios.map(func => {
-      const venda = func.vendas.find(
-        v => v.mes === mesAtual && v.ano === anoAtual
+      const venda = (func.vendas || []).find(
+        v => v && v.mes === mesAtual && v.ano === anoAtual
       );
-      return venda ? venda.valor : 0;
+      return (venda && venda.valor) ? Number(venda.valor) : 0;
     });
-    const totalVendasFuncionarios = vendasFuncionarios.reduce((sum, v) => sum + v, 0);
+    const totalVendasFuncionarios = vendasFuncionarios.reduce((sum, v) => sum + (Number(v) || 0), 0);
     
     // Total geral = vendas funcionários + vendas comerciais
     const totalGeral = totalVendasFuncionarios + totalVendasComerciais;
@@ -590,12 +590,12 @@ router.get('/dashboard/comparacao', authDono, async (req, res) => {
         
         // Vendas dos funcionários para cada período
         const vendasFunc1 = funcionarios.map(func => {
-          const venda = func.vendas.find(v => v.mes === parseInt(mes1) && v.ano === parseInt(ano1));
-          return venda ? venda.valor : 0;
+          const venda = (func.vendas || []).find(v => v && v.mes === parseInt(mes1) && v.ano === parseInt(ano1));
+          return (venda && venda.valor) ? Number(venda.valor) : 0;
         });
         const vendasFunc2 = funcionarios.map(func => {
-          const venda = func.vendas.find(v => v.mes === parseInt(mes2) && v.ano === parseInt(ano2));
-          return venda ? venda.valor : 0;
+          const venda = (func.vendas || []).find(v => v && v.mes === parseInt(mes2) && v.ano === parseInt(ano2));
+          return (venda && venda.valor) ? Number(venda.valor) : 0;
         });
         
         const totalVendasFunc1 = vendasFunc1.reduce((sum, v) => sum + v, 0);
@@ -684,8 +684,8 @@ router.get('/dashboard/evolucao', authDono, async (req, res) => {
                 // Vendas dos funcionários
                 const vendasFunc = funcionarios.map(func => {
                   if (!func.vendas || !Array.isArray(func.vendas)) return 0;
-                  const venda = func.vendas.find(v => v.mes === mes && v.ano === anoAtual);
-                  const valor = venda ? parseFloat(venda.valor) : 0;
+                  const venda = func.vendas.find(v => v && v.mes === mes && v.ano === anoAtual);
+                  const valor = (venda && venda.valor) ? Number(venda.valor) : 0;
                   return isNaN(valor) ? 0 : valor;
                 });
                 const totalVendasFunc = vendasFunc.reduce((sum, v) => sum + (isNaN(v) ? 0 : v), 0);
@@ -740,8 +740,8 @@ router.get('/dashboard/evolucao', authDono, async (req, res) => {
                     // Vendas dos funcionários
                     const vendasFunc = funcionarios.map(func => {
                       if (!func.vendas || !Array.isArray(func.vendas)) return 0;
-                      const venda = func.vendas.find(v => v.mes === mes && v.ano === anoAtual);
-                      const valor = venda ? parseFloat(venda.valor) : 0;
+                      const venda = func.vendas.find(v => v && v.mes === mes && v.ano === anoAtual);
+                      const valor = (venda && venda.valor) ? Number(venda.valor) : 0;
                       return isNaN(valor) ? 0 : valor;
                     });
                     const totalVendasFunc = vendasFunc.reduce((sum, v) => sum + (isNaN(v) ? 0 : v), 0);
@@ -820,8 +820,8 @@ router.get('/alertas', authDono, async (req, res) => {
       
       // Vendas dos funcionários
       const vendasFunc = funcionarios.map(func => {
-        const venda = func.vendas.find(v => v.mes === mesAtual && v.ano === anoAtual);
-        return venda ? venda.valor : 0;
+        const venda = (func.vendas || []).find(v => v && v.mes === mesAtual && v.ano === anoAtual);
+        return (venda && venda.valor) ? Number(venda.valor) : 0;
       });
       const totalVendasFunc = vendasFunc.reduce((sum, v) => sum + v, 0);
       
@@ -952,8 +952,8 @@ router.get('/metricas', authDono, async (req, res) => {
         
         // Vendas dos funcionários
         const vendasFunc = funcionarios.map(func => {
-          const venda = func.vendas.find(v => v.mes === mesAtual && v.ano === anoAtual);
-          return venda ? venda.valor : 0;
+          const venda = (func.vendas || []).find(v => v && v.mes === mesAtual && v.ano === anoAtual);
+          return (venda && venda.valor) ? Number(venda.valor) : 0;
         });
         const totalVendasFunc = vendasFunc.reduce((sum, v) => sum + v, 0);
         
@@ -1111,8 +1111,8 @@ router.get('/previsao', authDono, async (req, res) => {
         
         // Vendas dos funcionários
         const vendasFunc = funcionarios.map(func => {
-          const venda = func.vendas.find(v => v.mes === mesAtual && v.ano === anoAtual);
-          return venda ? venda.valor : 0;
+          const venda = (func.vendas || []).find(v => v && v.mes === mesAtual && v.ano === anoAtual);
+          return (venda && venda.valor) ? Number(venda.valor) : 0;
         });
         const totalVendasFunc = vendasFunc.reduce((sum, v) => sum + v, 0);
         

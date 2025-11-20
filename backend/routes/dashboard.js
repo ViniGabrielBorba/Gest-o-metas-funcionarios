@@ -152,7 +152,7 @@ router.get('/', async (req, res) => {
               quantidade: 0
             };
           }
-          vendasDiariasMes[dataKey].total += parseFloat(venda.valor) || 0;
+          vendasDiariasMes[dataKey].total += Number(venda.valor) || 0;
           vendasDiariasMes[dataKey].quantidade += 1;
         }
       } catch (err) {
@@ -161,7 +161,7 @@ router.get('/', async (req, res) => {
     });
     
     // Calcular total de vendas comerciais do mês
-    const totalVendasComerciais = vendasComerciais.reduce((sum, v) => sum + (v.valor || 0), 0);
+    const totalVendasComerciais = vendasComerciais.reduce((sum, v) => sum + (Number(v.valor) || 0), 0);
     console.log(`Total de vendas comerciais do mês: R$ ${totalVendasComerciais}`);
 
     // Converter para array e ordenar por data
@@ -363,7 +363,7 @@ router.get('/alertas', async (req, res) => {
       gerenteId: req.user.id,
       data: { $gte: inicioMes, $lte: fimMes }
     });
-    const totalVendasComerciais = vendasComerciais.reduce((sum, v) => sum + (parseFloat(v.valor) || 0), 0);
+    const totalVendasComerciais = vendasComerciais.reduce((sum, v) => sum + (Number(v.valor) || 0), 0);
     
     // Calcular total geral (vendas funcionários + vendas comerciais)
     const totalGeral = (meta && meta.totalVendido ? meta.totalVendido : 0) + totalVendasComerciais;
