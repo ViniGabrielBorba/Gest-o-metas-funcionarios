@@ -1268,6 +1268,82 @@ const DashboardDono = ({ setIsAuthenticated }) => {
         </div>
       )}
 
+      {/* Funcionários por Função - Organizados por Loja */}
+      {lojasFiltradas.length > 0 && (
+        <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} rounded-xl shadow-lg p-6 mb-8 transition-colors`}>
+          <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} mb-6 flex items-center gap-2 transition-colors`}>
+            <FaUsers /> Funcionários por Função - Por Loja
+          </h2>
+          <div className="space-y-8">
+            {lojasFiltradas.map((loja) => {
+              if (!loja.funcionariosPorFuncao || Object.keys(loja.funcionariosPorFuncao).length === 0) {
+                return null;
+              }
+              
+              return (
+                <div 
+                  key={loja.gerenteId}
+                  className={`${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'} border rounded-lg p-6 transition-colors`}
+                >
+                  <h3 className={`text-xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
+                    {loja.nomeLoja}
+                  </h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {Object.entries(loja.funcionariosPorFuncao)
+                      .sort(([funcaoA], [funcaoB]) => funcaoA.localeCompare(funcaoB))
+                      .map(([funcao, funcionarios]) => (
+                        <div 
+                          key={funcao} 
+                          className={`${darkMode ? 'bg-gray-600 border-gray-500' : 'bg-white border-gray-300'} border rounded-lg p-4 transition-colors`}
+                        >
+                          <h4 className={`text-lg font-bold mb-3 ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors`}>
+                            {funcao} ({funcionarios.length})
+                          </h4>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead className={darkMode ? 'bg-gray-500' : 'bg-gray-200'}>
+                                <tr>
+                                  <th className={`px-3 py-2 text-left ${darkMode ? 'text-gray-300' : 'text-gray-700'} font-semibold`}>
+                                    #
+                                  </th>
+                                  <th className={`px-3 py-2 text-left ${darkMode ? 'text-gray-300' : 'text-gray-700'} font-semibold`}>
+                                    Nome
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {funcionarios
+                                  .sort((a, b) => {
+                                    const nomeA = (a.nomeCompleto || a.nome || '').toLowerCase();
+                                    const nomeB = (b.nomeCompleto || b.nome || '').toLowerCase();
+                                    return nomeA.localeCompare(nomeB);
+                                  })
+                                  .map((func, index) => (
+                                    <tr 
+                                      key={func.id} 
+                                      className={`border-b ${darkMode ? 'border-gray-500 hover:bg-gray-500' : 'border-gray-200 hover:bg-gray-100'} transition-colors`}
+                                    >
+                                      <td className={`px-3 py-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                        {index + 1}
+                                      </td>
+                                      <td className={`px-3 py-2 font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                                        {func.nomeCompleto || func.nome || 'Sem nome'}
+                                      </td>
+                                    </tr>
+                                  ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Modal de Evolução */}
       {showEvolucao && dadosEvolucao && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

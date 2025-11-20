@@ -334,7 +334,35 @@ router.get('/dashboard', authDono, async (req, res) => {
             funcao: f.funcao,
             metaIndividual: f.metaIndividual,
             vendasMes: vendasFuncionarios.find(v => v.funcionarioId === f._id.toString())?.valor || 0
-          }))
+          })),
+          // Agrupar funcionários por função
+          funcionariosPorFuncao: (() => {
+            const agrupados = {};
+            funcionarios.forEach(func => {
+              try {
+                const nomeCompleto = func.sobrenome && func.sobrenome.trim() !== ''
+                  ? `${func.nome || ''} ${func.sobrenome}`
+                  : (func.nome || '');
+                
+                const funcao = (func.funcao && typeof func.funcao === 'string') ? func.funcao : 'Sem função';
+                
+                if (!agrupados[funcao]) {
+                  agrupados[funcao] = [];
+                }
+                
+                agrupados[funcao].push({
+                  id: func._id,
+                  nome: func.nome || '',
+                  sobrenome: func.sobrenome || '',
+                  nomeCompleto: nomeCompleto,
+                  funcao: funcao
+                });
+              } catch (err) {
+                console.error('Erro ao processar funcionário para agrupamento:', func._id, err);
+              }
+            });
+            return agrupados;
+          })()
         };
       })
     );
