@@ -1008,40 +1008,36 @@ router.get('/metricas', authDono, async (req, res) => {
         // Total geral = vendas funcionários + vendas comerciais
         const totalGeral = totalVendasFunc + totalVendasComerciais;
         
-        // Contar vendas diárias para calcular ticket médio
-        // Ticket médio = valor médio por transação (venda diária registrada)
-        let quantidadeVendas = 0;
-        let totalVerificacao = 0;
+        // Calcular percentual de funcionários que bateram a meta individual
+        const funcoesVenda = ['Vendedor', 'Vendedora', 'Vendedor Online'];
+        let funcionariosComMeta = 0;
+        let funcionariosBateramMeta = 0;
         
-        // Vendas comerciais (contar cada venda comercial como uma transação)
-        vendasComerciais.forEach(v => {
-          quantidadeVendas++;
-          totalVerificacao += parseFloat(v.valor) || 0;
-        });
-        
-        // Vendas diárias dos funcionários
-        funcionarios.forEach(f => {
-          if (f.vendasDiarias) {
-            f.vendasDiarias.forEach(v => {
-              const vDate = new Date(v.data);
-              if (vDate.getUTCMonth() + 1 === mesAtual && vDate.getUTCFullYear() === anoAtual) {
-                quantidadeVendas++;
-                totalVerificacao += parseFloat(v.valor) || 0;
+        funcionarios.forEach(func => {
+          // Considerar apenas funcionários de vendas
+          if (func.funcao && funcoesVenda.includes(func.funcao)) {
+            const metaIndividual = Number(func.metaIndividual) || 0;
+            if (metaIndividual > 0) {
+              funcionariosComMeta++;
+              const venda = (func.vendas || []).find(v => v && v.mes === mesAtual && v.ano === anoAtual);
+              const valorVenda = (venda && venda.valor) ? Number(venda.valor) : 0;
+              if (valorVenda >= metaIndividual) {
+                funcionariosBateramMeta++;
               }
-            });
+            }
           }
         });
         
-        // Ticket médio = total de vendas / quantidade de transações
-        // Se não houver vendas, retornar 0
-        const ticketMedio = quantidadeVendas > 0 ? totalGeral / quantidadeVendas : 0;
+        const percentualBateramMeta = funcionariosComMeta > 0 
+          ? (funcionariosBateramMeta / funcionariosComMeta) * 100 
+          : 0;
+        
         const vendasPorFuncionario = funcionarios.length > 0 ? totalGeral / funcionarios.length : 0;
         const taxaConversao = meta && meta.valor > 0 ? (totalGeral / meta.valor) * 100 : 0;
         
         return {
           loja: gerente.nomeLoja,
-          ticketMedio: Math.round(ticketMedio * 100) / 100, // Arredondar para 2 casas decimais
-          quantidadeTransacoes: quantidadeVendas, // Informação para debug
+          percentualBateramMeta: Math.round(percentualBateramMeta * 100) / 100,
           vendasPorFuncionario: Math.round(vendasPorFuncionario * 100) / 100,
           taxaConversao: Math.round(taxaConversao * 100) / 100,
           totalFuncionarios: funcionarios.length,
@@ -1311,6 +1307,48 @@ router.get('/previsao', authDono, async (req, res) => {
           else if (coeficienteVariacao > 0.5) confianca -= 10;
         }
         
+        // Melhorar lógica de tendência: considerar desempenho relativo, não apenas inclinação
+        let tendenciaFinal = 'estavel';
+        if (vendasOrdenadas.length >= 3) {
+          // Calcular desempenho esperado para o tempo decorrido
+          const diasNoMes = new Date(anoAtual, mesAtual, 0).getDate();
+          const percentualTempoDecorrido = diasDecorridos > 0 ? (diasDecorridos / diasNoMes) * 100 : 0;
+          const percentualVendasAteHoje = meta && meta.valor > 0 ? (vendasAteHoje / meta.valor) * 100 : 0;
+          const percentualProjecao = meta && meta.valor > 0 ? (projecaoTotal / meta.valor) * 100 : 0;
+          
+          // Critério 1: Comparar vendas até hoje com o esperado para o tempo decorrido
+          const diferencaPercentual = percentualVendasAteHoje - percentualTempoDecorrido;
+          
+          // Critério 2: Projeção em relação à meta
+          const projecaoAcimaMeta = percentualProjecao >= 100;
+          
+          // Critério 3: Inclinação da regressão (tendência)
+          const tendenciaPositiva = tendencia > 0;
+          
+          // Decisão combinada: se está acima do esperado E projeta acima da meta OU tendência positiva forte
+          if ((diferencaPercentual > 5 && projecaoAcimaMeta) || (tendenciaPositiva && diferencaPercentual > 0)) {
+            tendenciaFinal = 'crescimento';
+          } else if ((diferencaPercentual < -5) || (tendencia < 0 && percentualProjecao < 90)) {
+            tendenciaFinal = 'declinio';
+          } else {
+            tendenciaFinal = 'estavel';
+          }
+        } else {
+          // Com poucos dados, usar apenas comparação com esperado
+          const diasNoMes = new Date(anoAtual, mesAtual, 0).getDate();
+          const percentualTempoDecorrido = diasDecorridos > 0 ? (diasDecorridos / diasNoMes) * 100 : 0;
+          const percentualVendasAteHoje = meta && meta.valor > 0 ? (vendasAteHoje / meta.valor) * 100 : 0;
+          const diferencaPercentual = percentualVendasAteHoje - percentualTempoDecorrido;
+          
+          if (diferencaPercentual > 5) {
+            tendenciaFinal = 'crescimento';
+          } else if (diferencaPercentual < -5) {
+            tendenciaFinal = 'declinio';
+          } else {
+            tendenciaFinal = 'estavel';
+          }
+        }
+        
         return {
           loja: gerente.nomeLoja,
           vendasAteHoje,
@@ -1321,7 +1359,7 @@ router.get('/previsao', authDono, async (req, res) => {
           meta: meta ? meta.valor : 0,
           percentualConfianca: Math.min(95, Math.max(30, confianca)),
           previsaoMeta: meta && meta.valor > 0 ? (projecaoTotal / meta.valor) * 100 : 0,
-          tendencia: tendencia > 0 ? 'crescimento' : tendencia < 0 ? 'declinio' : 'estavel'
+          tendencia: tendenciaFinal
         };
       })
     );

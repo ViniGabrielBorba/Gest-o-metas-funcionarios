@@ -1200,9 +1200,9 @@ const DashboardDono = ({ setIsAuthenticated }) => {
                   <p className="text-sm font-semibold text-gray-600 mb-2">{metrica.loja}</p>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Ticket Médio:</span>
+                      <span className="text-gray-600">Func. que Bateram Meta:</span>
                       <span className="font-semibold">
-                        R$ {metrica.ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        {metrica.percentualBateramMeta.toFixed(1)}%
                       </span>
                     </div>
                     <div className="flex justify-between">
