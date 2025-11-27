@@ -5,14 +5,20 @@ const logger = require('./logger');
 const createTransporter = () => {
   // Se tiver configuração SMTP, usar
   if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    const port = parseInt(process.env.SMTP_PORT) || 465;
+    const secure = port === 465; // true para 465 (SSL), false para 587 (TLS)
+    
     return nodemailer.createTransport({
       host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT || 587,
-      secure: process.env.SMTP_SECURE === 'true', // true para 465, false para outras portas
+      port: port,
+      secure: secure,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
-      }
+      },
+      connectionTimeout: 10000, // 10 segundos
+      greetingTimeout: 10000,
+      socketTimeout: 15000
     });
   }
   
