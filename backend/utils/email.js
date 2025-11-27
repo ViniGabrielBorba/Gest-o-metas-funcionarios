@@ -67,8 +67,8 @@ const sendEmail = async (options) => {
 };
 
 // Template de email para recuperação de senha
-const sendPasswordResetEmail = async (email, token) => {
-  const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-senha?token=${token}`;
+const sendPasswordResetEmail = async (email, token, customUrl = null) => {
+  const resetUrl = customUrl || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/recuperar-senha?token=${token}`;
   
   const html = `
     <!DOCTYPE html>

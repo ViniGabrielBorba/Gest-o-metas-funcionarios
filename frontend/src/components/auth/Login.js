@@ -184,6 +184,16 @@ const Login = ({ setIsAuthenticated, setUserType }) => {
             </button>
           </form>
 
+          <div className="mt-4 text-center">
+            <Link 
+              to="/recuperar-senha?tipo=gerente" 
+              className="text-sm hover:underline" 
+              style={{ color: '#169486' }}
+            >
+              Esqueci minha senha
+            </Link>
+          </div>
+
           <div className="mt-6 text-center">
             <p className="text-gray-600">
               Não tem uma conta?{' '}

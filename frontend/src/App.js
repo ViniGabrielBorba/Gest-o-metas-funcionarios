@@ -17,6 +17,7 @@ import Agenda from './components/agenda/Agenda';
 import Limpeza from './components/limpeza/Limpeza';
 import DadosFuncionarios from './components/dados-funcionarios/DadosFuncionarios';
 import Perfil from './components/perfil/Perfil';
+import RecuperarSenha from './components/auth/RecuperarSenha';
 import { getAuthToken } from './utils/auth';
 import { requestNotificationPermission } from './utils/notifications';
 
@@ -110,6 +111,10 @@ function App() {
           <Route 
             path="/cadastro" 
             element={!isAuthenticated || isDono ? <Cadastro setIsAuthenticated={setIsAuthenticated} setUserType={setUserType} /> : <Navigate to="/dashboard" />} 
+          />
+          <Route 
+            path="/recuperar-senha" 
+            element={<RecuperarSenha />} 
           />
           <Route 
             path="/dashboard" 

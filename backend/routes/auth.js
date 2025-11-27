@@ -228,7 +228,9 @@ router.post('/recuperar-senha', passwordResetLimiter, validate(recuperarSenhaSch
 
     // Enviar email
     try {
-      await sendPasswordResetEmail(gerente.email, resetToken);
+      const frontendUrl = process.env.FRONTEND_URL || 'https://gest-o-metas-funcionarios-89ed.vercel.app';
+      const resetUrl = `${frontendUrl}/recuperar-senha?token=${resetToken}&tipo=gerente`;
+      await sendPasswordResetEmail(gerente.email, resetToken, resetUrl);
       logger.info('Email de recuperação de senha enviado', { email: gerente.email });
       logger.audit('Solicitação de recuperação de senha', gerente._id, {
         email: gerente.email

@@ -170,6 +170,93 @@ router.get('/me', authDono, async (req, res) => {
   }
 });
 
+// Recuperar senha do dono - solicitar email
+router.post('/recuperar-senha', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ message: 'Email é obrigatório' });
+    }
+    
+    const emailNormalizado = email.toLowerCase().trim();
+    const dono = await Dono.findOne({ email: emailNormalizado });
+    
+    if (!dono) {
+      // Por segurança, não informamos se o email existe ou não
+      return res.json({ message: 'Se o email estiver cadastrado, você receberá um link de recuperação.' });
+    }
+    
+    // Gerar token de reset
+    const resetToken = dono.generatePasswordResetToken();
+    await dono.save({ validateBeforeSave: false });
+    
+    // Enviar email
+    const { sendPasswordResetEmail } = require('../utils/email');
+    const frontendUrl = process.env.FRONTEND_URL || 'https://gest-o-metas-funcionarios-89ed.vercel.app';
+    const resetUrl = `${frontendUrl}/recuperar-senha?token=${resetToken}&tipo=dono`;
+    
+    try {
+      await sendPasswordResetEmail(dono.email, resetToken, resetUrl);
+      logger.info('Email de recuperação enviado para dono', { email: dono.email });
+    } catch (emailError) {
+      logger.error('Erro ao enviar email de recuperação para dono', { error: emailError.message });
+      // Limpar token se o email falhar
+      dono.resetSenhaToken = undefined;
+      dono.resetSenhaExpira = undefined;
+      await dono.save({ validateBeforeSave: false });
+      return res.status(500).json({ message: 'Erro ao enviar email. Tente novamente.' });
+    }
+    
+    res.json({ message: 'Se o email estiver cadastrado, você receberá um link de recuperação.' });
+  } catch (error) {
+    logger.error('Erro ao solicitar recuperação de senha do dono', { error: error.message });
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Redefinir senha do dono
+router.post('/reset-senha', async (req, res) => {
+  try {
+    const { token, senha } = req.body;
+    
+    if (!token || !senha) {
+      return res.status(400).json({ message: 'Token e nova senha são obrigatórios' });
+    }
+    
+    if (senha.length < 8) {
+      return res.status(400).json({ message: 'Senha deve ter no mínimo 8 caracteres' });
+    }
+    
+    // Hash do token para comparar com o banco
+    const crypto = require('crypto');
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    
+    // Buscar dono com token válido e não expirado
+    const dono = await Dono.findOne({
+      resetSenhaToken: hashedToken,
+      resetSenhaExpira: { $gt: Date.now() }
+    }).select('+resetSenhaToken +resetSenhaExpira');
+    
+    if (!dono) {
+      return res.status(400).json({ message: 'Token inválido ou expirado. Solicite um novo link.' });
+    }
+    
+    // Atualizar senha e limpar token
+    dono.senha = senha;
+    dono.resetSenhaToken = undefined;
+    dono.resetSenhaExpira = undefined;
+    await dono.save();
+    
+    logger.audit('Senha do dono redefinida', dono._id, { email: dono.email });
+    
+    res.json({ message: 'Senha redefinida com sucesso!' });
+  } catch (error) {
+    logger.error('Erro ao redefinir senha do dono', { error: error.message });
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Dashboard do dono - dados agregados de todas as lojas
 router.get('/dashboard', authDono, async (req, res) => {
   try {
