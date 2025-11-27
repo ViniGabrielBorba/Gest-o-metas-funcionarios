@@ -424,4 +424,117 @@ router.get('/me', auth, async (req, res) => {
   }
 });
 
+// Atualizar perfil do gerente
+router.put('/perfil', auth, async (req, res) => {
+  try {
+    const { nome, email, telefone, nomeLoja, cnpj } = req.body;
+    
+    // Validações básicas
+    if (!nome || !nome.trim()) {
+      return res.status(400).json({ message: 'Nome é obrigatório' });
+    }
+    if (!email || !email.trim()) {
+      return res.status(400).json({ message: 'Email é obrigatório' });
+    }
+    if (!nomeLoja || !nomeLoja.trim()) {
+      return res.status(400).json({ message: 'Nome da loja é obrigatório' });
+    }
+    
+    // Verificar se o email já está em uso por outro gerente
+    const emailNormalizado = email.toLowerCase().trim();
+    const emailExistente = await Gerente.findOne({ 
+      email: emailNormalizado, 
+      _id: { $ne: req.user.id } 
+    });
+    
+    if (emailExistente) {
+      return res.status(400).json({ message: 'Este email já está em uso por outra conta' });
+    }
+    
+    // Atualizar dados
+    const gerente = await Gerente.findByIdAndUpdate(
+      req.user.id,
+      {
+        nome: nome.trim(),
+        email: emailNormalizado,
+        telefone: telefone ? telefone.trim() : '',
+        nomeLoja: nomeLoja.trim(),
+        cnpj: cnpj ? cnpj.trim() : ''
+      },
+      { new: true, runValidators: true }
+    ).select('-senha');
+    
+    if (!gerente) {
+      return res.status(404).json({ message: 'Gerente não encontrado' });
+    }
+    
+    logger.audit('Perfil atualizado', req.user.id, {
+      nome: gerente.nome,
+      email: gerente.email,
+      nomeLoja: gerente.nomeLoja
+    });
+    
+    res.json({ 
+      message: 'Perfil atualizado com sucesso',
+      gerente: {
+        ...gerente.toObject(),
+        tipo: req.user.tipo || 'gerente'
+      }
+    });
+  } catch (error) {
+    logger.error('Erro ao atualizar perfil', { 
+      error: error.message, 
+      userId: req.user.id 
+    });
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Alterar senha do gerente
+router.put('/alterar-senha', auth, async (req, res) => {
+  try {
+    const { senhaAtual, novaSenha } = req.body;
+    
+    // Validações
+    if (!senhaAtual) {
+      return res.status(400).json({ message: 'Senha atual é obrigatória' });
+    }
+    if (!novaSenha) {
+      return res.status(400).json({ message: 'Nova senha é obrigatória' });
+    }
+    if (novaSenha.length < 8) {
+      return res.status(400).json({ message: 'Nova senha deve ter no mínimo 8 caracteres' });
+    }
+    
+    // Buscar gerente com senha
+    const gerente = await Gerente.findById(req.user.id);
+    if (!gerente) {
+      return res.status(404).json({ message: 'Gerente não encontrado' });
+    }
+    
+    // Verificar senha atual
+    const senhaCorreta = await gerente.comparePassword(senhaAtual);
+    if (!senhaCorreta) {
+      logger.warn('Tentativa de alteração de senha com senha incorreta', { userId: req.user.id });
+      return res.status(400).json({ message: 'Senha atual incorreta' });
+    }
+    
+    // Atualizar senha
+    gerente.senha = novaSenha;
+    await gerente.save();
+    
+    logger.audit('Senha alterada', req.user.id, {
+      email: gerente.email
+    });
+    
+    res.json({ message: 'Senha alterada com sucesso' });
+  } catch (error) {
+    logger.error('Erro ao alterar senha', { 
+      error: error.message, 
+      userId: req.user.id 
+    });
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router;

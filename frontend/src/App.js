@@ -16,6 +16,7 @@ import Estoque from './components/estoque/Estoque';
 import Agenda from './components/agenda/Agenda';
 import Limpeza from './components/limpeza/Limpeza';
 import DadosFuncionarios from './components/dados-funcionarios/DadosFuncionarios';
+import Perfil from './components/perfil/Perfil';
 import { getAuthToken } from './utils/auth';
 import { requestNotificationPermission } from './utils/notifications';
 
@@ -145,6 +146,10 @@ function App() {
           <Route 
             path="/dados-funcionarios" 
             element={isAuthenticated && isGerente ? <DadosFuncionarios setIsAuthenticated={setIsAuthenticated} /> : <Navigate to={isDono ? "/dashboard-dono" : "/login"} />} 
+          />
+          <Route 
+            path="/perfil" 
+            element={isAuthenticated && isGerente ? <Perfil setIsAuthenticated={setIsAuthenticated} /> : <Navigate to={isDono ? "/dashboard-dono" : "/login"} />} 
           />
           
           {/* Rotas do Dono */}
